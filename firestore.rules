@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fungsi helper untuk memeriksa apakah pengguna adalah guru
+    function isTeacher() {
+      return request.auth != null && 
+        (request.auth.token.email_verified == true) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // Fungsi helper untuk memeriksa apakah anak adalah milik orangtua
+    function isChildOfParent(childId) {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent' &&
+             get(/databases/$(database)/documents/children/$(childId)).data.parentId == request.auth.uid;
+    }
+    
+    // Aturan untuk collection users
+    match /users/{userId} {
+      // Guru bisa membaca semua user, orangtua hanya bisa membaca dirinya sendiri
+      allow read: if request.auth != null && (request.auth.uid == userId || isTeacher());
+      
+      // Hanya guru yang bisa membuat user baru (untuk orangtua)
+      // Ditambahkan rule untuk pembuatan akun baru melalui Firebase Auth
+      allow create: if 
+        // Untuk pembuatan akun orangtua oleh guru
+        (request.auth != null && request.resource.data.createdBy == request.auth.uid && isTeacher()) ||
+        // Untuk pembuatan akun user sendiri saat signup
+        (request.auth != null && request.auth.uid == userId);
+      
+      // User hanya bisa mengupdate data mereka sendiri, guru bisa mengupdate semua
+      allow update: if request.auth != null && (request.auth.uid == userId || isTeacher());
+      
+      // Hanya guru yang bisa menghapus user
+      allow delete: if isTeacher();
+    }
+    
+    // Aturan untuk collection children
+    match /children/{childId} {
+      // Guru bisa membaca semua anak, orangtua hanya bisa membaca anaknya
+      allow read: if request.auth != null && (isTeacher() || resource.data.parentId == request.auth.uid);
+      
+      // Hanya guru yang bisa membuat, mengupdate, dan menghapus data anak
+      allow write: if isTeacher();
+    }
+    
+    // Aturan untuk collection activities
+    match /activities/{activityId} {
+      // Semua user yang terautentikasi bisa membaca aktivitas
+      allow read: if request.auth != null;
+      
+      // Hanya guru yang bisa membuat, mengupdate, dan menghapus aktivitas
+      allow write: if isTeacher();
+    }
+    
+    // Aturan untuk collection checklist_items
+    match /checklist_items/{itemId} {
+      // Guru bisa membaca semua checklist, orangtua hanya bisa membaca checklist anaknya
+      allow read: if request.auth != null && (
+        isTeacher() || 
+        isChildOfParent(resource.data.childId)
+      );
+      
+      // Hanya guru yang bisa membuat dan menghapus checklist
+      allow create, delete: if isTeacher();
+      
+      // Guru bisa mengupdate semua field, orangtua hanya bisa mengupdate homeStatus
+      allow update: if request.auth != null && (
+        isTeacher() || 
+        (isChildOfParent(resource.data.childId) && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['homeStatus']))
+      );
+    }
+    
+    // Aturan untuk collection completion_logs
+    match /completion_logs/{logId} {
+      // Guru bisa membaca semua log, orangtua hanya bisa membaca log anaknya
+      allow read: if request.auth != null && (
+        isTeacher() || 
+        isChildOfParent(resource.data.childId)
+      );
+      
+      // Guru bisa membuat log di kedua lingkungan, orangtua hanya bisa membuat log di rumah
+      allow create: if request.auth != null && (
+        isTeacher() || 
+        (isChildOfParent(request.resource.data.childId) && request.resource.data.environment == 'home')
+      );
+      
+      // Tidak ada yang boleh mengupdate atau menghapus log setelah dibuat
+      allow update, delete: if false;
+    }
+  }
+}

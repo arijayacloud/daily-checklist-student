@@ -3,26 +3,33 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/child_provider.dart';
+import '../../models/child_model.dart';
+import '../../models/user_model.dart';
 
-class AddChildScreen extends StatefulWidget {
-  const AddChildScreen({Key? key}) : super(key: key);
+class EditChildScreen extends StatefulWidget {
+  final ChildModel child;
+
+  const EditChildScreen({Key? key, required this.child}) : super(key: key);
 
   @override
-  _AddChildScreenState createState() => _AddChildScreenState();
+  _EditChildScreenState createState() => _EditChildScreenState();
 }
 
-class _AddChildScreenState extends State<AddChildScreen> {
+class _EditChildScreenState extends State<EditChildScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
+  late TextEditingController _nameController;
+  late TextEditingController _ageController;
 
   List<Map<String, String>> _parentsList = [];
-  String? _selectedParentId;
+  String _selectedParentId = '';
   bool _isLoadingParents = true;
 
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController(text: widget.child.name);
+    _ageController = TextEditingController(text: widget.child.age.toString());
+    _selectedParentId = widget.child.parentId;
     _loadParents();
   }
 
@@ -59,7 +66,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
         setState(() {
           _parentsList = parents;
-          _selectedParentId = parents.isNotEmpty ? parents[0]['id'] : null;
           _isLoadingParents = false;
         });
       }
@@ -76,7 +82,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     final childProvider = Provider.of<ChildProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tambah Anak')),
+      appBar: AppBar(title: const Text('Edit Data Anak')),
       body:
           _isLoadingParents
               ? const Center(child: CircularProgressIndicator())
@@ -87,6 +93,29 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Avatar preview
+                      Center(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: NetworkImage(
+                                widget.child.avatarUrl,
+                              ),
+                              radius: 50,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Avatar akan diperbarui jika nama diubah',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       // Name
                       TextFormField(
                         controller: _nameController,
@@ -132,81 +161,37 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       const SizedBox(height: 16),
 
                       // Parent Dropdown
-                      if (_parentsList.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(8),
+                      DropdownButtonFormField<String>(
+                        value:
+                            _parentsList.any(
+                                  (p) => p['id'] == _selectedParentId,
+                                )
+                                ? _selectedParentId
+                                : (_parentsList.isNotEmpty
+                                    ? _parentsList[0]['id']
+                                    : null),
+                        decoration: InputDecoration(
+                          labelText: 'Orangtua',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Column(
-                            children: [
-                              const Text(
-                                'Belum ada orangtua yang terdaftar',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Tambahkan orangtua terlebih dahulu di menu Manajemen Pengguna',
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  Navigator.of(
-                                    context,
-                                  ).pushNamed('/teacher/users');
-                                },
-                                child: const Text('Buat Akun Orangtua'),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        DropdownButtonFormField<String>(
-                          value: _selectedParentId,
-                          decoration: InputDecoration(
-                            labelText: 'Orangtua',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          items:
-                              _parentsList
-                                  .map(
-                                    (parent) => DropdownMenuItem(
-                                      value: parent['id'],
-                                      child: Text(parent['name']!),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedParentId = value;
-                              });
-                            }
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Pilih orangtua';
-                            }
-                            return null;
-                          },
                         ),
-                      const SizedBox(height: 24),
-
-                      // Notice about avatar
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Avatar akan dibuat secara otomatis berdasarkan nama anak.',
-                          textAlign: TextAlign.center,
-                        ),
+                        items:
+                            _parentsList
+                                .map(
+                                  (parent) => DropdownMenuItem(
+                                    value: parent['id'],
+                                    child: Text(parent['name']!),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedParentId = value;
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 24),
 
@@ -215,13 +200,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
                         height: 50,
                         child: ElevatedButton(
                           onPressed:
-                              childProvider.isLoading || _parentsList.isEmpty
+                              childProvider.isLoading
                                   ? null
                                   : () => _handleSubmit(context),
                           child:
                               childProvider.isLoading
                                   ? const CircularProgressIndicator()
-                                  : const Text('Simpan'),
+                                  : const Text('Simpan Perubahan'),
                         ),
                       ),
                     ],
@@ -232,24 +217,34 @@ class _AddChildScreenState extends State<AddChildScreen> {
   }
 
   Future<void> _handleSubmit(BuildContext context) async {
-    if (_formKey.currentState!.validate() && _selectedParentId != null) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (_formKey.currentState!.validate()) {
       final childProvider = Provider.of<ChildProvider>(context, listen: false);
 
-      if (authProvider.user != null) {
-        final success = await childProvider.addChild(
-          name: _nameController.text.trim(),
-          age: int.parse(_ageController.text.trim()),
-          parentId: _selectedParentId!,
-          teacherId: authProvider.user!.uid,
-        );
+      // Buat avatar URL baru jika nama berubah
+      String avatarUrl = widget.child.avatarUrl;
+      if (_nameController.text.trim() != widget.child.name) {
+        avatarUrl =
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=${_nameController.text.trim()}';
+      }
 
-        if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Anak berhasil ditambahkan')),
-          );
-          Navigator.pop(context);
-        }
+      // Buat objek ChildModel baru dengan data yang diperbarui
+      ChildModel updatedChild = ChildModel(
+        id: widget.child.id,
+        name: _nameController.text.trim(),
+        age: int.parse(_ageController.text.trim()),
+        parentId: _selectedParentId,
+        teacherId: widget.child.teacherId,
+        avatarUrl: avatarUrl,
+        createdAt: widget.child.createdAt,
+      );
+
+      final success = await childProvider.updateChild(updatedChild);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data anak berhasil diperbarui')),
+        );
+        Navigator.pop(context);
       }
     }
   }

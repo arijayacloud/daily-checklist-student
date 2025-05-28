@@ -5,3 +5,4 @@ export 'child_model.dart';
 export 'activity_model.dart';
 export 'checklist_item_model.dart';
 export 'completion_log_model.dart';
+export 'assignment_model.dart';

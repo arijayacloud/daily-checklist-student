@@ -6,6 +6,7 @@ import '../../providers/child_provider.dart';
 import '../../providers/assignment_provider.dart';
 import 'activity_screen.dart';
 import 'child_screen.dart';
+import 'user_management_screen.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({Key? key}) : super(key: key);
@@ -130,7 +131,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                             'Orangtua',
                             Icons.family_restroom,
                             () {
-                              // TODO: Navigate to parent management
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const UserManagementScreen(),
+                                ),
+                              );
                             },
                           ),
                           _buildDashboardCard(

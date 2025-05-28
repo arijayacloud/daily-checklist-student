@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/child_provider.dart';
 import '../../models/child_model.dart';
+import '../../models/user_model.dart';
 import 'add_child_screen.dart';
+import 'edit_child_screen.dart';
 
 class ChildScreen extends StatefulWidget {
   const ChildScreen({Key? key}) : super(key: key);
@@ -124,13 +127,25 @@ class _ChildScreenState extends State<ChildScreen> {
         trailing: PopupMenuButton<String>(
           onSelected: (value) {
             if (value == 'edit') {
-              // TODO: Navigate to edit screen
+              _navigateToEditChild(context, child);
             } else if (value == 'delete') {
               _confirmDelete(context, child);
+            } else if (value == 'details') {
+              _showChildDetails(context, child);
             }
           },
           itemBuilder:
               (context) => [
+                const PopupMenuItem(
+                  value: 'details',
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 18),
+                      SizedBox(width: 8),
+                      Text('Lihat Detail'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'edit',
                   child: Row(
@@ -154,16 +169,90 @@ class _ChildScreenState extends State<ChildScreen> {
               ],
         ),
         onTap: () {
-          // TODO: Show child details
+          _showChildDetails(context, child);
         },
       ),
     );
   }
 
+  void _showChildDetails(BuildContext context, ChildModel child) async {
+    final String? parentName = await _getParentName(child.parentId);
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Detail Anak'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: CircleAvatar(
+                    backgroundImage: NetworkImage(child.avatarUrl),
+                    radius: 50,
+                  ),
+                ),
+                SizedBox(height: 16),
+                _detailRow('Nama', child.name),
+                _detailRow('Usia', '${child.age} tahun'),
+                _detailRow('Orangtua', parentName ?? 'Tidak diketahui'),
+                _detailRow('ID', child.id),
+                _detailRow('Dibuat pada', _formatDate(child.createdAt)),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Tutup'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
   Future<String?> _getParentName(String parentId) async {
-    // TODO: Implement a service to get parent name from ID
-    // For now, return a placeholder
-    return 'Orangtua #$parentId';
+    try {
+      DocumentSnapshot doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(parentId)
+              .get();
+
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return data['name'];
+      }
+      return 'Orangtua tidak ditemukan';
+    } catch (e) {
+      print('Error getting parent name: $e');
+      return 'Error: $e';
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, ChildModel child) async {
@@ -198,5 +287,15 @@ class _ChildScreenState extends State<ChildScreen> {
         );
       }
     }
+  }
+
+  void _navigateToEditChild(BuildContext context, ChildModel child) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EditChildScreen(child: child)),
+    ).then((_) {
+      // Refresh data setelah kembali dari halaman edit
+      _loadChildren();
+    });
   }
 }
