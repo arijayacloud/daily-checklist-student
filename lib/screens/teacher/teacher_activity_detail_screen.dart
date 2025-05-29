@@ -1,393 +1,413 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/checklist_item_model.dart';
-import '../../models/child_model.dart';
+import '../../models/activity_model.dart';
+import '../../providers/activity_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/checklist_provider.dart';
-import '../../widgets/completion_badge.dart';
-import '../../widgets/completion_note_input.dart';
-import 'package:timeago/timeago.dart' as timeago;
-import 'package:intl/intl.dart';
+import '../../screens/teacher/activity_form_screen.dart';
+import '../../screens/teacher/assign_activity_screen.dart';
+import '../../core/theme/app_colors_compat.dart';
 
-class TeacherActivityDetailScreen extends StatelessWidget {
-  final ChecklistItemModel checklistItem;
-  final ChildModel child;
+class TeacherActivityDetailScreen extends StatefulWidget {
+  final ActivityModel activity;
 
-  const TeacherActivityDetailScreen({
-    super.key,
-    required this.checklistItem,
-    required this.child,
-  });
+  const TeacherActivityDetailScreen({super.key, required this.activity});
+
+  @override
+  State<TeacherActivityDetailScreen> createState() =>
+      _TeacherActivityDetailScreenState();
+}
+
+class _TeacherActivityDetailScreenState
+    extends State<TeacherActivityDetailScreen> {
+  ActivityModel? _nextActivity;
+  bool _isLoadingNextActivity = false;
+  String _errorMessage = '';
+  final TextEditingController _customStepController = TextEditingController();
+  final List<String> _customSteps = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNextActivity();
+    _loadCustomSteps();
+  }
+
+  @override
+  void dispose() {
+    _customStepController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadNextActivity() async {
+    if (widget.activity.nextActivityId == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingNextActivity = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final activityProvider = Provider.of<ActivityProvider>(
+        context,
+        listen: false,
+      );
+      final nextActivity = await activityProvider.getFollowUpActivity(
+        widget.activity.id,
+      );
+
+      setState(() {
+        _nextActivity = nextActivity;
+        _isLoadingNextActivity = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Gagal memuat aktivitas lanjutan: $e';
+        _isLoadingNextActivity = false;
+      });
+    }
+  }
+
+  void _loadCustomSteps() {
+    // Dapatkan custom steps untuk guru ini
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.userModel != null) {
+      final teacherId = authProvider.userModel!.id;
+      final customStep = widget.activity.customSteps.firstWhere(
+        (step) => step.teacherId == teacherId,
+        orElse: () => CustomStep(teacherId: teacherId, steps: []),
+      );
+
+      setState(() {
+        _customSteps.clear();
+        _customSteps.addAll(customStep.steps);
+      });
+    }
+  }
+
+  Future<void> _saveCustomSteps() async {
+    if (_customSteps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Silakan tambahkan minimal satu langkah')),
+      );
+      return;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final activityProvider = Provider.of<ActivityProvider>(
+      context,
+      listen: false,
+    );
+
+    if (authProvider.userModel != null) {
+      final teacherId = authProvider.userModel!.id;
+      final success = await activityProvider.addCustomSteps(
+        widget.activity.id,
+        teacherId,
+        _customSteps,
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Langkah-langkah kustom berhasil disimpan'),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              activityProvider.errorMessage.isNotEmpty
+                  ? activityProvider.errorMessage
+                  : 'Gagal menyimpan langkah-langkah kustom',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _addCustomStep() {
+    final step = _customStepController.text.trim();
+    if (step.isNotEmpty) {
+      setState(() {
+        _customSteps.add(step);
+        _customStepController.clear();
+      });
+    }
+  }
+
+  void _removeCustomStep(int index) {
+    setState(() {
+      _customSteps.removeAt(index);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final checklistProvider = Provider.of<ChecklistProvider>(context);
-
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Aktivitas'), centerTitle: false),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Activity title
-              Text(
-                'Aktivitas ${checklistProvider.findActivityForChecklistItem(checklistItem.activityId)?.title ?? "Tidak Diketahui"}',
-                style: textTheme.headlineMedium,
-              ),
-
-              const SizedBox(height: 8),
-
-              // Due date
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Tenggat: ${DateFormat('d MMM yyyy').format(checklistItem.dueDate)}',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: _getDueDateColor(context, checklistItem.dueDate),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // Assigned date
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Ditugaskan: ${DateFormat('d MMM yyyy').format(checklistItem.assignedDate)}',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Activity description
-              Text('Deskripsi', style: textTheme.titleLarge),
-
-              const SizedBox(height: 8),
-
-              Text(
-                checklistProvider
-                        .findActivityForChecklistItem(checklistItem.activityId)
-                        ?.description ??
-                    'Tidak ada deskripsi.',
-                style: textTheme.bodyLarge,
-              ),
-
-              const SizedBox(height: 24),
-
-              // Student info
-              Text('Siswa', style: textTheme.titleLarge),
-
-              const SizedBox(height: 8),
-
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primary.withOpacity(0.2),
-                        backgroundImage: NetworkImage(child.avatarUrl),
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(child.name, style: textTheme.titleMedium),
-                          Text(
-                            'Usia: ${child.age}',
-                            style: textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+      appBar: AppBar(
+        title: const Text('Detail Aktivitas'),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ActivityFormScreen(activity: widget.activity),
                 ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Completion status
-              Text('Status Penyelesaian', style: textTheme.titleLarge),
-
-              const SizedBox(height: 16),
-
-              // Home status
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Rumah',
-                            style: textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          CompletionBadge(
-                            isCompleted: checklistItem.homeStatus.completed,
-                            environment: 'Home',
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      if (checklistItem.homeStatus.completed) ...[
-                        const Divider(),
-
-                        // Completed time
-                        if (checklistItem.homeStatus.completedAt != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Diselesaikan ${timeago.format(checklistItem.homeStatus.completedAt!, locale: 'id')}',
-                                    style: textTheme.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Notes
-                        if (checklistItem.homeStatus.notes != null &&
-                            checklistItem.homeStatus.notes!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.note,
-                                  size: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    checklistItem.homeStatus.notes!,
-                                    style: textTheme.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // School status
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Sekolah',
-                            style: textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.tertiary,
-                            ),
-                          ),
-                          CompletionBadge(
-                            isCompleted: checklistItem.schoolStatus.completed,
-                            environment: 'School',
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      if (checklistItem.schoolStatus.completed) ...[
-                        const Divider(),
-
-                        // Completed time
-                        if (checklistItem.schoolStatus.completedAt != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Diselesaikan ${timeago.format(checklistItem.schoolStatus.completedAt!, locale: 'id')}',
-                                    style: textTheme.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Notes
-                        if (checklistItem.schoolStatus.notes != null &&
-                            checklistItem.schoolStatus.notes!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.note,
-                                  size: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    checklistItem.schoolStatus.notes!,
-                                    style: textTheme.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-            ],
+              );
+            },
           ),
-        ),
+          IconButton(
+            icon: const Icon(Icons.assignment_ind),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder:
+                      (_) => AssignActivityScreen(activity: widget.activity),
+                ),
+              );
+            },
+          ),
+        ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: ElevatedButton(
-          onPressed:
-              checklistItem.schoolStatus.completed
-                  ? () async {
-                    // Unmark as completed
-                    await checklistProvider.updateCompletionStatus(
-                      checklistItemId: checklistItem.id,
-                      environment: 'school',
-                      userId: authProvider.userModel?.id ?? '',
-                      notes: null,
-                    );
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Informasi Aktivitas
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.activity.title,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Deskripsi',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.activity.description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildInfoItem(
+                          'Lingkungan',
+                          _getEnvironmentLabel(widget.activity.environment),
+                          Icons.location_on,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildInfoItem(
+                          'Kesulitan',
+                          _getDifficultyLabel(widget.activity.difficulty),
+                          Icons.star,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildInfoItem(
+                      'Rentang Usia',
+                      '${widget.activity.ageRange.min}-${widget.activity.ageRange.max} tahun',
+                      Icons.child_care,
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Aktivitas ditandai sebagai belum selesai',
+            const SizedBox(height: 16),
+
+            // Aktivitas Lanjutan
+            if (widget.activity.nextActivityId != null) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Aktivitas Lanjutan',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_isLoadingNextActivity)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_errorMessage.isNotEmpty)
+                        Text(_errorMessage, style: TextStyle(color: Colors.red))
+                      else if (_nextActivity != null)
+                        ListTile(
+                          title: Text(_nextActivity!.title),
+                          subtitle: Text(
+                            _nextActivity!.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: const Icon(Icons.arrow_forward),
+                          onTap: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => TeacherActivityDetailScreen(
+                                      activity: _nextActivity!,
+                                    ),
+                              ),
+                            );
+                          },
+                        )
+                      else
+                        const Text('Aktivitas lanjutan tidak ditemukan'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Custom Steps
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Langkah-langkah Kustom',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Daftar langkah kustom
+                    if (_customSteps.isEmpty)
+                      const Text(
+                        'Belum ada langkah kustom. Tambahkan langkah pertama.',
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _customSteps.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            leading: CircleAvatar(child: Text('${index + 1}')),
+                            title: Text(_customSteps[index]),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () => _removeCustomStep(index),
+                            ),
+                          );
+                        },
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    // Input langkah baru
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _customStepController,
+                            decoration: const InputDecoration(
+                              hintText: 'Tambah langkah baru',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ),
-                      );
-                    }
-                  }
-                  : () async {
-                    // Show dialog to add completion note
-                    final result = await showDialog<CompletionNoteResult>(
-                      context: context,
-                      builder: (context) => const CompletionNoteDialog(),
-                    );
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          onPressed: _addCustomStep,
+                        ),
+                      ],
+                    ),
 
-                    if (result != null && context.mounted) {
-                      await checklistProvider.updateCompletionStatus(
-                        checklistItemId: checklistItem.id,
-                        environment: 'school',
-                        userId: authProvider.userModel?.id ?? '',
-                        notes: result.note,
-                        photoUrl:
-                            null, // Photo upload not implemented in this version
-                      );
+                    const SizedBox(height: 16),
 
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Aktivitas ditandai sebagai selesai'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                checklistItem.schoolStatus.completed
-                    ? Colors.grey.shade300
-                    : Theme.of(context).colorScheme.tertiary,
-            foregroundColor:
-                checklistItem.schoolStatus.completed
-                    ? Colors.black87
-                    : Colors.white,
-          ),
-          child: Text(
-            checklistItem.schoolStatus.completed
-                ? 'Tandai Belum Selesai'
-                : 'Tandai Selesai di Sekolah',
-          ),
+                    // Tombol simpan
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _saveCustomSteps,
+                        child: const Text('Simpan Langkah-langkah Kustom'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Color _getDueDateColor(BuildContext context, DateTime dueDate) {
-    final now = DateTime.now();
+  Widget _buildInfoItem(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 4),
+        Text(
+          '$label: ',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        Text(value, style: Theme.of(context).textTheme.bodyMedium),
+      ],
+    );
+  }
 
-    if (dueDate.isBefore(now) &&
-        !(checklistItem.homeStatus.completed ||
-            checklistItem.schoolStatus.completed)) {
-      return Colors.red;
+  String _getEnvironmentLabel(String environment) {
+    switch (environment) {
+      case 'home':
+        return 'Rumah';
+      case 'school':
+        return 'Sekolah';
+      case 'both':
+        return 'Keduanya';
+      default:
+        return 'Tidak Diketahui';
     }
+  }
 
-    if (dueDate.difference(now).inDays <= 2 &&
-        !(checklistItem.homeStatus.completed ||
-            checklistItem.schoolStatus.completed)) {
-      return Colors.orange;
+  String _getDifficultyLabel(String difficulty) {
+    switch (difficulty) {
+      case 'easy':
+        return 'Mudah';
+      case 'medium':
+        return 'Sedang';
+      case 'hard':
+        return 'Sulit';
+      default:
+        try {
+          final stars = int.parse(difficulty);
+          if (stars <= 2) {
+            return 'Mudah';
+          } else if (stars <= 4) {
+            return 'Sedang';
+          } else {
+            return 'Sulit';
+          }
+        } catch (e) {
+          return 'Tidak Diketahui';
+        }
     }
-
-    return Colors.grey.shade600;
   }
 }

@@ -162,12 +162,6 @@ class TeacherHomePage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Siap untuk mengajar hari ini?',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                  ),
                 ],
               ),
             ),

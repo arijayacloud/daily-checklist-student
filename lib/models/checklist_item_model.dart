@@ -8,6 +8,10 @@ class CompletionStatus {
   final String? notes;
   final String? completedBy;
   final String? photoUrl;
+  final int? engagement; // Tingkat keterlibatan 1-5
+  final int? duration; // Durasi dalam menit
+  final String? processNotes; // Catatan proses
+  final String? learningOutcomes; // Hasil pembelajaran (khusus guru)
 
   CompletionStatus({
     this.completed = false,
@@ -15,6 +19,10 @@ class CompletionStatus {
     this.notes,
     this.completedBy,
     this.photoUrl,
+    this.engagement,
+    this.duration,
+    this.processNotes,
+    this.learningOutcomes,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +32,10 @@ class CompletionStatus {
       'notes': notes,
       'completedBy': completedBy,
       'photoUrl': photoUrl,
+      'engagement': engagement,
+      'duration': duration,
+      'processNotes': processNotes,
+      'learningOutcomes': learningOutcomes,
     };
   }
 
@@ -39,6 +51,34 @@ class CompletionStatus {
       notes: map['notes'],
       completedBy: map['completedBy'],
       photoUrl: map['photoUrl'],
+      engagement: map['engagement'],
+      duration: map['duration'],
+      processNotes: map['processNotes'],
+      learningOutcomes: map['learningOutcomes'],
+    );
+  }
+
+  CompletionStatus copyWith({
+    bool? completed,
+    DateTime? completedAt,
+    String? notes,
+    String? completedBy,
+    String? photoUrl,
+    int? engagement,
+    int? duration,
+    String? processNotes,
+    String? learningOutcomes,
+  }) {
+    return CompletionStatus(
+      completed: completed ?? this.completed,
+      completedAt: completedAt ?? this.completedAt,
+      notes: notes ?? this.notes,
+      completedBy: completedBy ?? this.completedBy,
+      photoUrl: photoUrl ?? this.photoUrl,
+      engagement: engagement ?? this.engagement,
+      duration: duration ?? this.duration,
+      processNotes: processNotes ?? this.processNotes,
+      learningOutcomes: learningOutcomes ?? this.learningOutcomes,
     );
   }
 }
@@ -52,6 +92,7 @@ class ChecklistItemModel {
   final CompletionStatus homeStatus;
   final CompletionStatus schoolStatus;
   final String overallStatus; // 'pending', 'partial', 'complete'
+  final List<String> customStepsUsed; // ID guru yang langkahnya digunakan
 
   ChecklistItemModel({
     required this.id,
@@ -62,6 +103,7 @@ class ChecklistItemModel {
     required this.homeStatus,
     required this.schoolStatus,
     required this.overallStatus,
+    this.customStepsUsed = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -74,6 +116,7 @@ class ChecklistItemModel {
       'homeStatus': homeStatus.toMap(),
       'schoolStatus': schoolStatus.toMap(),
       'overallStatus': overallStatus,
+      'customStepsUsed': customStepsUsed,
     };
   }
 
@@ -87,6 +130,10 @@ class ChecklistItemModel {
       homeStatus: CompletionStatus.fromMap(map['homeStatus']),
       schoolStatus: CompletionStatus.fromMap(map['schoolStatus']),
       overallStatus: map['overallStatus'] ?? 'pending',
+      customStepsUsed:
+          map['customStepsUsed'] != null
+              ? List<String>.from(map['customStepsUsed'])
+              : [],
     );
   }
 
@@ -94,6 +141,7 @@ class ChecklistItemModel {
     CompletionStatus? homeStatus,
     CompletionStatus? schoolStatus,
     String? overallStatus,
+    List<String>? customStepsUsed,
   }) {
     return ChecklistItemModel(
       id: this.id,
@@ -104,6 +152,7 @@ class ChecklistItemModel {
       homeStatus: homeStatus ?? this.homeStatus,
       schoolStatus: schoolStatus ?? this.schoolStatus,
       overallStatus: overallStatus ?? this.overallStatus,
+      customStepsUsed: customStepsUsed ?? this.customStepsUsed,
     );
   }
 

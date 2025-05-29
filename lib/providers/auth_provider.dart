@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // URL dasar untuk DiceBear API
@@ -18,7 +19,7 @@ class AuthProvider with ChangeNotifier {
   // Constructor
   AuthProvider() {
     // Setup auth state listener
-    _auth.authStateChanges().listen((User? user) {
+    _authService.authStateChanges.listen((User? user) {
       _user = user;
       if (user != null) {
         _loadUserData();
@@ -45,7 +46,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
 
       // Periksa apakah ada pengguna yang sudah login
-      _user = _auth.currentUser;
+      _user = _authService.currentUser;
 
       if (_user != null) {
         // Jika ada, muat data pengguna dari Firestore
@@ -71,12 +72,12 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = '';
       notifyListeners();
 
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      UserCredential? result = await _authService.signInWithEmailAndPassword(
+        email,
+        password,
       );
 
-      _user = result.user;
+      _user = result?.user;
 
       if (_user != null) {
         await _loadUserData();
@@ -113,125 +114,12 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Register sebagai guru
-  Future<bool> createTeacherAccount({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    try {
-      _isLoading = true;
-      _errorMessage = '';
-      notifyListeners();
-
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      _user = result.user;
-
-      if (_user != null) {
-        // Simpan data guru ke Firestore
-        UserModel newUser = UserModel(
-          id: _user!.uid,
-          email: email,
-          name: name,
-          role: 'teacher',
-          createdAt: DateTime.now(),
-        );
-
-        await _firestore
-            .collection('users')
-            .doc(_user!.uid)
-            .set(newUser.toMap());
-
-        _userModel = newUser;
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = _getReadableErrorMessage(e);
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Buat akun orangtua (dilakukan oleh guru)
-  Future<String?> createParentAccount({
-    required String name,
-    required String email,
-    required String teacherId,
-  }) async {
-    try {
-      _isLoading = true;
-      _errorMessage = '';
-      notifyListeners();
-
-      // Generate password sementara (6 digit)
-      String tempPassword = _generatePassword();
-
-      // Generate avatar URL
-      String avatarUrl = _generateAvatarUrl(name);
-
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: tempPassword,
-      );
-
-      User? newParentUser = result.user;
-
-      if (newParentUser != null) {
-        // Simpan data orangtua ke Firestore
-        UserModel newParent = UserModel(
-          id: newParentUser.uid,
-          email: email,
-          name: name,
-          role: 'parent',
-          createdBy: teacherId,
-          tempPassword: tempPassword,
-          avatarUrl: avatarUrl,
-          createdAt: DateTime.now(),
-        );
-
-        await _firestore
-            .collection('users')
-            .doc(newParentUser.uid)
-            .set(newParent.toMap());
-
-        _isLoading = false;
-        notifyListeners();
-        return tempPassword;
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return null;
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = _getReadableErrorMessage(e);
-      notifyListeners();
-      return null;
-    }
-  }
-
   // Logout
   Future<void> signOut() async {
-    await _auth.signOut();
+    await _authService.signOut();
     _user = null;
     _userModel = null;
     notifyListeners();
-  }
-
-  // Generate password sederhana
-  String _generatePassword() {
-    return DateTime.now().millisecondsSinceEpoch.toString().substring(7, 13);
   }
 
   // Generate URL avatar dengan DiceBear API

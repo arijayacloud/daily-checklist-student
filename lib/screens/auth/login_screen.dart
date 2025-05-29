@@ -96,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Title
                   Text(
-                    'Selamat Datang Kembali',
+                    'Daily Checklist Student',
                     style: Theme.of(context).textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Subtitle
                   Text(
-                    'Masuk untuk melanjutkan pelacakan aktivitas',
+                    'Aplikasi untuk pelacakan aktivitas',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.grey.shade600,
                     ),

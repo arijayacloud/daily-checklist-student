@@ -21,6 +21,10 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   late TextEditingController _descriptionController;
   late String _environment;
   late String _difficulty;
+  late RangeValues _ageRange;
+  String? _nextActivityId;
+  bool _isLoadingActivities = false;
+  List<ActivityModel> _availableActivities = [];
 
   bool _isEditing = false;
 
@@ -36,6 +40,50 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     );
     _environment = widget.activity?.environment ?? 'both';
     _difficulty = widget.activity?.difficulty ?? '3';
+    _ageRange =
+        widget.activity != null
+            ? RangeValues(
+              widget.activity!.ageRange.min.toDouble(),
+              widget.activity!.ageRange.max.toDouble(),
+            )
+            : const RangeValues(3, 6);
+    _nextActivityId = widget.activity?.nextActivityId;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAvailableActivities();
+    });
+  }
+
+  Future<void> _loadAvailableActivities() async {
+    if (_isEditing) {
+      setState(() {
+        _isLoadingActivities = true;
+      });
+
+      final activityProvider = Provider.of<ActivityProvider>(
+        context,
+        listen: false,
+      );
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      if (authProvider.userModel != null) {
+        activityProvider.loadActivities(
+          authProvider.userModel!.id,
+          showAllActivities: true,
+        );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        setState(() {
+          // Filter out the current activity to avoid circular references
+          _availableActivities =
+              activityProvider.activities
+                  .where((activity) => activity.id != widget.activity?.id)
+                  .toList();
+          _isLoadingActivities = false;
+        });
+      }
+    }
   }
 
   @override
@@ -59,6 +107,11 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
           description: _descriptionController.text.trim(),
           environment: _environment,
           difficulty: _difficulty,
+          ageRange: AgeRange(
+            min: _ageRange.start.toInt(),
+            max: _ageRange.end.toInt(),
+          ),
+          nextActivityId: _nextActivityId,
         );
 
         final success = await activityProvider.updateActivity(updatedActivity);
@@ -87,6 +140,11 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
           environment: _environment,
           teacherId: authProvider.userModel!.id,
           difficulty: _difficulty,
+          ageRange: AgeRange(
+            min: _ageRange.start.toInt(),
+            max: _ageRange.end.toInt(),
+          ),
+          nextActivityId: _nextActivityId,
         );
 
         if (success && mounted) {
@@ -244,7 +302,85 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                 }),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // Age Range selection
+              Text(
+                'Rentang Usia',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+
+              const SizedBox(height: 8),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${_ageRange.start.toInt()} tahun'),
+                  Expanded(
+                    child: RangeSlider(
+                      values: _ageRange,
+                      min: 3,
+                      max: 6,
+                      divisions: 3,
+                      labels: RangeLabels(
+                        '${_ageRange.start.toInt()} tahun',
+                        '${_ageRange.end.toInt()} tahun',
+                      ),
+                      onChanged: (RangeValues values) {
+                        setState(() {
+                          _ageRange = values;
+                        });
+                      },
+                    ),
+                  ),
+                  Text('${_ageRange.end.toInt()} tahun'),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Next Activity selection (only shown for editing)
+              if (_isEditing) ...[
+                Text(
+                  'Aktivitas Lanjutan',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+
+                const SizedBox(height: 8),
+
+                if (_isLoadingActivities)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  DropdownButtonFormField<String?>(
+                    decoration: const InputDecoration(
+                      labelText: 'Pilih Aktivitas Lanjutan (Opsional)',
+                      hintText: 'Pilih aktivitas yang mengikuti ini',
+                    ),
+                    value: _nextActivityId,
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Tidak Ada'),
+                      ),
+                      ..._availableActivities.map((activity) {
+                        return DropdownMenuItem<String?>(
+                          value: activity.id,
+                          child: Text(
+                            activity.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (String? value) {
+                      setState(() {
+                        _nextActivityId = value;
+                      });
+                    },
+                  ),
+
+                const SizedBox(height: 16),
+              ],
 
               // Save button
               ElevatedButton(

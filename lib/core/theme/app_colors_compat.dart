@@ -47,4 +47,6 @@ class AppColors {
 
   /// Warna info
   static const Color info = Color(0xFF2196F3);
+
+  static const Color success = Colors.green;
 }

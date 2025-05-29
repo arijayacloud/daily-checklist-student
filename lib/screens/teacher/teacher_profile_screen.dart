@@ -115,16 +115,6 @@ class TeacherProfileScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.group_add),
-                      title: const Text('Buat Akun Orang Tua'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        // Show create parent account dialog
-                        _showCreateParentDialog(context);
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
                       leading: const Icon(Icons.help_outline),
                       title: const Text('Bantuan & Dukungan'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -222,100 +212,6 @@ class TeacherProfileScreen extends StatelessWidget {
                   }
                 },
                 child: const Text('Simpan'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  void _showCreateParentDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Buat Akun Orang Tua'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Orang Tua',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    obscureText: true,
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameController.text.isNotEmpty &&
-                      emailController.text.isNotEmpty &&
-                      passwordController.text.isNotEmpty) {
-                    final authProvider = Provider.of<AuthProvider>(
-                      context,
-                      listen: false,
-                    );
-
-                    final tempPassword = await authProvider.createParentAccount(
-                      name: nameController.text,
-                      email: emailController.text,
-                      teacherId: authProvider.userModel!.id,
-                    );
-
-                    if (tempPassword != null && context.mounted) {
-                      Navigator.of(context).pop();
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Akun orang tua berhasil dibuat'),
-                          backgroundColor: AppColors.complete,
-                        ),
-                      );
-                    } else if (context.mounted) {
-                      Navigator.of(context).pop();
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            authProvider.errorMessage ??
-                                'Gagal membuat akun orang tua',
-                          ),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: const Text('Buat'),
               ),
             ],
           ),

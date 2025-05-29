@@ -6,6 +6,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/empty_state.dart';
+import 'create_user_screen.dart'; // Import halaman baru
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({Key? key}) : super(key: key);
@@ -38,161 +39,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (authProvider.userModel != null) {
-      await userProvider.loadParents(authProvider.userModel!.id);
+      await userProvider.loadAllUsers(authProvider.userModel!.id);
     }
   }
 
-  void _showCreateParentDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Buat Akun Orang Tua'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Orang Tua',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: AppColors.info),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Password akan dibuat secara otomatis dan akan ditampilkan setelah akun berhasil dibuat.',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameController.text.isNotEmpty &&
-                      emailController.text.isNotEmpty) {
-                    final authProvider = Provider.of<AuthProvider>(
-                      context,
-                      listen: false,
-                    );
-                    final userProvider = Provider.of<UserProvider>(
-                      context,
-                      listen: false,
-                    );
-
-                    setState(() {
-                      _isLoading = true;
-                    });
-
-                    final tempPassword = await authProvider.createParentAccount(
-                      name: nameController.text,
-                      email: emailController.text,
-                      teacherId: authProvider.userModel!.id,
-                    );
-
-                    setState(() {
-                      _isLoading = false;
-                    });
-
-                    if (tempPassword != null && mounted) {
-                      Navigator.of(context).pop();
-
-                      // Refresh daftar orang tua
-                      await userProvider.loadParents(
-                        authProvider.userModel!.id,
-                      );
-
-                      // Tampilkan dialog sukses dengan password
-                      showDialog(
-                        context: context,
-                        builder:
-                            (context) => AlertDialog(
-                              title: const Text('Akun Berhasil Dibuat'),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Akun orang tua berhasil dibuat dengan detail:',
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _detailRow('Nama', nameController.text),
-                                  _detailRow('Email', emailController.text),
-                                  _detailRow(
-                                    'Password',
-                                    tempPassword,
-                                    canCopy: true,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Catatan: Simpan password ini karena akan diperlukan untuk login pertama kali.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                ElevatedButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  child: const Text('Tutup'),
-                                ),
-                              ],
-                            ),
-                      );
-                    } else if (mounted) {
-                      Navigator.of(context).pop();
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            authProvider.errorMessage ??
-                                'Gagal membuat akun orang tua',
-                          ),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: const Text('Buat'),
-              ),
-            ],
-          ),
-    );
+  // Mengganti dialog pembuatan dengan navigasi ke halaman terpisah
+  void _navigateToCreateUser() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreateUserScreen()),
+    ).then((_) {
+      // Refresh data setelah kembali dari halaman pembuatan akun
+      _loadData();
+    });
   }
 
   Widget _detailRow(String label, String value, {bool canCopy = false}) {
@@ -449,7 +308,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
-                  onPressed: () => _showCreateParentDialog(context),
+                  onPressed:
+                      _navigateToCreateUser, // Gunakan fungsi navigasi baru
                   icon: const Icon(Icons.add),
                   label: const Text('Tambah'),
                   style: ElevatedButton.styleFrom(
@@ -482,7 +342,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     );
                   }
 
-                  if (userProvider.parents.isEmpty) {
+                  // Gabungkan daftar orangtua dan guru
+                  final allUsers = [
+                    ...userProvider.parents,
+                    ...userProvider.teachers,
+                  ];
+
+                  if (allUsers.isEmpty) {
                     return const EmptyState(
                       icon: Icons.people,
                       title: 'Tidak Ada Pengguna',
@@ -493,7 +359,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                   // Filter data berdasarkan search query
                   final filteredUsers =
-                      userProvider.parents.where((user) {
+                      allUsers.where((user) {
                         if (_searchQuery.isEmpty) return true;
                         return user.name.toLowerCase().contains(_searchQuery) ||
                             user.email.toLowerCase().contains(_searchQuery);
@@ -550,7 +416,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.1),
+                                      color:
+                                          user.role == 'parent'
+                                              ? AppColors.primary.withOpacity(
+                                                0.1,
+                                              )
+                                              : AppColors.complete.withOpacity(
+                                                0.1,
+                                              ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
@@ -559,7 +432,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                           : 'Guru',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.primary,
+                                        color:
+                                            user.role == 'parent'
+                                                ? AppColors.primary
+                                                : AppColors.complete,
                                       ),
                                     ),
                                   ),
