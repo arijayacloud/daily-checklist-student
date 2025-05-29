@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/theme/app_colors_compat.dart';
 
 class ProgressBar extends StatelessWidget {
   final int total;
@@ -18,7 +18,7 @@ class ProgressBar extends StatelessWidget {
     this.partial = 0,
     this.completedColor = AppColors.complete,
     this.partialColor = AppColors.partial,
-    this.backgroundColor = AppColors.background,
+    this.backgroundColor = AppColors.backgroundLight,
     this.height = 16.0,
     this.showPercentage = true,
   }) : super(key: key);
@@ -96,7 +96,7 @@ class ProgressBar extends StatelessWidget {
                   '${(overallPercentage * 100).toInt()}% Selesai',
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                    color: AppColors.textPrimaryLight,
                     fontSize: height * 0.8,
                   ),
                 ),

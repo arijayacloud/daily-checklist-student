@@ -37,7 +37,7 @@ class _FirebaseTestPageState extends State<FirebaseTestPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Firebase Test'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

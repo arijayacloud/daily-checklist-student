@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/theme.dart';
+import '../../core/theme/app_colors_compat.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 
@@ -354,7 +354,9 @@ class _CreateParentAccountScreenState extends State<CreateParentAccountScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       color:
-                          canCopy ? AppColors.primary : AppColors.textPrimary,
+                          canCopy
+                              ? AppColors.primary
+                              : AppColors.textPrimaryLight,
                     ),
                   ),
                 ),

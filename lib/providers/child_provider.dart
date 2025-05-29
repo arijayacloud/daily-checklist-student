@@ -10,6 +10,7 @@ class ChildProvider with ChangeNotifier {
   bool _isLoading = false;
   String _errorMessage = '';
   String _searchQuery = '';
+  bool _showAllChildren = false;
 
   // Getters
   List<ChildModel> get children {
@@ -26,14 +27,19 @@ class ChildProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   String get searchQuery => _searchQuery;
+  bool get showAllChildren => _showAllChildren;
 
   // Stream subscription untuk anak-anak
   StreamSubscription<List<ChildModel>>? _childrenSubscription;
 
   // Load anak-anak untuk guru tertentu
-  void loadChildrenForTeacher(String teacherId) {
+  void loadChildrenForTeacher(
+    String teacherId, {
+    bool showAllChildren = false,
+  }) {
     _isLoading = true;
     _errorMessage = '';
+    _showAllChildren = true;
     notifyListeners();
 
     // Batalkan subscription sebelumnya jika ada
@@ -41,7 +47,7 @@ class ChildProvider with ChangeNotifier {
 
     // Subscribe ke stream anak-anak
     _childrenSubscription = _childService
-        .getChildrenByTeacher(teacherId)
+        .getChildrenByTeacher(teacherId, getAllChildren: true)
         .listen(
           (children) {
             _children = children;
@@ -54,6 +60,12 @@ class ChildProvider with ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  // Toggle antara menampilkan semua anak atau hanya anak yang dikelola oleh guru tertentu
+  void toggleShowAllChildren(String teacherId) {
+    _showAllChildren = true;
+    loadChildrenForTeacher(teacherId, showAllChildren: true);
   }
 
   // Load anak-anak untuk orangtua tertentu

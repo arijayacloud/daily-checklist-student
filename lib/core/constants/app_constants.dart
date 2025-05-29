@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppConstants {
   // URL API DiceBear untuk avatar
   static const String diceBearApiUrl =
-      'https://api.dicebear.com/7.x/avataaars/svg';
+      'https://api.dicebear.com/9.x/thumbs/svg';
 
   // Range usia anak
   static const List<String> ageRanges = ['3-4', '4-5', '5-6'];

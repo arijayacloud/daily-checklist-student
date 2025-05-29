@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import '../../core/theme.dart';
+import '../../core/theme/app_colors_compat.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/create_parent_account_screen.dart';
@@ -101,11 +101,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream:
-                  _firestore
-                      .collection('users')
-                      .where('createdBy', isEqualTo: authProvider.user?.uid)
-                      .snapshots(),
+              stream: _firestore.collection('users').snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

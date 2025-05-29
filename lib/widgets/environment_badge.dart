@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/theme/app_colors_compat.dart';
 
 class EnvironmentBadge extends StatelessWidget {
   final String environment;

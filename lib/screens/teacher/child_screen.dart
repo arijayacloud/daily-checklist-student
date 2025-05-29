@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/child_provider.dart';
 import '../../models/child_model.dart';
 import '../../models/user_model.dart';
+import '../../widgets/avatar_widget.dart';
 import 'add_child_screen.dart';
 import 'edit_child_screen.dart';
 
@@ -104,10 +105,7 @@ class _ChildScreenState extends State<ChildScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: NetworkImage(child.avatarUrl),
-          radius: 25,
-        ),
+        leading: AvatarWidget(avatarUrl: child.avatarUrl, size: 50),
         title: Text(child.name),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,10 +188,7 @@ class _ChildScreenState extends State<ChildScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: CircleAvatar(
-                    backgroundImage: NetworkImage(child.avatarUrl),
-                    radius: 50,
-                  ),
+                  child: AvatarWidget(avatarUrl: child.avatarUrl, size: 100),
                 ),
                 SizedBox(height: 16),
                 _detailRow('Nama', child.name),

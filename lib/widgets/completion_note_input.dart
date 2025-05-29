@@ -1,5 +1,95 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/theme/app_colors_compat.dart';
+
+class CompletionNoteResult {
+  final String? note;
+  final String? photoUrl;
+
+  CompletionNoteResult({this.note, this.photoUrl});
+}
+
+class CompletionNoteDialog extends StatefulWidget {
+  final String environment;
+
+  const CompletionNoteDialog({Key? key, this.environment = 'home'})
+    : super(key: key);
+
+  @override
+  State<CompletionNoteDialog> createState() => _CompletionNoteDialogState();
+}
+
+class _CompletionNoteDialogState extends State<CompletionNoteDialog> {
+  final TextEditingController _noteController = TextEditingController();
+  String? _photoUrl;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _handleAddPhoto() {
+    // Placeholder - would integrate with photo picker
+    setState(() {
+      _photoUrl = null; // This would be the URL from upload
+    });
+  }
+
+  void _handleRemovePhoto() {
+    setState(() {
+      _photoUrl = null;
+    });
+  }
+
+  void _handleSubmit(String note) {
+    Navigator.of(
+      context,
+    ).pop(CompletionNoteResult(note: note, photoUrl: _photoUrl));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dialog title
+            Text(
+              'Tandai Aktivitas Selesai',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 20),
+
+            // Completion note input
+            CompletionNoteInput(
+              controller: _noteController,
+              photoUrl: _photoUrl,
+              onAddPhoto: _handleAddPhoto,
+              onRemovePhoto: _handleRemovePhoto,
+              onSubmit: _handleSubmit,
+              environment: widget.environment,
+              isLoading: _isLoading,
+            ),
+
+            const SizedBox(height: 8),
+
+            // Cancel button
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class CompletionNoteInput extends StatelessWidget {
   final TextEditingController controller;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../core/theme.dart';
+import '../core/theme/app_colors_compat.dart';
 import '../models/models.dart';
 import 'environment_badge.dart';
 import 'status_badge.dart';
@@ -22,6 +22,42 @@ class ChecklistItemCard extends StatelessWidget {
     required this.currentUserRole,
     required this.currentUserId,
   }) : super(key: key);
+
+  // Constructor untuk parent
+  ChecklistItemCard.parent({
+    Key? key,
+    required ChecklistItemModel checklistItem,
+    required ActivityModel activity,
+    VoidCallback? onTap,
+    Function(String, String)? onStatusUpdate,
+    required String userId,
+  }) : this(
+         key: key,
+         checklistItem: checklistItem,
+         activity: activity,
+         onTap: onTap,
+         onStatusUpdate: onStatusUpdate,
+         currentUserRole: 'parent',
+         currentUserId: userId,
+       );
+
+  // Constructor untuk teacher
+  ChecklistItemCard.teacher({
+    Key? key,
+    required ChecklistItemModel checklistItem,
+    required ActivityModel activity,
+    VoidCallback? onTap,
+    Function(String, String)? onStatusUpdate,
+    required String userId,
+  }) : this(
+         key: key,
+         checklistItem: checklistItem,
+         activity: activity,
+         onTap: onTap,
+         onStatusUpdate: onStatusUpdate,
+         currentUserRole: 'teacher',
+         currentUserId: userId,
+       );
 
   @override
   Widget build(BuildContext context) {

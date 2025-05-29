@@ -51,10 +51,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final String? teacherName = authProvider.userModel?.name;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard Guru'),
+        title: Text(
+          'Dashboard Guru${teacherName != null ? ' - $teacherName' : ''}',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

@@ -7,22 +7,23 @@ class ChildService {
   final String _collection = 'children';
 
   // URL dasar untuk DiceBear API
-  final String _diceBearBaseUrl = 'https://api.dicebear.com/7.x/avataaars/svg';
+  final String _diceBearBaseUrl = 'https://api.dicebear.com/9.x/thumbs/svg';
 
-  // Dapatkan semua anak yang dikelola oleh guru tertentu
-  Stream<List<ChildModel>> getChildrenByTeacher(String teacherId) {
-    return _firestore
-        .collection(_collection)
-        .where('teacherId', isEqualTo: teacherId)
-        .orderBy('name')
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            Map<String, dynamic> data = doc.data();
-            data['id'] = doc.id;
-            return ChildModel.fromMap(data);
-          }).toList();
-        });
+  // Dapatkan semua anak tanpa filter teacherId
+  Stream<List<ChildModel>> getChildrenByTeacher(
+    String teacherId, {
+    bool getAllChildren = false,
+  }) {
+    // Hapus filter teacherId dan selalu tampilkan semua anak
+    return _firestore.collection(_collection).orderBy('name').snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data();
+        data['id'] = doc.id;
+        return ChildModel.fromMap(data);
+      }).toList();
+    });
   }
 
   // Dapatkan semua anak untuk orangtua tertentu
@@ -94,8 +95,10 @@ class ChildService {
 
   // Generate URL avatar dengan DiceBear API
   String generateAvatarUrl(String seed) {
+    // Bersihkan seed dari karakter khusus dan encode untuk URL
+    String cleanSeed = Uri.encodeComponent(seed.trim());
     // Gunakan seed (biasanya nama anak) untuk konsistensi
-    return '$_diceBearBaseUrl?seed=$seed';
+    return '$_diceBearBaseUrl?seed=$cleanSeed';
   }
 
   // Tambah anak baru
@@ -114,7 +117,8 @@ class ChildService {
         'name': name,
         'age': age,
         'parentId': parentId,
-        'teacherId': teacherId,
+        'teacherId':
+            '', // Mengosongkan teacherId agar semua guru bisa melihat anak
         'avatarUrl': avatarUrl,
         'createdAt': DateTime.now().toIso8601String(),
       };

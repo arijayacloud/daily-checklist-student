@@ -7,6 +7,9 @@ class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // URL dasar untuk DiceBear API
+  final String _diceBearBaseUrl = 'https://api.dicebear.com/9.x/thumbs/svg';
+
   User? _user;
   UserModel? _userModel;
   bool _isLoading = false;
@@ -142,6 +145,9 @@ class AuthProvider with ChangeNotifier {
       // Generate password sementara (6 digit)
       String tempPassword = _generatePassword();
 
+      // Generate avatar URL
+      String avatarUrl = _generateAvatarUrl(name);
+
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: tempPassword,
@@ -158,6 +164,7 @@ class AuthProvider with ChangeNotifier {
           role: 'parent',
           createdBy: teacherId,
           tempPassword: tempPassword,
+          avatarUrl: avatarUrl,
           createdAt: DateTime.now(),
         );
 
@@ -193,6 +200,14 @@ class AuthProvider with ChangeNotifier {
   // Generate password sederhana
   String _generatePassword() {
     return DateTime.now().millisecondsSinceEpoch.toString().substring(7, 13);
+  }
+
+  // Generate URL avatar dengan DiceBear API
+  String _generateAvatarUrl(String seed) {
+    // Bersihkan seed dari karakter khusus dan encode untuk URL
+    String cleanSeed = Uri.encodeComponent(seed.trim());
+    // Gunakan seed (biasanya nama) untuk konsistensi
+    return '$_diceBearBaseUrl?seed=$cleanSeed';
   }
 
   // Konversi error message ke bahasa yang lebih user-friendly

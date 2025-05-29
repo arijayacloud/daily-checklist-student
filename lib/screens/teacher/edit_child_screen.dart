@@ -223,8 +223,9 @@ class _EditChildScreenState extends State<EditChildScreen> {
       // Buat avatar URL baru jika nama berubah
       String avatarUrl = widget.child.avatarUrl;
       if (_nameController.text.trim() != widget.child.name) {
+        final name = _nameController.text.trim();
         avatarUrl =
-            'https://api.dicebear.com/7.x/avataaars/svg?seed=${_nameController.text.trim()}';
+            'https://api.dicebear.com/9.x/thumbs/svg?seed=${Uri.encodeComponent(name)}';
       }
 
       // Buat objek ChildModel baru dengan data yang diperbarui

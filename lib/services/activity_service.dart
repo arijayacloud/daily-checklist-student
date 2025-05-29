@@ -5,11 +5,14 @@ class ActivityService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collection = 'activities';
 
-  // Dapatkan semua aktivitas yang dibuat oleh guru tertentu
-  Stream<List<ActivityModel>> getActivitiesByTeacher(String teacherId) {
+  // Dapatkan semua aktivitas tanpa filter teacherId
+  Stream<List<ActivityModel>> getActivitiesByTeacher(
+    String teacherId, {
+    bool getAllActivities = false,
+  }) {
+    // Hapus filter teacherId dan selalu tampilkan semua aktivitas
     return _firestore
         .collection(_collection)
-        .where('teacherId', isEqualTo: teacherId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -48,11 +51,7 @@ class ActivityService {
     try {
       // Firestore tidak mendukung full-text search, jadi kita mengambil semua
       // aktivitas dan melakukan filter di sisi klien
-      QuerySnapshot snapshot =
-          await _firestore
-              .collection(_collection)
-              .where('teacherId', isEqualTo: teacherId)
-              .get();
+      QuerySnapshot snapshot = await _firestore.collection(_collection).get();
 
       List<ActivityModel> activities =
           snapshot.docs
@@ -84,7 +83,6 @@ class ActivityService {
       QuerySnapshot snapshot =
           await _firestore
               .collection(_collection)
-              .where('teacherId', isEqualTo: teacherId)
               .where('environment', isEqualTo: environment)
               .get();
 

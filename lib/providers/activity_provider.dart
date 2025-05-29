@@ -12,6 +12,7 @@ class ActivityProvider with ChangeNotifier {
   String _errorMessage = '';
   String _searchQuery = '';
   String _filterEnvironment = '';
+  bool _showAllActivities = false;
 
   // Getters
   List<ActivityModel> get activities => _filterActivities();
@@ -19,14 +20,16 @@ class ActivityProvider with ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get searchQuery => _searchQuery;
   String get filterEnvironment => _filterEnvironment;
+  bool get showAllActivities => _showAllActivities;
 
   // Stream subscription untuk aktivitas
   StreamSubscription<List<ActivityModel>>? _activitiesSubscription;
 
   // Load aktivitas untuk guru tertentu
-  void loadActivities(String teacherId) {
+  void loadActivities(String teacherId, {bool showAllActivities = false}) {
     _isLoading = true;
     _errorMessage = '';
+    _showAllActivities = showAllActivities;
     notifyListeners();
 
     // Batalkan subscription sebelumnya jika ada
@@ -34,7 +37,7 @@ class ActivityProvider with ChangeNotifier {
 
     // Subscribe ke stream aktivitas
     _activitiesSubscription = _activityService
-        .getActivitiesByTeacher(teacherId)
+        .getActivitiesByTeacher(teacherId, getAllActivities: showAllActivities)
         .listen(
           (activities) {
             _activities = activities;
@@ -47,6 +50,12 @@ class ActivityProvider with ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  // Toggle antara menampilkan semua aktivitas atau hanya aktivitas guru tertentu
+  void toggleShowAllActivities(String teacherId) {
+    _showAllActivities = !_showAllActivities;
+    loadActivities(teacherId, showAllActivities: _showAllActivities);
   }
 
   // Filter dan cari aktivitas

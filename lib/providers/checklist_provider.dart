@@ -13,7 +13,7 @@ class ChecklistProvider with ChangeNotifier {
   List<CompletionLogModel> _logs = [];
 
   bool _isLoading = false;
-  String _error = '';
+  String? _error;
   String _currentFilter = 'all'; // 'all', 'pending', 'partial', 'complete'
 
   // Getters
@@ -21,12 +21,58 @@ class ChecklistProvider with ChangeNotifier {
   List<ActivityModel> get activities => _activities;
   List<CompletionLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
-  String get error => _error;
+  String? get error => _error;
   String get currentFilter => _currentFilter;
 
   // Streams subscription
   StreamSubscription<List<ChecklistItemModel>>? _checklistItemsSubscription;
   StreamSubscription<List<CompletionLogModel>>? _logsSubscription;
+
+  // Fetch checklist items for a child
+  Future<void> fetchChecklistItems(String childId) async {
+    try {
+      _setLoading(true);
+
+      // Cancel previous subscription if exists
+      _checklistItemsSubscription?.cancel();
+
+      // Subscribe to checklist items stream
+      _checklistItemsSubscription = _checklistService
+          .getChildChecklistItems(childId)
+          .listen(_handleChecklistItemsUpdate, onError: _handleError);
+    } catch (e) {
+      _handleError(e);
+    }
+  }
+
+  // Filter methods
+  List<ChecklistItemModel> getPendingItems() {
+    return _checklistItems
+        .where((item) => item.overallStatus == 'pending')
+        .toList();
+  }
+
+  List<ChecklistItemModel> getCompletedItems() {
+    return _checklistItems
+        .where((item) => item.overallStatus == 'complete')
+        .toList();
+  }
+
+  List<ChecklistItemModel> getPartialItems() {
+    return _checklistItems
+        .where((item) => item.overallStatus == 'partial')
+        .toList();
+  }
+
+  List<ChecklistItemModel> getOverdueItems() {
+    final now = DateTime.now();
+    return _checklistItems
+        .where(
+          (item) =>
+              item.dueDate.isBefore(now) && item.overallStatus != 'complete',
+        )
+        .toList();
+  }
 
   // Inisialisasi checklist untuk anak
   void initChildChecklist(String childId) {
@@ -169,7 +215,7 @@ class ChecklistProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     if (loading) {
-      _error = '';
+      _error = null;
     }
     notifyListeners();
   }

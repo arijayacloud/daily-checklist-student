@@ -11,6 +11,7 @@ class AssignmentProvider with ChangeNotifier {
   String _errorMessage = '';
   String _filterStatus = '';
   String _filterChildId = '';
+  bool _showAllAssignments = false;
 
   // Getters
   List<AssignmentModel> get assignments => _filterAssignments();
@@ -18,14 +19,19 @@ class AssignmentProvider with ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get filterStatus => _filterStatus;
   String get filterChildId => _filterChildId;
+  bool get showAllAssignments => _showAllAssignments;
 
   // Stream subscription
   StreamSubscription<List<AssignmentModel>>? _assignmentsSubscription;
 
   // Mendapatkan semua tugas untuk guru tertentu
-  void loadAssignmentsForTeacher(String teacherId) {
+  void loadAssignmentsForTeacher(
+    String teacherId, {
+    bool showAllAssignments = false,
+  }) {
     _isLoading = true;
     _errorMessage = '';
+    _showAllAssignments = showAllAssignments;
     notifyListeners();
 
     // Batalkan subscription sebelumnya jika ada
@@ -33,7 +39,10 @@ class AssignmentProvider with ChangeNotifier {
 
     // Subscribe ke stream assignments
     _assignmentsSubscription = _assignmentService
-        .getAssignmentsByTeacher(teacherId)
+        .getAssignmentsByTeacher(
+          teacherId,
+          getAllAssignments: showAllAssignments,
+        )
         .listen(
           (assignments) {
             _assignments = assignments;
@@ -46,6 +55,15 @@ class AssignmentProvider with ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  // Toggle antara menampilkan semua tugas atau hanya tugas guru tertentu
+  void toggleShowAllAssignments(String teacherId) {
+    _showAllAssignments = !_showAllAssignments;
+    loadAssignmentsForTeacher(
+      teacherId,
+      showAllAssignments: _showAllAssignments,
+    );
   }
 
   // Mendapatkan semua tugas untuk anak tertentu

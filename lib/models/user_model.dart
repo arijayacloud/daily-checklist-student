@@ -9,6 +9,7 @@ class UserModel {
   final String role; // 'teacher' atau 'parent'
   final String? createdBy;
   final String? tempPassword;
+  final String? avatarUrl;
   final DateTime createdAt;
 
   UserModel({
@@ -18,6 +19,7 @@ class UserModel {
     required this.role,
     this.createdBy,
     this.tempPassword,
+    this.avatarUrl,
     required this.createdAt,
   });
 
@@ -29,6 +31,7 @@ class UserModel {
       'role': role,
       'createdBy': createdBy,
       'tempPassword': tempPassword,
+      'avatarUrl': avatarUrl,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -41,6 +44,7 @@ class UserModel {
       role: map['role'] ?? '',
       createdBy: map['createdBy'],
       tempPassword: map['tempPassword'],
+      avatarUrl: map['avatarUrl'],
       createdAt: DateTime.parse(map['createdAt']),
     );
   }

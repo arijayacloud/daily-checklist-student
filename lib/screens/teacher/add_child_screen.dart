@@ -45,7 +45,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
             await FirebaseFirestore.instance
                 .collection('users')
                 .where('role', isEqualTo: 'parent')
-                .where('createdBy', isEqualTo: authProvider.user!.uid)
                 .get();
 
         List<Map<String, String>> parents = [];
@@ -241,7 +240,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           name: _nameController.text.trim(),
           age: int.parse(_ageController.text.trim()),
           parentId: _selectedParentId!,
-          teacherId: authProvider.user!.uid,
+          teacherId: '',
         );
 
         if (success && mounted) {

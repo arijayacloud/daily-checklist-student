@@ -22,11 +22,14 @@ class AssignmentService {
         });
   }
 
-  // Dapatkan semua tugas yang dibuat oleh guru tertentu
-  Stream<List<AssignmentModel>> getAssignmentsByTeacher(String teacherId) {
+  // Dapatkan semua tugas tanpa filter teacherId
+  Stream<List<AssignmentModel>> getAssignmentsByTeacher(
+    String teacherId, {
+    bool getAllAssignments = false,
+  }) {
+    // Hapus filter teacherId dan selalu tampilkan semua tugas
     return _firestore
         .collection(_collection)
-        .where('teacherId', isEqualTo: teacherId)
         .orderBy('assignedDate', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -82,7 +85,6 @@ class AssignmentService {
       QuerySnapshot snapshot =
           await _firestore
               .collection(_collection)
-              .where('teacherId', isEqualTo: teacherId)
               .where('status', isEqualTo: status)
               .get();
 
@@ -107,7 +109,8 @@ class AssignmentService {
       Map<String, dynamic> data = {
         'childId': childId,
         'activityId': activityId,
-        'teacherId': teacherId,
+        'teacherId':
+            '', // Mengosongkan teacherId agar semua guru bisa melihat tugas
         'status': 'todo',
         'assignedDate': DateTime.now().toIso8601String(),
       };
@@ -143,7 +146,8 @@ class AssignmentService {
         batch.set(docRef, {
           'childId': childId,
           'activityId': activityId,
-          'teacherId': teacherId,
+          'teacherId':
+              '', // Mengosongkan teacherId agar semua guru bisa melihat tugas
           'status': 'todo',
           'assignedDate': DateTime.now().toIso8601String(),
         });

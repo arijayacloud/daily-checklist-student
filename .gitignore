@@ -11,10 +11,11 @@
 .svn/
 .swiftpm/
 .cursor/
+.example/
 migrate_working_dir/
 readmeconcept.md
 readmebuild.md
-
+lib/firebase_options.dart
 
 # IntelliJ related
 *.iml
