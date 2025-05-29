@@ -15,6 +15,20 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String _errorMessage = '';
 
+  // Constructor
+  AuthProvider() {
+    // Setup auth state listener
+    _auth.authStateChanges().listen((User? user) {
+      _user = user;
+      if (user != null) {
+        _loadUserData();
+      } else {
+        _userModel = null;
+      }
+      notifyListeners();
+    });
+  }
+
   // Getters
   User? get user => _user;
   UserModel? get userModel => _userModel;
@@ -26,9 +40,27 @@ class AuthProvider with ChangeNotifier {
 
   // Inisialisasi status autentikasi
   Future<void> initializeAuth() async {
-    _user = _auth.currentUser;
-    if (_user != null) {
-      await _loadUserData();
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Periksa apakah ada pengguna yang sudah login
+      _user = _auth.currentUser;
+
+      if (_user != null) {
+        // Jika ada, muat data pengguna dari Firestore
+        await _loadUserData();
+        print('User sudah login: ${_userModel?.name} (${_userModel?.role})');
+      } else {
+        print('Tidak ada user yang login');
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      print('Error pada initializeAuth: $e');
+      notifyListeners();
     }
   }
 

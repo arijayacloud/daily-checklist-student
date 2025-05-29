@@ -22,13 +22,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkUserState() async {
-    // Simulate a delay for the splash screen
-    await Future.delayed(const Duration(seconds: 2));
+    // Lebih singkat, karena auth sudah diinisialisasi di main.dart
+    await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    // Langsung periksa status login
     if (authProvider.isLoggedIn) {
       if (authProvider.isTeacher) {
         Navigator.of(context).pushReplacement(
@@ -39,11 +40,29 @@ class _SplashScreenState extends State<SplashScreen> {
           MaterialPageRoute(builder: (_) => const ParentDashboard()),
         );
       } else {
-        // User role not determined yet, wait a bit more
-        await Future.delayed(const Duration(seconds: 1));
-        _checkUserState();
+        // Peran pengguna belum ditentukan, coba sekali lagi dengan delay lebih pendek
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+        _redirectBasedOnRole(authProvider);
       }
     } else {
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    }
+  }
+
+  void _redirectBasedOnRole(AuthProvider authProvider) {
+    if (authProvider.isTeacher) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+      );
+    } else if (authProvider.isParent) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const ParentDashboard()),
+      );
+    } else {
+      // Jika masih tidak dapat menentukan peran, arahkan ke halaman login
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
@@ -105,7 +124,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
             // App tagline
             Text(
-              'Track kindergarten activities at home and school',
+              'Pantau aktivitas TK di rumah dan sekolah',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade600),

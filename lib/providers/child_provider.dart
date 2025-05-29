@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/child_model.dart';
 import '../services/child_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChildProvider with ChangeNotifier {
   final ChildService _childService = ChildService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<ChildModel> _children = [];
   bool _isLoading = false;
@@ -106,6 +108,7 @@ class ChildProvider with ChangeNotifier {
     required int age,
     required String parentId,
     required String teacherId,
+    String? notes,
   }) async {
     _isLoading = true;
     _errorMessage = '';
@@ -117,6 +120,7 @@ class ChildProvider with ChangeNotifier {
         age: age,
         parentId: parentId,
         teacherId: teacherId,
+        notes: notes,
       );
 
       _isLoading = false;
@@ -137,34 +141,46 @@ class ChildProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _childService.updateChild(child);
+      await _firestore
+          .collection('children')
+          .doc(child.id)
+          .update(child.toMap());
+
+      // Update local list
+      final index = _children.indexWhere((c) => c.id == child.id);
+      if (index != -1) {
+        _children[index] = child;
+      }
 
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Gagal mengupdate data anak: $e';
       _isLoading = false;
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }
   }
 
   // Hapus anak
-  Future<bool> deleteChild(String id) async {
+  Future<bool> deleteChild(String childId) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
 
     try {
-      await _childService.deleteChild(id);
+      await _firestore.collection('children').doc(childId).delete();
+
+      // Remove from local list
+      _children.removeWhere((child) => child.id == childId);
 
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Gagal menghapus anak: $e';
       _isLoading = false;
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }

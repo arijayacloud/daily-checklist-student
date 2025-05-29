@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import '../models/child_model.dart';
 
 class ChildService {
@@ -107,6 +106,7 @@ class ChildService {
     required int age,
     required String parentId,
     required String teacherId,
+    String? notes,
   }) async {
     try {
       // Generate avatar URL
@@ -117,10 +117,10 @@ class ChildService {
         'name': name,
         'age': age,
         'parentId': parentId,
-        'teacherId':
-            '', // Mengosongkan teacherId agar semua guru bisa melihat anak
+        'teacherId': teacherId,
         'avatarUrl': avatarUrl,
         'createdAt': DateTime.now().toIso8601String(),
+        'notes': notes,
       };
 
       DocumentReference docRef = await _firestore

@@ -12,6 +12,7 @@ import 'providers/activity_provider.dart';
 import 'providers/child_provider.dart';
 import 'providers/assignment_provider.dart';
 import 'providers/checklist_provider.dart';
+import 'providers/user_provider.dart';
 
 // Screens
 import 'screens/auth/login_screen.dart';
@@ -28,21 +29,28 @@ void main() async {
   // Inisialisasi locale timeago
   initializeTimeagoLocales();
 
-  runApp(const MyApp());
+  // Buat instance AuthProvider untuk inisialisasi awal
+  final authProvider = AuthProvider();
+  await authProvider.initializeAuth();
+
+  runApp(MyApp(authProvider: authProvider));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AuthProvider authProvider;
+
+  const MyApp({super.key, required this.authProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => ActivityProvider()),
         ChangeNotifierProvider(create: (_) => ChildProvider()),
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
         ChangeNotifierProvider(create: (_) => ChecklistProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: MaterialApp(
         title: 'TK Activity Checklist',

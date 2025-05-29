@@ -102,7 +102,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                               ),
                             );
                           },
-                          backgroundColor: AppTheme.primaryColor,
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           icon: Icons.edit,
                           label: 'Edit',
@@ -118,7 +118,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                               ),
                             );
                           },
-                          backgroundColor: AppTheme.accentColor,
+                          backgroundColor: AppColors.accentColor,
                           foregroundColor: Colors.white,
                           icon: Icons.assignment_ind,
                           label: 'Assign',
@@ -150,9 +150,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                               children: [
                                 _buildEnvironmentChip(activity.environment),
                                 const SizedBox(width: 8),
-                                _buildDifficultyIndicator(
-                                  int.parse(activity.difficulty),
-                                ),
+                                _buildDifficultyIndicator(activity.difficulty),
                               ],
                             ),
                           ],
@@ -222,14 +220,35 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
     );
   }
 
-  Widget _buildDifficultyIndicator(int difficulty) {
+  Widget _buildDifficultyIndicator(String difficulty) {
+    // Konversi string difficulty ke jumlah bintang
+    int stars;
+    switch (difficulty) {
+      case 'easy':
+        stars = 1;
+        break;
+      case 'medium':
+        stars = 3;
+        break;
+      case 'hard':
+        stars = 5;
+        break;
+      default:
+        // Coba parse sebagai number jika formatnya numeric
+        try {
+          stars = int.parse(difficulty);
+        } catch (e) {
+          stars = 1; // Default jika tidak bisa diparse
+        }
+    }
+
     return Row(
       children: [
         ...List.generate(5, (index) {
           return Icon(
-            index < difficulty ? Icons.star : Icons.star_border,
+            index < stars ? Icons.star : Icons.star_border,
             size: 14,
-            color: index < difficulty ? Colors.amber : Colors.grey.shade400,
+            color: index < stars ? Colors.amber : Colors.grey.shade400,
           );
         }),
       ],

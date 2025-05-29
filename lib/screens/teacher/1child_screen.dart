@@ -6,8 +6,8 @@ import '../../providers/child_provider.dart';
 import '../../models/child_model.dart';
 import '../../models/user_model.dart';
 import '../../widgets/avatar_widget.dart';
-import 'add_child_screen.dart';
-import 'edit_child_screen.dart';
+import '1add_child_screen.dart';
+import '1edit_child_screen.dart';
 
 class ChildScreen extends StatefulWidget {
   const ChildScreen({Key? key}) : super(key: key);

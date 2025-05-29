@@ -41,4 +41,10 @@ class AppColors {
   static const Color textSecondary = Color(0xFF757575);
 
   static const Color divider = Color(0xFFBDBDBD);
+
+  /// Warna warning
+  static const Color warning = Color(0xFFF57C00);
+
+  /// Warna info
+  static const Color info = Color(0xFF2196F3);
 }
