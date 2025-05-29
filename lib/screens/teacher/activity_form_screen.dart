@@ -1,0 +1,272 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/activity_model.dart';
+import '../../providers/activity_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../core/theme/app_colors_compat.dart';
+
+class ActivityFormScreen extends StatefulWidget {
+  final ActivityModel? activity;
+
+  const ActivityFormScreen({super.key, this.activity});
+
+  @override
+  State<ActivityFormScreen> createState() => _ActivityFormScreenState();
+}
+
+class _ActivityFormScreenState extends State<ActivityFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late String _environment;
+  late String _difficulty;
+
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _isEditing = widget.activity != null;
+
+    _titleController = TextEditingController(text: widget.activity?.title);
+    _descriptionController = TextEditingController(
+      text: widget.activity?.description,
+    );
+    _environment = widget.activity?.environment ?? 'both';
+    _difficulty = widget.activity?.difficulty ?? '3';
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveActivity() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      final activityProvider = Provider.of<ActivityProvider>(
+        context,
+        listen: false,
+      );
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      if (_isEditing && widget.activity != null) {
+        final updatedActivity = widget.activity!.copyWith(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          environment: _environment,
+          difficulty: _difficulty,
+        );
+
+        final success = await activityProvider.updateActivity(updatedActivity);
+
+        if (success && mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Aktivitas berhasil diperbarui')),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                activityProvider.errorMessage.isNotEmpty
+                    ? activityProvider.errorMessage
+                    : 'Gagal memperbarui aktivitas',
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      } else {
+        final success = await activityProvider.addActivity(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          environment: _environment,
+          teacherId: authProvider.userModel!.id,
+          difficulty: _difficulty,
+        );
+
+        if (success && mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Aktivitas berhasil dibuat')),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                activityProvider.errorMessage.isNotEmpty
+                    ? activityProvider.errorMessage
+                    : 'Gagal membuat aktivitas',
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activityProvider = Provider.of<ActivityProvider>(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit Aktivitas' : 'Buat Aktivitas'),
+        centerTitle: false,
+      ),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Title field
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Judul Aktivitas',
+                  hintText: 'Masukkan judul deskriptif',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Silakan masukkan judul';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Description field
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Deskripsi Aktivitas',
+                  hintText: 'Masukkan instruksi detail',
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 5,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Silakan masukkan deskripsi';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Environment selection
+              Text(
+                'Dimana aktivitas ini dapat diselesaikan?',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+
+              const SizedBox(height: 8),
+
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'home',
+                    label: Text('Rumah'),
+                    icon: Icon(Icons.home),
+                  ),
+                  ButtonSegment(
+                    value: 'school',
+                    label: Text('Sekolah'),
+                    icon: Icon(Icons.school),
+                  ),
+                  ButtonSegment(
+                    value: 'both',
+                    label: Text('Keduanya'),
+                    icon: Icon(Icons.compare_arrows),
+                  ),
+                ],
+                selected: {_environment},
+                onSelectionChanged: (Set<String> selection) {
+                  setState(() {
+                    _environment = selection.first;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Difficulty selection
+              Text(
+                'Tingkat Kesulitan',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+
+              const SizedBox(height: 8),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Mudah'),
+                  Expanded(
+                    child: Slider(
+                      value: double.parse(_difficulty),
+                      min: 1,
+                      max: 5,
+                      divisions: 4,
+                      label: _difficulty,
+                      onChanged: (value) {
+                        setState(() {
+                          _difficulty = value.toInt().toString();
+                        });
+                      },
+                    ),
+                  ),
+                  const Text('Sulit'),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < int.parse(_difficulty)
+                        ? Icons.star
+                        : Icons.star_border,
+                    color:
+                        index < int.parse(_difficulty)
+                            ? Colors.amber
+                            : Colors.grey.shade400,
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Save button
+              ElevatedButton(
+                onPressed: activityProvider.isLoading ? null : _saveActivity,
+                child:
+                    activityProvider.isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : Text(
+                          _isEditing ? 'Perbarui Aktivitas' : 'Buat Aktivitas',
+                        ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

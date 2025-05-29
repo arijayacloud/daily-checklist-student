@@ -65,13 +65,18 @@ class ChecklistProvider with ChangeNotifier {
   }
 
   List<ChecklistItemModel> getOverdueItems() {
-    final now = DateTime.now();
-    return _checklistItems
-        .where(
-          (item) =>
-              item.dueDate.isBefore(now) && item.overallStatus != 'complete',
-        )
-        .toList();
+    try {
+      final now = DateTime.now();
+      return _checklistItems
+          .where(
+            (item) =>
+                item.dueDate.isBefore(now) && item.overallStatus != 'complete',
+          )
+          .toList();
+    } catch (e) {
+      _handleError('Error getting overdue items: $e');
+      return [];
+    }
   }
 
   // Inisialisasi checklist untuk anak
@@ -223,7 +228,7 @@ class ChecklistProvider with ChangeNotifier {
   // Handler untuk error
   void _handleError(dynamic error) {
     _isLoading = false;
-    _error = error.toString();
+    _error = error is String ? error : error.toString();
     notifyListeners();
     print('Checklist Provider Error: $_error');
   }

@@ -15,7 +15,14 @@
 migrate_working_dir/
 readmeconcept.md
 readmebuild.md
+
+# Firebase
 lib/firebase_options.dart
+google-services.json
+ios/Runner/GoogleService-Info.plist
+.firebaserc
+firebase.json
+.firebase/
 
 # IntelliJ related
 *.iml

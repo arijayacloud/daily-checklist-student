@@ -45,92 +45,12 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChecklistProvider()),
       ],
       child: MaterialApp(
-        title: 'TK Activity Tracker',
+        title: 'TK Activity Checklist',
+        debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light, // Default ke light theme
-        initialRoute: '/splash',
-        routes: {
-          '/': (context) => const AuthCheck(),
-          '/splash': (context) => const SplashScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          '/teacher': (context) => const TeacherDashboard(),
-          '/parent': (context) => const ParentDashboard(),
-        },
-      ),
-    );
-  }
-}
-
-// Kelas untuk mengecek status autentikasi
-class AuthCheck extends StatefulWidget {
-  const AuthCheck({Key? key}) : super(key: key);
-
-  @override
-  _AuthCheckState createState() => _AuthCheckState();
-}
-
-class _AuthCheckState extends State<AuthCheck> {
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    // Gunakan addPostFrameCallback untuk navigasi
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAuth();
-    });
-  }
-
-  Future<void> _checkAuth() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.initializeAuth();
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (mounted) {
-      if (authProvider.isLoggedIn) {
-        if (authProvider.isTeacher) {
-          Navigator.pushReplacementNamed(context, '/teacher');
-        } else if (authProvider.isParent) {
-          Navigator.pushReplacementNamed(context, '/parent');
-        }
-      } else {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child:
-            _isLoading
-                ? const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Memuat aplikasi...'),
-                  ],
-                )
-                : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Mengarahkan ke halaman login...'),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/splash');
-                      },
-                      child: const Text('Buka Halaman Test Firebase'),
-                    ),
-                  ],
-                ),
+        themeMode: ThemeMode.system,
+        home: const SplashScreen(),
       ),
     );
   }

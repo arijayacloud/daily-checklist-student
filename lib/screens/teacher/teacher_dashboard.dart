@@ -1,199 +1,223 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/activity_provider.dart';
 import '../../providers/child_provider.dart';
-import '../../providers/assignment_provider.dart';
-import 'activity_screen.dart';
-import 'child_screen.dart';
-import 'user_management_screen.dart';
+import '../../screens/teacher/activity_management_screen.dart';
+import '../../screens/teacher/child_management_screen.dart';
+import '../../screens/teacher/child_progress_screen.dart';
+import '../../screens/teacher/teacher_profile_screen.dart';
+import '../../widgets/avatar_widget.dart';
+import '../../widgets/empty_state.dart';
 
 class TeacherDashboard extends StatefulWidget {
-  const TeacherDashboard({Key? key}) : super(key: key);
+  const TeacherDashboard({super.key});
 
   @override
-  _TeacherDashboardState createState() => _TeacherDashboardState();
+  State<TeacherDashboard> createState() => _TeacherDashboardState();
 }
 
 class _TeacherDashboardState extends State<TeacherDashboard> {
+  int _selectedIndex = 0;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
+    final childProvider = Provider.of<ChildProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    if (authProvider.isTeacher && authProvider.user != null) {
-      final teacherId = authProvider.user!.uid;
-
-      // Load activities
-      Provider.of<ActivityProvider>(
-        context,
-        listen: false,
-      ).loadActivities(teacherId);
-
-      // Load children
-      Provider.of<ChildProvider>(
-        context,
-        listen: false,
-      ).loadChildrenForTeacher(teacherId);
-
-      // Load assignments
-      Provider.of<AssignmentProvider>(
-        context,
-        listen: false,
-      ).loadAssignmentsForTeacher(teacherId);
+    if (authProvider.userModel != null) {
+      childProvider.loadChildrenForTeacher(authProvider.userModel!.id);
+    } else {
+      // Handle the case when userModel is null
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login terlebih dahulu'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final String? teacherName = authProvider.userModel?.name;
+    final List<Widget> pages = [
+      const ChildrenListPage(),
+      const ActivityManagementScreen(),
+      const TeacherProfileScreen(),
+    ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Dashboard Guru${teacherName != null ? ' - $teacherName' : ''}',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _handleLogout(context),
+      body: pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Beranda',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            activeIcon: Icon(Icons.assignment),
+            label: 'Aktivitas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil',
           ),
         ],
       ),
-      body:
-          authProvider.userModel == null
-              ? const Center(child: CircularProgressIndicator())
-              : Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Greeting
-                    Text(
-                      'Selamat datang, ${authProvider.userModel!.name}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Dashboard Menus
-                    Expanded(
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        children: [
-                          _buildDashboardCard(
-                            context,
-                            'Aktivitas',
-                            Icons.assignment,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ActivityScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildDashboardCard(
-                            context,
-                            'Kelola Siswa',
-                            Icons.people,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ChildScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildDashboardCard(
-                            context,
-                            'Penugasan',
-                            Icons.task_alt,
-                            () {
-                              // TODO: Navigate to assignments
-                            },
-                          ),
-                          _buildDashboardCard(
-                            context,
-                            'Progres',
-                            Icons.trending_up,
-                            () {
-                              // TODO: Navigate to progress tracking
-                            },
-                          ),
-                          _buildDashboardCard(
-                            context,
-                            'Orangtua',
-                            Icons.family_restroom,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => const UserManagementScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildDashboardCard(
-                            context,
-                            'Pengaturan',
-                            Icons.settings,
-                            () {
-                              // TODO: Navigate to settings
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
     );
   }
+}
 
-  Widget _buildDashboardCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 48, color: Theme.of(context).primaryColor),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
+class ChildrenListPage extends StatelessWidget {
+  const ChildrenListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final childProvider = Provider.of<ChildProvider>(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Daftar Siswa'),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ChildManagementScreen(),
+                ),
+              );
+            },
+            tooltip: 'Kelola Siswa',
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final childProvider = Provider.of<ChildProvider>(
+              context,
+              listen: false,
+            );
+            final authProvider = Provider.of<AuthProvider>(
+              context,
+              listen: false,
+            );
+
+            if (authProvider.userModel != null) {
+              childProvider.loadChildrenForTeacher(authProvider.userModel!.id);
+            }
+            // Return completed future untuk RefreshIndicator
+            return Future.value();
+          },
+          child: Builder(
+            builder: (context) {
+              if (childProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (childProvider.errorMessage.isNotEmpty) {
+                return Center(
+                  child: Text(
+                    'Error: ${childProvider.errorMessage}',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+
+              if (childProvider.children.isEmpty) {
+                return const EmptyState(
+                  icon: Icons.child_care,
+                  title: 'Tidak Ada Siswa',
+                  message: 'Tekan tombol + di bawah untuk menambahkan siswa.',
+                );
+              }
+
+              return GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.8,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: childProvider.children.length,
+                itemBuilder: (context, index) {
+                  final child = childProvider.children[index];
+
+                  return Card(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ChildProgressScreen(child: child),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ChildAvatar(avatarUrl: child.avatarUrl, radius: 40),
+                            const SizedBox(height: 16),
+                            Text(
+                              child.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Usia: ${child.age}',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.grey.shade600),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            OutlinedButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder:
+                                        (_) =>
+                                            ChildProgressScreen(child: child),
+                                  ),
+                                );
+                              },
+                              child: const Text('Lihat Progres'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.signOut();
-
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
   }
 }
