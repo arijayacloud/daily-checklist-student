@@ -32,10 +32,16 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> checkAuthStatus() async {
-    _firebaseUser = _auth.currentUser;
-    if (_firebaseUser != null) {
-      await _fetchUserData(_firebaseUser!.uid);
-    } else {
+    try {
+      _firebaseUser = _auth.currentUser;
+      if (_firebaseUser != null) {
+        await _fetchUserData(_firebaseUser!.uid);
+      } else {
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error checking auth status: $e');
       _isLoading = false;
       notifyListeners();
     }

@@ -29,7 +29,12 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadData();
+
+    // Menggunakan addPostFrameCallback untuk memastikan _loadData dipanggil
+    // setelah proses build selesai
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   @override

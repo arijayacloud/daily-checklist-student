@@ -39,11 +39,22 @@ class ChildModel {
 
   // Generate DiceBear avatar URL for a child if none is provided
   String getAvatarUrl() {
-    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-      return avatarUrl!;
-    }
-    // Menggunakan API DiceBear versi terbaru (9.x)
+    // Selalu buat URL DiceBear untuk konsistensi dan fallback
     final seed = Uri.encodeComponent(name);
-    return 'https://api.dicebear.com/9.x/thumbs/svg?seed=$seed';
+    final diceBearUrl = 'https://api.dicebear.com/9.x/thumbs/png?seed=$seed';
+
+    // Jika avatarUrl tidak tersedia atau kosong, gunakan DiceBear
+    if (avatarUrl == null || avatarUrl!.isEmpty) {
+      return diceBearUrl;
+    }
+
+    // Jika avatarUrl tersedia, kita tetap gunakan
+    return avatarUrl!;
+  }
+
+  // Untuk memudahkan fallback ke DiceBear jika avatarUrl gagal
+  String getDiceBearUrl() {
+    final seed = Uri.encodeComponent(name);
+    return 'https://api.dicebear.com/9.x/thumbs/png?seed=$seed';
   }
 }

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '/providers/auth_provider.dart';
 import '/providers/child_provider.dart';
 import '/lib/theme/app_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/models/user_model.dart';
 
 class AddChildScreen extends StatefulWidget {
   const AddChildScreen({super.key});
@@ -22,6 +24,52 @@ class _AddChildScreenState extends State<AddChildScreen> {
   bool _createNewParent = false;
 
   bool _isSubmitting = false;
+  bool _isLoadingParents = true;
+  List<UserModel> _parents = [];
+  String? _selectedParentId;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchParents();
+  }
+
+  // Fetch existing parents
+  Future<void> _fetchParents() async {
+    setState(() {
+      _isLoadingParents = true;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // Only fetch parents created by current teacher
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('role', isEqualTo: 'parent')
+              .where('createdBy', isEqualTo: authProvider.userId)
+              .get();
+
+      final parents =
+          snapshot.docs.map((doc) {
+            final data = doc.data();
+            return UserModel.fromJson({'id': doc.id, ...data});
+          }).toList();
+
+      setState(() {
+        _parents = parents;
+        // Pre-select first parent if available
+        _selectedParentId = parents.isNotEmpty ? parents.first.id : null;
+        _isLoadingParents = false;
+      });
+    } catch (e) {
+      print('Error fetching parents: $e');
+      setState(() {
+        _isLoadingParents = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -55,19 +103,31 @@ class _AddChildScreenState extends State<AddChildScreen> {
           _parentPasswordController.text,
         );
 
-        // TODO: Get the parent ID from the newly created user
-        // For now, we'll use a placeholder
-        parentId = 'new-parent-id';
+        // Fetch the newly created parent
+        final snapshot =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where('email', isEqualTo: _parentEmailController.text.trim())
+                .limit(1)
+                .get();
+
+        if (snapshot.docs.isNotEmpty) {
+          parentId = snapshot.docs.first.id;
+        } else {
+          throw 'Failed to find newly created parent';
+        }
       } else {
-        // TODO: Fetch existing parent ID
-        // For now, we'll use a placeholder
-        parentId = 'existing-parent-id';
+        // Use selected parent ID
+        if (_selectedParentId == null) {
+          throw 'Please select a parent';
+        }
+        parentId = _selectedParentId!;
       }
 
       // Generate avatar URL using DiceBear API
       final name = _nameController.text.trim();
       final seed = Uri.encodeComponent(name);
-      final avatarUrl = 'https://api.dicebear.com/9.x/thumbs/svg?seed=$seed';
+      final avatarUrl = 'https://api.dicebear.com/9.x/thumbs/png?seed=$seed';
 
       // Add child
       await Provider.of<ChildProvider>(context, listen: false).addChild(
@@ -181,34 +241,35 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Parent email
-              TextFormField(
-                controller: _parentEmailController,
-                decoration: InputDecoration(
-                  labelText: 'Parent Email',
-                  hintText: 'Enter the parent\'s email',
-                  filled: true,
-                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter an email';
-                  }
-                  if (!value.contains('@') || !value.contains('.')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // If creating a new parent, show additional fields
               if (_createNewParent) ...[
+                // Parent email
+                TextFormField(
+                  controller: _parentEmailController,
+                  decoration: InputDecoration(
+                    labelText: 'Parent Email',
+                    hintText: 'Enter the parent\'s email',
+                    filled: true,
+                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (_createNewParent &&
+                        (value == null || value.trim().isEmpty)) {
+                      return 'Please enter an email';
+                    }
+                    if (_createNewParent &&
+                        (!value!.contains('@') || !value.contains('.'))) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _parentNameController,
                   decoration: InputDecoration(
@@ -260,6 +321,45 @@ class _AddChildScreenState extends State<AddChildScreen> {
                     fontStyle: FontStyle.italic,
                   ),
                 ),
+              ] else ...[
+                // Dropdown to select existing parent
+                _isLoadingParents
+                    ? const Center(child: CircularProgressIndicator())
+                    : _parents.isEmpty
+                    ? const Text(
+                      'No parents available. Please create a new parent account.',
+                      style: TextStyle(color: Colors.red),
+                    )
+                    : DropdownButtonFormField<String>(
+                      value: _selectedParentId,
+                      decoration: InputDecoration(
+                        labelText: 'Select Parent',
+                        filled: true,
+                        fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items:
+                          _parents.map((parent) {
+                            return DropdownMenuItem(
+                              value: parent.id,
+                              child: Text('${parent.name} (${parent.email})'),
+                            );
+                          }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedParentId = newValue;
+                        });
+                      },
+                      validator: (value) {
+                        if (!_createNewParent && value == null) {
+                          return 'Please select a parent';
+                        }
+                        return null;
+                      },
+                    ),
               ],
 
               const SizedBox(height: 32),

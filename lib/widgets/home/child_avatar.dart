@@ -37,27 +37,68 @@ class ChildAvatar extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(size / 2),
-          child: CachedNetworkImage(
-            imageUrl: avatarUrl,
+          child: _buildAvatarImage(avatarUrl),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarImage(String primaryUrl) {
+    // Pertama coba gunakan URL utama (yang diberikan dari getAvatarUrl)
+    return CachedNetworkImage(
+      imageUrl: primaryUrl,
+      placeholder:
+          (context, url) => Center(
+            child: SizedBox(
+              width: size / 3,
+              height: size / 3,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.primary.withOpacity(0.5),
+              ),
+            ),
+          ),
+      // Jika URL utama gagal, coba gunakan DiceBear URL (jika URL utama bukan DiceBear)
+      errorWidget: (context, url, error) {
+        // Jika URL yang gagal adalah URL user, coba gunakan DiceBear sebagai fallback
+        if (child.avatarUrl != null && url == child.avatarUrl) {
+          final diceBearUrl = child.getDiceBearUrl();
+          return CachedNetworkImage(
+            imageUrl: diceBearUrl,
             placeholder:
-                (context, url) => CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.primary.withOpacity(0.5),
-                ),
-            errorWidget:
-                (context, url, error) => CircleAvatar(
-                  backgroundColor: AppTheme.primaryContainer,
-                  child: Text(
-                    child.name[0].toUpperCase(),
-                    style: TextStyle(
-                      color: AppTheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                      fontSize: size * 0.4,
+                (context, url) => Center(
+                  child: SizedBox(
+                    width: size / 3,
+                    height: size / 3,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.primary.withOpacity(0.5),
                     ),
                   ),
                 ),
+            // Jika DiceBear juga gagal, gunakan fallback inisial
+            errorWidget: (context, url, error) => _buildFallbackAvatar(),
             fit: BoxFit.cover,
-          ),
+          );
+        }
+        // Jika URL yang gagal adalah DiceBear atau URL lain, langsung gunakan fallback inisial
+        return _buildFallbackAvatar();
+      },
+      fit: BoxFit.cover,
+      fadeInDuration: const Duration(milliseconds: 300),
+      memCacheWidth: (size * 2).toInt(),
+    );
+  }
+
+  Widget _buildFallbackAvatar() {
+    return CircleAvatar(
+      backgroundColor: AppTheme.primaryContainer,
+      child: Text(
+        child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
+        style: TextStyle(
+          color: AppTheme.onPrimaryContainer,
+          fontWeight: FontWeight.bold,
+          fontSize: size * 0.4,
         ),
       ),
     );
