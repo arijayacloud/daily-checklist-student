@@ -1,85 +1,46 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum ChecklistStatus { pending, partial, complete }
-
-class CompletionStatus {
+class ObservationModel {
   final bool completed;
-  final DateTime? completedAt;
+  final Timestamp? completedAt;
+  final int? duration; // in minutes
+  final int? engagement; // 1-5 stars
   final String? notes;
-  final String? completedBy;
-  final String? photoUrl;
-  final int? engagement; // Tingkat keterlibatan 1-5
-  final int? duration; // Durasi dalam menit
-  final String? processNotes; // Catatan proses
-  final String? learningOutcomes; // Hasil pembelajaran (khusus guru)
+  final String? learningOutcomes; // only for school observations
 
-  CompletionStatus({
-    this.completed = false,
+  ObservationModel({
+    required this.completed,
     this.completedAt,
-    this.notes,
-    this.completedBy,
-    this.photoUrl,
-    this.engagement,
     this.duration,
-    this.processNotes,
+    this.engagement,
+    this.notes,
     this.learningOutcomes,
   });
 
-  Map<String, dynamic> toMap() {
+  factory ObservationModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return ObservationModel(completed: false);
+    }
+
+    return ObservationModel(
+      completed: json['completed'] ?? false,
+      completedAt: json['completedAt'],
+      duration: json['duration'],
+      engagement: json['engagement'],
+      notes: json['notes'],
+      learningOutcomes: json['learningOutcomes'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
     return {
       'completed': completed,
-      'completedAt': completedAt?.toIso8601String(),
-      'notes': notes,
-      'completedBy': completedBy,
-      'photoUrl': photoUrl,
-      'engagement': engagement,
+      'completedAt': completedAt,
       'duration': duration,
-      'processNotes': processNotes,
+      'engagement': engagement,
+      'notes': notes,
       'learningOutcomes': learningOutcomes,
     };
-  }
-
-  factory CompletionStatus.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return CompletionStatus();
-
-    return CompletionStatus(
-      completed: map['completed'] ?? false,
-      completedAt:
-          map['completedAt'] != null
-              ? DateTime.parse(map['completedAt'])
-              : null,
-      notes: map['notes'],
-      completedBy: map['completedBy'],
-      photoUrl: map['photoUrl'],
-      engagement: map['engagement'],
-      duration: map['duration'],
-      processNotes: map['processNotes'],
-      learningOutcomes: map['learningOutcomes'],
-    );
-  }
-
-  CompletionStatus copyWith({
-    bool? completed,
-    DateTime? completedAt,
-    String? notes,
-    String? completedBy,
-    String? photoUrl,
-    int? engagement,
-    int? duration,
-    String? processNotes,
-    String? learningOutcomes,
-  }) {
-    return CompletionStatus(
-      completed: completed ?? this.completed,
-      completedAt: completedAt ?? this.completedAt,
-      notes: notes ?? this.notes,
-      completedBy: completedBy ?? this.completedBy,
-      photoUrl: photoUrl ?? this.photoUrl,
-      engagement: engagement ?? this.engagement,
-      duration: duration ?? this.duration,
-      processNotes: processNotes ?? this.processNotes,
-      learningOutcomes: learningOutcomes ?? this.learningOutcomes,
-    );
   }
 }
 
@@ -87,93 +48,73 @@ class ChecklistItemModel {
   final String id;
   final String childId;
   final String activityId;
-  final DateTime assignedDate;
-  final DateTime dueDate;
-  final CompletionStatus homeStatus;
-  final CompletionStatus schoolStatus;
-  final String overallStatus; // 'pending', 'partial', 'complete'
-  final List<String> customStepsUsed; // ID guru yang langkahnya digunakan
+  final Timestamp assignedDate;
+  final Timestamp? dueDate;
+  final String status; // 'pending', 'in-progress', 'completed'
+  final ObservationModel homeObservation;
+  final ObservationModel schoolObservation;
+  final List<String> customStepsUsed; // Which teacher's steps were used
 
   ChecklistItemModel({
     required this.id,
     required this.childId,
     required this.activityId,
     required this.assignedDate,
-    required this.dueDate,
-    required this.homeStatus,
-    required this.schoolStatus,
-    required this.overallStatus,
-    this.customStepsUsed = const [],
+    this.dueDate,
+    required this.status,
+    required this.homeObservation,
+    required this.schoolObservation,
+    required this.customStepsUsed,
   });
 
-  Map<String, dynamic> toMap() {
+  factory ChecklistItemModel.fromJson(Map<String, dynamic> json) {
+    return ChecklistItemModel(
+      id: json['id'] ?? '',
+      childId: json['childId'] ?? '',
+      activityId: json['activityId'] ?? '',
+      assignedDate: json['assignedDate'] ?? Timestamp.now(),
+      dueDate: json['dueDate'],
+      status: json['status'] ?? 'pending',
+      homeObservation: ObservationModel.fromJson(json['homeObservation']),
+      schoolObservation: ObservationModel.fromJson(json['schoolObservation']),
+      customStepsUsed: List<String>.from(json['customStepsUsed'] ?? []),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'childId': childId,
       'activityId': activityId,
-      'assignedDate': assignedDate.toIso8601String(),
-      'dueDate': dueDate.toIso8601String(),
-      'homeStatus': homeStatus.toMap(),
-      'schoolStatus': schoolStatus.toMap(),
-      'overallStatus': overallStatus,
+      'assignedDate': assignedDate,
+      'dueDate': dueDate,
+      'status': status,
+      'homeObservation': homeObservation.toJson(),
+      'schoolObservation': schoolObservation.toJson(),
       'customStepsUsed': customStepsUsed,
     };
   }
 
-  factory ChecklistItemModel.fromMap(Map<String, dynamic> map) {
-    return ChecklistItemModel(
-      id: map['id'] ?? '',
-      childId: map['childId'] ?? '',
-      activityId: map['activityId'] ?? '',
-      assignedDate: DateTime.parse(map['assignedDate']),
-      dueDate: DateTime.parse(map['dueDate']),
-      homeStatus: CompletionStatus.fromMap(map['homeStatus']),
-      schoolStatus: CompletionStatus.fromMap(map['schoolStatus']),
-      overallStatus: map['overallStatus'] ?? 'pending',
-      customStepsUsed:
-          map['customStepsUsed'] != null
-              ? List<String>.from(map['customStepsUsed'])
-              : [],
-    );
+  bool get isOverdue {
+    if (dueDate == null) return false;
+    if (status == 'completed') return false;
+    return dueDate!.toDate().isBefore(DateTime.now());
   }
 
-  ChecklistItemModel copyWith({
-    CompletionStatus? homeStatus,
-    CompletionStatus? schoolStatus,
-    String? overallStatus,
-    List<String>? customStepsUsed,
-  }) {
-    return ChecklistItemModel(
-      id: this.id,
-      childId: this.childId,
-      activityId: this.activityId,
-      assignedDate: this.assignedDate,
-      dueDate: this.dueDate,
-      homeStatus: homeStatus ?? this.homeStatus,
-      schoolStatus: schoolStatus ?? this.schoolStatus,
-      overallStatus: overallStatus ?? this.overallStatus,
-      customStepsUsed: customStepsUsed ?? this.customStepsUsed,
-    );
+  bool get isCompleted {
+    return status == 'completed' ||
+        homeObservation.completed ||
+        schoolObservation.completed;
   }
 
-  // Helper method untuk menentukan status keseluruhan
-  static String calculateOverallStatus(
-    CompletionStatus homeStatus,
-    CompletionStatus schoolStatus,
-    String environment,
-  ) {
-    if (environment == 'both') {
-      if (homeStatus.completed && schoolStatus.completed) {
-        return 'complete';
-      } else if (homeStatus.completed || schoolStatus.completed) {
-        return 'partial';
-      }
-      return 'pending';
-    } else if (environment == 'home') {
-      return homeStatus.completed ? 'complete' : 'pending';
-    } else {
-      // environment == 'school'
-      return schoolStatus.completed ? 'complete' : 'pending';
-    }
+  bool get isInProgress {
+    return status == 'in-progress';
+  }
+
+  String get statusIcon {
+    if (isCompleted) return '✓';
+    if (isOverdue) return '⚠️';
+    if (isInProgress) return '🔄';
+    return '⏱️';
   }
 }

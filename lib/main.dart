@@ -1,64 +1,55 @@
-import 'package:daily_checklist_student/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'core/theme/app_theme.dart';
-import 'core/locale/id_timeago.dart';
+import '/providers/auth_provider.dart';
+import '/providers/activity_provider.dart';
+import '/providers/checklist_provider.dart';
+import '/providers/child_provider.dart';
+import '/providers/planning_provider.dart';
+import '/screens/auth/login_screen.dart';
+import '/screens/splash_screen.dart';
+import '/lib/theme/app_theme.dart';
 
-// Providers
-import 'providers/auth_provider.dart';
-import 'providers/activity_provider.dart';
-import 'providers/child_provider.dart';
-import 'providers/assignment_provider.dart';
-import 'providers/checklist_provider.dart';
-import 'providers/user_provider.dart';
-
-// Screens
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/register_screen.dart';
-import 'screens/teacher/teacher_dashboard.dart';
-import 'screens/parent/parent_dashboard.dart';
-import 'firebase_test_page.dart';
-import 'screens/splash_screen.dart';
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // Inisialisasi locale timeago
-  initializeTimeagoLocales();
-
-  // Buat instance AuthProvider untuk inisialisasi awal
-  final authProvider = AuthProvider();
-  await authProvider.initializeAuth();
-
-  runApp(MyApp(authProvider: authProvider));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final AuthProvider authProvider;
-
-  const MyApp({super.key, required this.authProvider});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: authProvider),
-        ChangeNotifierProvider(create: (_) => ActivityProvider()),
-        ChangeNotifierProvider(create: (_) => ChildProvider()),
-        ChangeNotifierProvider(create: (_) => AssignmentProvider()),
-        ChangeNotifierProvider(create: (_) => ChecklistProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ChildProvider>(
+          create: (_) => ChildProvider(),
+          update: (_, auth, previous) => previous!..update(auth.user),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, ActivityProvider>(
+          create: (_) => ActivityProvider(),
+          update: (_, auth, previous) => previous!..update(auth.user),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, ChecklistProvider>(
+          create: (_) => ChecklistProvider(),
+          update: (_, auth, previous) => previous!..update(auth.user),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, PlanningProvider>(
+          create: (_) => PlanningProvider(),
+          update: (_, auth, previous) => previous!..update(auth.user),
+        ),
       ],
       child: MaterialApp(
         title: 'TK Activity Checklist',
-        debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
+        themeMode: ThemeMode.light,
+        debugShowCheckedModeBanner: false,
         home: const SplashScreen(),
+        routes: {'/login': (context) => const LoginScreen()},
       ),
     );
   }

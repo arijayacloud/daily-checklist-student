@@ -1,14 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ChildModel {
   final String id;
   final String name;
   final int age;
   final String parentId;
   final String teacherId;
-  final String avatarUrl;
-  final DateTime createdAt;
-  final String? notes;
+  final String? avatarUrl;
 
   ChildModel({
     required this.id,
@@ -16,79 +12,38 @@ class ChildModel {
     required this.age,
     required this.parentId,
     required this.teacherId,
-    required this.avatarUrl,
-    required this.createdAt,
-    this.notes,
+    this.avatarUrl,
   });
 
-  factory ChildModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory ChildModel.fromJson(Map<String, dynamic> json) {
     return ChildModel(
-      id: doc.id,
-      name: data['name'] ?? '',
-      age: data['age'] ?? 5,
-      parentId: data['parentId'] ?? '',
-      teacherId: data['teacherId'] ?? '',
-      avatarUrl: data['avatarUrl'] ?? '',
-      createdAt:
-          data['createdAt'] is Timestamp
-              ? (data['createdAt'] as Timestamp).toDate()
-              : DateTime.parse(
-                data['createdAt'] ?? DateTime.now().toIso8601String(),
-              ),
-      notes: data['notes'],
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      age: json['age'] ?? 0,
+      parentId: json['parentId'] ?? '',
+      teacherId: json['teacherId'] ?? '',
+      avatarUrl: json['avatarUrl'],
     );
   }
 
-  factory ChildModel.fromMap(Map<String, dynamic> map) {
-    return ChildModel(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      age: map['age'] ?? 5,
-      parentId: map['parentId'] ?? '',
-      teacherId: map['teacherId'] ?? '',
-      avatarUrl: map['avatarUrl'] ?? '',
-      createdAt:
-          map['createdAt'] is Timestamp
-              ? (map['createdAt'] as Timestamp).toDate()
-              : DateTime.parse(
-                map['createdAt'] ?? DateTime.now().toIso8601String(),
-              ),
-      notes: map['notes'],
-    );
-  }
-
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'age': age,
       'parentId': parentId,
       'teacherId': teacherId,
       'avatarUrl': avatarUrl,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'notes': notes,
     };
   }
 
-  ChildModel copyWith({
-    String? id,
-    String? name,
-    int? age,
-    String? parentId,
-    String? teacherId,
-    String? avatarUrl,
-    DateTime? createdAt,
-    String? notes,
-  }) {
-    return ChildModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      age: age ?? this.age,
-      parentId: parentId ?? this.parentId,
-      teacherId: teacherId ?? this.teacherId,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      createdAt: createdAt ?? this.createdAt,
-      notes: notes ?? this.notes,
-    );
+  // Generate DiceBear avatar URL for a child if none is provided
+  String getAvatarUrl() {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      return avatarUrl!;
+    }
+    // Menggunakan API DiceBear versi terbaru (9.x)
+    final seed = Uri.encodeComponent(name);
+    return 'https://api.dicebear.com/9.x/thumbs/svg?seed=$seed';
   }
 }

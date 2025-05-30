@@ -2,159 +2,180 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
-import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthService _authService = AuthService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // URL dasar untuk DiceBear API
-  final String _diceBearBaseUrl = 'https://api.dicebear.com/9.x/thumbs/svg';
+  User? _firebaseUser;
+  UserModel? _user;
+  bool _isLoading = true;
 
-  User? _user;
-  UserModel? _userModel;
-  bool _isLoading = false;
-  String _errorMessage = '';
+  User? get firebaseUser => _firebaseUser;
+  UserModel? get user => _user;
+  bool get isAuthenticated => _firebaseUser != null;
+  bool get isLoading => _isLoading;
+  String get userRole => _user?.role ?? 'parent';
+  String get userId => _firebaseUser?.uid ?? '';
 
-  // Constructor
   AuthProvider() {
-    // Setup auth state listener
-    _authService.authStateChanges.listen((User? user) {
-      _user = user;
+    _auth.authStateChanges().listen((User? user) {
+      _firebaseUser = user;
       if (user != null) {
-        _loadUserData();
+        _fetchUserData(user.uid);
       } else {
-        _userModel = null;
+        _user = null;
+        _isLoading = false;
+        notifyListeners();
       }
-      notifyListeners();
     });
   }
 
-  // Getters
-  User? get user => _user;
-  UserModel? get userModel => _userModel;
-  bool get isLoading => _isLoading;
-  bool get isLoggedIn => _user != null;
-  bool get isTeacher => _userModel?.role == 'teacher';
-  bool get isParent => _userModel?.role == 'parent';
-  String get errorMessage => _errorMessage;
-
-  // Inisialisasi status autentikasi
-  Future<void> initializeAuth() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      // Periksa apakah ada pengguna yang sudah login
-      _user = _authService.currentUser;
-
-      if (_user != null) {
-        // Jika ada, muat data pengguna dari Firestore
-        await _loadUserData();
-        print('User sudah login: ${_userModel?.name} (${_userModel?.role})');
-      } else {
-        print('Tidak ada user yang login');
-      }
-
+  Future<void> checkAuthStatus() async {
+    _firebaseUser = _auth.currentUser;
+    if (_firebaseUser != null) {
+      await _fetchUserData(_firebaseUser!.uid);
+    } else {
       _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      print('Error pada initializeAuth: $e');
       notifyListeners();
     }
   }
 
-  // Login
-  Future<bool> login(String email, String password) async {
+  Future<void> _fetchUserData(String uid) async {
     try {
-      _isLoading = true;
-      _errorMessage = '';
-      notifyListeners();
+      final docSnapshot = await _firestore.collection('users').doc(uid).get();
 
-      UserCredential? result = await _authService.signInWithEmailAndPassword(
-        email,
-        password,
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data() as Map<String, dynamic>;
+        _user = UserModel.fromJson({'id': uid, ...data});
+      } else {
+        _user = null;
+      }
+    } catch (e) {
+      debugPrint('Error fetching user data: $e');
+      _user = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signIn(String email, String password) async {
+    try {
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
 
-      _user = result?.user;
-
-      if (_user != null) {
-        await _loadUserData();
-        _isLoading = false;
-        notifyListeners();
-        return true;
+      if (userCredential.user != null) {
+        await _fetchUserData(userCredential.user!.uid);
       }
-
-      _isLoading = false;
-      notifyListeners();
-      return false;
     } catch (e) {
-      _isLoading = false;
-      _errorMessage = _getReadableErrorMessage(e);
-      notifyListeners();
-      return false;
+      debugPrint('Sign in error: $e');
+      throw _handleAuthError(e);
     }
   }
 
-  // Load user data from Firestore
-  Future<void> _loadUserData() async {
-    try {
-      if (_user != null) {
-        DocumentSnapshot doc =
-            await _firestore.collection('users').doc(_user!.uid).get();
-
-        if (doc.exists) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          _userModel = UserModel.fromMap(data);
-        }
-      }
-    } catch (e) {
-      print('Error loading user data: $e');
-    }
-  }
-
-  // Logout
   Future<void> signOut() async {
-    await _authService.signOut();
+    await _auth.signOut();
     _user = null;
-    _userModel = null;
     notifyListeners();
   }
 
-  // Generate URL avatar dengan DiceBear API
-  String _generateAvatarUrl(String seed) {
-    // Bersihkan seed dari karakter khusus dan encode untuk URL
-    String cleanSeed = Uri.encodeComponent(seed.trim());
-    // Gunakan seed (biasanya nama) untuk konsistensi
-    return '$_diceBearBaseUrl?seed=$cleanSeed';
-  }
-
-  // Konversi error message ke bahasa yang lebih user-friendly
-  String _getReadableErrorMessage(dynamic error) {
-    String errorCode = '';
-
-    if (error is FirebaseAuthException) {
-      errorCode = error.code;
+  // For teachers to create parent accounts
+  Future<void> createParentAccount(
+    String email,
+    String name,
+    String password,
+  ) async {
+    if (_user == null || _user!.role != 'teacher') {
+      throw 'Only teachers can create parent accounts';
     }
 
-    switch (errorCode) {
-      case 'invalid-email':
-        return 'Format email tidak valid';
-      case 'user-disabled':
-        return 'Akun ini telah dinonaktifkan';
-      case 'user-not-found':
-        return 'Akun tidak ditemukan';
-      case 'wrong-password':
-        return 'Password salah';
-      case 'email-already-in-use':
-        return 'Email ini sudah digunakan';
-      case 'operation-not-allowed':
-        return 'Operasi tidak diizinkan';
-      case 'weak-password':
-        return 'Password terlalu lemah';
-      default:
-        return 'Terjadi kesalahan: ${error.toString()}';
+    try {
+      // Create Firebase Auth user
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Create user document
+      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+        'email': email,
+        'name': name,
+        'role': 'parent',
+        'createdBy': _user!.id,
+        'isTempPassword': true,
+      });
+    } catch (e) {
+      debugPrint('Create parent account error: $e');
+      throw _handleAuthError(e);
+    }
+  }
+
+  // Convert Firebase Auth errors to user-friendly messages
+  String _handleAuthError(dynamic e) {
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'user-not-found':
+          return 'No user found with this email.';
+        case 'wrong-password':
+          return 'Wrong password. Please try again.';
+        case 'invalid-email':
+          return 'The email address is not valid.';
+        case 'user-disabled':
+          return 'This user account has been disabled.';
+        case 'email-already-in-use':
+          return 'This email is already registered.';
+        case 'operation-not-allowed':
+          return 'This operation is not allowed.';
+        case 'weak-password':
+          return 'The password is too weak.';
+        case 'too-many-requests':
+          return 'Too many failed login attempts. Please try again later.';
+        default:
+          return 'An error occurred. Please try again.';
+      }
+    }
+    return e.toString();
+  }
+
+  // Change password
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_firebaseUser == null) {
+      throw 'Pengguna tidak login';
+    }
+
+    try {
+      // Re-authenticate user
+      final credential = EmailAuthProvider.credential(
+        email: _firebaseUser!.email!,
+        password: currentPassword,
+      );
+
+      await _firebaseUser!.reauthenticateWithCredential(credential);
+
+      // Change password
+      await _firebaseUser!.updatePassword(newPassword);
+
+      // Update isTempPassword to false if applicable
+      if (_user?.isTempPassword == true) {
+        await _firestore.collection('users').doc(_firebaseUser!.uid).update({
+          'isTempPassword': false,
+        });
+
+        // Update local user model
+        if (_user != null) {
+          _user = _user!.copyWith(isTempPassword: false);
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Change password error: $e');
+      throw _handleAuthError(e);
     }
   }
 }

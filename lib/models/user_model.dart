@@ -1,16 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-enum UserRole { teacher, parent }
-
 class UserModel {
   final String id;
   final String email;
   final String name;
-  final String role; // 'teacher' atau 'parent'
+  final String role;
   final String? createdBy;
-  final String? tempPassword;
-  final String? avatarUrl;
-  final DateTime createdAt;
+  final bool? isTempPassword;
 
   UserModel({
     required this.id,
@@ -18,45 +12,49 @@ class UserModel {
     required this.name,
     required this.role,
     this.createdBy,
-    this.tempPassword,
-    this.avatarUrl,
-    required this.createdAt,
+    this.isTempPassword,
   });
 
-  Map<String, dynamic> toMap() {
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id'] ?? '',
+      email: json['email'] ?? '',
+      name: json['name'] ?? '',
+      role: json['role'] ?? 'parent',
+      createdBy: json['createdBy'],
+      isTempPassword: json['isTempPassword'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'email': email,
       'name': name,
       'role': role,
       'createdBy': createdBy,
-      'tempPassword': tempPassword,
-      'avatarUrl': avatarUrl,
-      'createdAt': createdAt.toIso8601String(),
+      'isTempPassword': isTempPassword,
     };
   }
 
-  factory UserModel.fromMap(Map<String, dynamic> map) {
-    DateTime createdAt;
-    final createdAtData = map['createdAt'];
-
-    if (createdAtData is Timestamp) {
-      createdAt = createdAtData.toDate();
-    } else if (createdAtData is String) {
-      createdAt = DateTime.parse(createdAtData);
-    } else {
-      createdAt = DateTime.now();
-    }
-
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? name,
+    String? role,
+    String? createdBy,
+    bool? isTempPassword,
+  }) {
     return UserModel(
-      id: map['id'] ?? '',
-      email: map['email'] ?? '',
-      name: map['name'] ?? '',
-      role: map['role'] ?? '',
-      createdBy: map['createdBy'],
-      tempPassword: map['tempPassword'],
-      avatarUrl: map['avatarUrl'],
-      createdAt: createdAt,
+      id: id ?? this.id,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      createdBy: createdBy ?? this.createdBy,
+      isTempPassword: isTempPassword ?? this.isTempPassword,
     );
   }
+
+  bool get isTeacher => role == 'teacher';
+  bool get isParent => role == 'parent';
 }

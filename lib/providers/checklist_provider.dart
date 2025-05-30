@@ -1,252 +1,326 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:daily_checklist_student/models/models.dart';
-import 'package:daily_checklist_student/services/checklist_service.dart';
-import 'package:daily_checklist_student/services/activity_service.dart';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
+import '/models/checklist_item_model.dart';
+import '/models/user_model.dart';
 
 class ChecklistProvider with ChangeNotifier {
-  final ChecklistService _checklistService = ChecklistService();
-  final ActivityService _activityService = ActivityService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _uuid = const Uuid();
 
-  List<ChecklistItemModel> _checklistItems = [];
-  List<ActivityModel> _activities = [];
-  List<CompletionLogModel> _logs = [];
-
+  UserModel? _user;
+  Map<String, List<ChecklistItemModel>> _checklistItems =
+      {}; // Map of childId -> list of items
   bool _isLoading = false;
   String? _error;
-  String _currentFilter = 'all'; // 'all', 'pending', 'partial', 'complete'
 
-  // Getters
-  List<ChecklistItemModel> get checklistItems => _checklistItems;
-  List<ActivityModel> get activities => _activities;
-  List<CompletionLogModel> get logs => _logs;
+  Map<String, List<ChecklistItemModel>> get checklistItems => _checklistItems;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  String get currentFilter => _currentFilter;
 
-  // Streams subscription
-  StreamSubscription<List<ChecklistItemModel>>? _checklistItemsSubscription;
-  StreamSubscription<List<CompletionLogModel>>? _logsSubscription;
-
-  // Fetch checklist items for a child
-  Future<void> fetchChecklistItems(String childId) async {
-    try {
-      _setLoading(true);
-
-      // Cancel previous subscription if exists
-      _checklistItemsSubscription?.cancel();
-
-      // Subscribe to checklist items stream
-      _checklistItemsSubscription = _checklistService
-          .getChildChecklistItems(childId)
-          .listen(_handleChecklistItemsUpdate, onError: _handleError);
-    } catch (e) {
-      _handleError(e);
-    }
-  }
-
-  // Filter methods
-  List<ChecklistItemModel> getPendingItems() {
-    return _checklistItems
-        .where((item) => item.overallStatus == 'pending')
-        .toList();
-  }
-
-  List<ChecklistItemModel> getCompletedItems() {
-    return _checklistItems
-        .where((item) => item.overallStatus == 'complete')
-        .toList();
-  }
-
-  List<ChecklistItemModel> getPartialItems() {
-    return _checklistItems
-        .where((item) => item.overallStatus == 'partial')
-        .toList();
-  }
-
-  List<ChecklistItemModel> getOverdueItems() {
-    try {
-      final now = DateTime.now();
-      return _checklistItems
-          .where(
-            (item) =>
-                item.dueDate.isBefore(now) && item.overallStatus != 'complete',
-          )
-          .toList();
-    } catch (e) {
-      _handleError('Error getting overdue items: $e');
-      return [];
-    }
-  }
-
-  // Inisialisasi checklist untuk anak
-  void initChildChecklist(String childId) {
-    _setLoading(true);
-
-    // Batalkan subscription sebelumnya jika ada
-    _checklistItemsSubscription?.cancel();
-
-    // Langganan ke stream checklist items
-    _checklistItemsSubscription = _checklistService
-        .getChildChecklistItems(childId)
-        .listen(_handleChecklistItemsUpdate, onError: _handleError);
-  }
-
-  // Inisialisasi checklist untuk guru dengan daftar anak
-  void initTeacherChecklist(List<String> childrenIds) {
-    _setLoading(true);
-
-    // Batalkan subscription sebelumnya jika ada
-    _checklistItemsSubscription?.cancel();
-
-    // Langganan ke stream checklist items untuk guru
-    _checklistItemsSubscription = _checklistService
-        .getTeacherChecklistItems(childrenIds)
-        .listen(_handleChecklistItemsUpdate, onError: _handleError);
-  }
-
-  // Handler untuk pembaruan checklist items
-  void _handleChecklistItemsUpdate(List<ChecklistItemModel> items) async {
-    _checklistItems = items;
-
-    // Muat aktivitas untuk setiap checklist item
-    final activityIds = items.map((item) => item.activityId).toSet().toList();
-    _activities = [];
-
-    for (final activityId in activityIds) {
-      try {
-        final activity = await _activityService.getActivityById(activityId);
-        if (activity != null) {
-          _activities.add(activity);
-        }
-      } catch (e) {
-        print('Error loading activity $activityId: $e');
-      }
-    }
-
-    _setLoading(false);
-    notifyListeners();
-  }
-
-  // Set filter untuk checklist
-  void setFilter(String filter, String childId) {
-    if (_currentFilter == filter) return;
-
-    _currentFilter = filter;
-    _setLoading(true);
-
-    // Batalkan subscription sebelumnya
-    _checklistItemsSubscription?.cancel();
-
-    // Jika 'all', gunakan semua checklist
-    if (filter == 'all') {
-      _checklistItemsSubscription = _checklistService
-          .getChildChecklistItems(childId)
-          .listen(_handleChecklistItemsUpdate, onError: _handleError);
+  void update(UserModel? user) {
+    _user = user;
+    if (user != null) {
+      _checklistItems = {};
     } else {
-      // Filter berdasarkan status
-      _checklistItemsSubscription = _checklistService
-          .getFilteredChildChecklistItems(childId, filter)
-          .listen(_handleChecklistItemsUpdate, onError: _handleError);
+      _checklistItems = {};
     }
-
     notifyListeners();
   }
 
-  // Memperbarui status aktivitas
-  Future<void> updateCompletionStatus({
-    required String checklistItemId,
-    required String environment,
-    required String userId,
-    String? notes,
-    String? photoUrl,
-  }) async {
+  Future<void> fetchChecklistItems(String childId) async {
+    if (_user == null) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      _setLoading(true);
+      final snapshot =
+          await _firestore
+              .collection('checklist_items')
+              .where('childId', isEqualTo: childId)
+              .orderBy('assignedDate', descending: true)
+              .get();
 
-      await _checklistService.updateCompletionStatus(
-        checklistItemId: checklistItemId,
-        environment: environment,
-        userId: userId,
-        notes: notes,
-        photoUrl: photoUrl,
-      );
+      final items =
+          snapshot.docs.map((doc) {
+            final data = doc.data();
+            return ChecklistItemModel.fromJson({'id': doc.id, ...data});
+          }).toList();
 
-      // Load logs for this checklist item
-      loadChecklistItemLogs(checklistItemId);
-
-      _setLoading(false);
-      notifyListeners();
+      _checklistItems[childId] = items;
     } catch (e) {
-      _handleError(e);
+      debugPrint('Error fetching checklist items: $e');
+      _error = 'Failed to load checklist items. Please try again.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  // Membuat checklist item baru
-  Future<void> createChecklistItem({
+  Future<void> assignActivity({
     required String childId,
     required String activityId,
-    required DateTime dueDate,
+    required List<String> customStepsUsed,
+    Timestamp? dueDate,
   }) async {
+    if (_user == null || !_user!.isTeacher) {
+      throw 'Only teachers can assign activities';
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      _setLoading(true);
+      final itemId = _uuid.v4();
 
-      await _checklistService.createChecklistItem(
-        childId: childId,
-        activityId: activityId,
-        dueDate: dueDate,
-      );
+      await _firestore.collection('checklist_items').doc(itemId).set({
+        'childId': childId,
+        'activityId': activityId,
+        'assignedDate': FieldValue.serverTimestamp(),
+        'dueDate': dueDate,
+        'status': 'pending',
+        'homeObservation': {'completed': false},
+        'schoolObservation': {'completed': false},
+        'customStepsUsed': customStepsUsed,
+      });
 
-      _setLoading(false);
-      // Stream akan otomatis memperbarui checklistItems
+      await fetchChecklistItems(childId);
     } catch (e) {
-      _handleError(e);
+      debugPrint('Error assigning activity: $e');
+      _error = 'Failed to assign activity. Please try again.';
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  // Memuat log untuk checklist item tertentu
-  void loadChecklistItemLogs(String checklistItemId) {
-    _logsSubscription?.cancel();
-
-    _logsSubscription = _checklistService
-        .getChecklistItemLogs(checklistItemId)
-        .listen((logs) {
-          _logs = logs;
-          notifyListeners();
-        }, onError: _handleError);
-  }
-
-  // Helper untuk set loading state
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    if (loading) {
-      _error = null;
+  Future<void> bulkAssignActivity({
+    required List<String> childIds,
+    required String activityId,
+    required List<String> customStepsUsed,
+    Timestamp? dueDate,
+  }) async {
+    if (_user == null || !_user!.isTeacher) {
+      throw 'Only teachers can assign activities';
     }
-    notifyListeners();
-  }
 
-  // Handler untuk error
-  void _handleError(dynamic error) {
-    _isLoading = false;
-    _error = error is String ? error : error.toString();
+    _isLoading = true;
+    _error = null;
     notifyListeners();
-    print('Checklist Provider Error: $_error');
-  }
 
-  // Mencari activity untuk checklist item
-  ActivityModel? findActivityForChecklistItem(String activityId) {
     try {
-      return _activities.firstWhere((activity) => activity.id == activityId);
+      final batch = _firestore.batch();
+
+      for (final childId in childIds) {
+        final itemId = _uuid.v4();
+        final docRef = _firestore.collection('checklist_items').doc(itemId);
+
+        batch.set(docRef, {
+          'childId': childId,
+          'activityId': activityId,
+          'assignedDate': FieldValue.serverTimestamp(),
+          'dueDate': dueDate,
+          'status': 'pending',
+          'homeObservation': {'completed': false},
+          'schoolObservation': {'completed': false},
+          'customStepsUsed': customStepsUsed,
+        });
+      }
+
+      await batch.commit();
+
+      // Refresh checklist items for each child
+      for (final childId in childIds) {
+        await fetchChecklistItems(childId);
+      }
+    } catch (e) {
+      debugPrint('Error bulk assigning activity: $e');
+      _error = 'Failed to assign activities. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateChecklistItemStatus({
+    required String itemId,
+    required String status,
+  }) async {
+    if (_user == null) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _firestore.collection('checklist_items').doc(itemId).update({
+        'status': status,
+      });
+
+      // Refresh the checklist items
+      final itemDoc =
+          await _firestore.collection('checklist_items').doc(itemId).get();
+      if (itemDoc.exists) {
+        final data = itemDoc.data() as Map<String, dynamic>;
+        final childId = data['childId'] as String;
+        await fetchChecklistItems(childId);
+      }
+    } catch (e) {
+      debugPrint('Error updating checklist item status: $e');
+      _error = 'Failed to update status. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addHomeObservation({
+    required String itemId,
+    required int duration,
+    required int engagement,
+    required String notes,
+  }) async {
+    if (_user == null) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _firestore.collection('checklist_items').doc(itemId).update({
+        'homeObservation': {
+          'completed': true,
+          'completedAt': FieldValue.serverTimestamp(),
+          'duration': duration,
+          'engagement': engagement,
+          'notes': notes,
+        },
+        'status': 'completed',
+      });
+
+      // Refresh the checklist items
+      final itemDoc =
+          await _firestore.collection('checklist_items').doc(itemId).get();
+      if (itemDoc.exists) {
+        final data = itemDoc.data() as Map<String, dynamic>;
+        final childId = data['childId'] as String;
+        await fetchChecklistItems(childId);
+
+        // Check for follow-up activity
+        final activityId = data['activityId'] as String;
+        await _checkForFollowUps(childId, activityId);
+      }
+    } catch (e) {
+      debugPrint('Error adding home observation: $e');
+      _error = 'Failed to add observation. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addSchoolObservation({
+    required String itemId,
+    required int duration,
+    required int engagement,
+    required String notes,
+    required String learningOutcomes,
+  }) async {
+    if (_user == null || !_user!.isTeacher) {
+      throw 'Only teachers can add school observations';
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _firestore.collection('checklist_items').doc(itemId).update({
+        'schoolObservation': {
+          'completed': true,
+          'completedAt': FieldValue.serverTimestamp(),
+          'duration': duration,
+          'engagement': engagement,
+          'notes': notes,
+          'learningOutcomes': learningOutcomes,
+        },
+        'status': 'completed',
+      });
+
+      // Refresh the checklist items
+      final itemDoc =
+          await _firestore.collection('checklist_items').doc(itemId).get();
+      if (itemDoc.exists) {
+        final data = itemDoc.data() as Map<String, dynamic>;
+        final childId = data['childId'] as String;
+        await fetchChecklistItems(childId);
+
+        // Check for follow-up activity
+        final activityId = data['activityId'] as String;
+        await _checkForFollowUps(childId, activityId);
+      }
+    } catch (e) {
+      debugPrint('Error adding school observation: $e');
+      _error = 'Failed to add observation. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _checkForFollowUps(
+    String childId,
+    String completedActivityId,
+  ) async {
+    try {
+      // Get the completed activity
+      final activityDoc =
+          await _firestore
+              .collection('activities')
+              .doc(completedActivityId)
+              .get();
+
+      if (!activityDoc.exists) return;
+
+      final data = activityDoc.data() as Map<String, dynamic>;
+      final nextActivityId = data['nextActivityId'] as String?;
+
+      if (nextActivityId != null) {
+        // Create a follow-up suggestion
+        await _firestore.collection('follow_up_suggestions').add({
+          'childId': childId,
+          'completedActivityId': completedActivityId,
+          'suggestedActivityId': nextActivityId,
+          'autoAssigned': false,
+          'assignedDate': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking for follow-ups: $e');
+    }
+  }
+
+  List<ChecklistItemModel> getChecklistItemsForChild(String childId) {
+    return _checklistItems[childId] ?? [];
+  }
+
+  List<ChecklistItemModel> getPendingChecklistItems(String childId) {
+    return getChecklistItemsForChild(
+      childId,
+    ).where((item) => !item.isCompleted).toList();
+  }
+
+  List<ChecklistItemModel> getCompletedChecklistItems(String childId) {
+    return getChecklistItemsForChild(
+      childId,
+    ).where((item) => item.isCompleted).toList();
+  }
+
+  ChecklistItemModel? getChecklistItemById(String childId, String itemId) {
+    try {
+      return getChecklistItemsForChild(
+        childId,
+      ).firstWhere((item) => item.id == itemId);
     } catch (e) {
       return null;
     }
-  }
-
-  // Bersihkan resources ketika provider di-dispose
-  @override
-  void dispose() {
-    _checklistItemsSubscription?.cancel();
-    _logsSubscription?.cancel();
-    super.dispose();
   }
 }
