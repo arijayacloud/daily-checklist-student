@@ -89,16 +89,22 @@ class PlanningModel {
   }
 
   List<PlannedActivity> getActivitiesForDate(DateTime date) {
-    final dateTimestamp = Timestamp.fromDate(
-      DateTime(date.year, date.month, date.day),
-    );
+    // Pastikan date tidak memiliki komponen waktu
+    final normalizedDate = DateTime(date.year, date.month, date.day);
 
     return activities
         .where((activity) {
           final activityDate = activity.scheduledDate.toDate();
-          return activityDate.year == date.year &&
-              activityDate.month == date.month &&
-              activityDate.day == date.day;
+          final normalizedActivityDate = DateTime(
+            activityDate.year,
+            activityDate.month,
+            activityDate.day,
+          );
+
+          // Debug log untuk melacak perbandingan tanggal
+          // print('Comparing dates: $normalizedActivityDate vs $normalizedDate');
+
+          return normalizedActivityDate.isAtSameMomentAs(normalizedDate);
         })
         .map((activity) {
           // Pastikan setiap aktivitas memiliki planId

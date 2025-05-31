@@ -3,12 +3,15 @@ import 'package:provider/provider.dart';
 import '/providers/auth_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/activity_provider.dart';
+import '/providers/notification_provider.dart';
 import '/screens/activities/teacher_activities_screen.dart';
 import '/screens/children/teacher_children_screen.dart';
 import '/screens/planning/teacher_planning_screen.dart';
 import '/screens/parents/parents_screen.dart';
 import '/screens/profile/profile_screen.dart';
+import '/screens/notification/notification_screen.dart';
 import '/lib/theme/app_theme.dart';
+import '/widgets/notification_badge.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -29,10 +32,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       context,
       listen: false,
     );
+    final notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       childProvider.fetchChildren();
       activityProvider.fetchActivities();
+      notificationProvider.fetchNotifications();
     });
   }
 
@@ -53,6 +61,27 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     ];
 
     return Scaffold(
+      appBar:
+          _selectedIndex == 4
+              ? null
+              : AppBar(
+                title: _getAppBarTitle(),
+                actions: [
+                  const NotificationBadge(),
+                  IconButton(
+                    icon: const Icon(Icons.add_alert),
+                    tooltip: 'Tambah Notifikasi Test',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
       body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -88,5 +117,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         selectedItemColor: AppTheme.primary,
       ),
     );
+  }
+
+  Widget _getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0:
+        return const Text('Daftar Murid');
+      case 1:
+        return const Text('Aktivitas');
+      case 2:
+        return const Text('Orang Tua');
+      case 3:
+        return const Text('Perencanaan');
+      default:
+        return const Text('TK Activity Checklist');
+    }
   }
 }

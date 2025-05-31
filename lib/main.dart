@@ -8,6 +8,7 @@ import '/providers/activity_provider.dart';
 import '/providers/checklist_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/planning_provider.dart';
+import '/providers/notification_provider.dart';
 import '/screens/auth/login_screen.dart';
 import '/screens/parents/add_parent_screen.dart';
 import '/screens/splash_screen.dart';
@@ -42,6 +43,10 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProxyProvider<AuthProvider, PlanningProvider>(
           create: (_) => PlanningProvider(),
+          update: (_, auth, previous) => previous!..update(auth.user),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
+          create: (_) => NotificationProvider(),
           update: (_, auth, previous) => previous!..update(auth.user),
         ),
       ],

@@ -12,6 +12,7 @@ import '/screens/planning/add_plan_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/providers/checklist_provider.dart';
 import '/providers/child_provider.dart';
+import '/screens/planning/planning_detail_screen.dart';
 
 class TeacherPlanningScreen extends StatefulWidget {
   const TeacherPlanningScreen({super.key});
@@ -292,7 +293,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No activities planned for ${DateFormat('MMMM d, yyyy').format(_selectedDay)}',
+            'Tidak ada aktivitas terjadwal untuk ${DateFormat('d MMMM yyyy', 'id_ID').format(_selectedDay)}',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -302,7 +303,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap the + button to add activities to this day',
+            'Tap tombol + untuk menambahkan aktivitas pada hari ini',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -335,7 +336,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay),
+            DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_selectedDay),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
@@ -462,10 +463,20 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      _showActivityDetails(context, activity);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => PlanningDetailScreen(
+                                planId: plannedActivity.planId ?? '',
+                                activityId: plannedActivity.activityId,
+                                scheduledDate: plannedActivity.scheduledDate,
+                              ),
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.info_outline),
-                    label: const Text('Details'),
+                    label: const Text('Detail'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primary,
                       side: BorderSide(color: AppTheme.primary),
@@ -491,7 +502,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                           : Icons.assignment_turned_in,
                     ),
                     label: Text(
-                      plannedActivity.completed ? 'Completed' : 'Complete',
+                      plannedActivity.completed ? 'Selesai' : 'Selesaikan',
                     ),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
@@ -509,91 +520,52 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed:
-                  () => _createChecklistFromActivity(
-                    context,
-                    plannedActivity,
-                    activity,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        () => _createChecklistFromActivity(
+                          context,
+                          plannedActivity,
+                          activity,
+                        ),
+                    icon: const Icon(Icons.assignment_add),
+                    label: const Text('Tambahkan ke Checklist'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.tertiary,
+                      side: BorderSide(color: AppTheme.tertiary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-              icon: const Icon(Icons.assignment_add),
-              label: const Text('Tambahkan ke Checklist'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.tertiary,
-                side: BorderSide(color: AppTheme.tertiary),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        () => _showCompletionUsers(
+                          context,
+                          plannedActivity,
+                          activity,
+                        ),
+                    icon: const Icon(Icons.people),
+                    label: const Text('Lihat Progress'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      side: BorderSide(color: AppTheme.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-    );
-  }
-
-  void _showActivityDetails(BuildContext context, ActivityModel activity) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(activity.title),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(activity.description),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Custom Steps:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  if (activity.customSteps.isEmpty)
-                    const Text('No custom steps for this activity.')
-                  else
-                    ...activity.customSteps.map((customStep) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Steps from teacher ${customStep.teacherId}:',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          ...customStep.steps.map((stepText) {
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: 8,
-                                left: 8,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('• '),
-                                  Expanded(child: Text(stepText)),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          const SizedBox(height: 8),
-                        ],
-                      );
-                    }).toList(),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
     );
   }
 
@@ -929,7 +901,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      DateFormat('E').format(date),
+                                      DateFormat('E', 'id_ID').format(date),
                                       style: TextStyle(
                                         color: _getBarColor(index, now),
                                         fontWeight:
@@ -1149,5 +1121,190 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         }),
       ],
     );
+  }
+
+  // Fungsi untuk menampilkan dialog siapa saja yang sudah menyelesaikan aktivitas
+  Future<void> _showCompletionUsers(
+    BuildContext context,
+    PlannedActivity plannedActivity,
+    ActivityModel activity,
+  ) async {
+    final planningProvider = Provider.of<PlanningProvider>(
+      context,
+      listen: false,
+    );
+
+    // Tampilkan loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text("Memuat data..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Ambil data pengguna yang telah menyelesaikan aktivitas
+      final completionUsers = await planningProvider.getCompletionUsers(
+        plannedActivity.activityId,
+        plannedActivity.planId ?? '',
+        plannedActivity.scheduledDate,
+      );
+
+      // Tutup dialog loading
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!context.mounted) return;
+
+      // Tampilkan dialog dengan informasi pengguna
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.5,
+            minChildSize: 0.3,
+            maxChildSize: 0.85,
+            expand: false,
+            builder: (context, scrollController) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Progress Aktivitas',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                              Text(
+                                activity.title,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (completionUsers.isEmpty)
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'Belum ada yang menyelesaikan aktivitas ini',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.builder(
+                          controller: scrollController,
+                          itemCount: completionUsers.length,
+                          itemBuilder: (context, index) {
+                            final user = completionUsers[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(user['childName'][0]),
+                                  backgroundColor: AppTheme.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                title: Text(
+                                  user['childName'],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Orangtua: ${user['parentName']}'),
+                                    if (user['completedAt'] != null)
+                                      Text(
+                                        'Diselesaikan pada: ${DateFormat('dd/MM/yyyy HH:mm').format(user['completedAt'].toDate())}',
+                                      ),
+                                  ],
+                                ),
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (user['completedAtHome'])
+                                      Icon(
+                                        Icons.home,
+                                        color: AppTheme.success,
+                                        size: 20,
+                                      ),
+                                    if (user['completedAtSchool'])
+                                      Icon(
+                                        Icons.school,
+                                        color: AppTheme.tertiary,
+                                        size: 20,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      // Tutup dialog loading jika terjadi error
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+      );
+    }
   }
 }

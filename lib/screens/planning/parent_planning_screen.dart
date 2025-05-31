@@ -9,7 +9,6 @@ import '/models/planning_model.dart';
 import '/providers/activity_provider.dart';
 import '/providers/planning_provider.dart';
 import '/providers/auth_provider.dart';
-import '/providers/child_provider.dart';
 import '/lib/theme/app_theme.dart';
 import '/screens/planning/planning_detail_screen.dart';
 
@@ -33,8 +32,118 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     initializeDateFormatting('id_ID', null);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PlanningProvider>(context, listen: false).fetchPlans();
+      final planningProvider = Provider.of<PlanningProvider>(
+        context,
+        listen: false,
+      );
+      planningProvider.fetchPlans();
+
+      // Buat notifikasi pengingat aktivitas untuk hari ini
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.user != null) {
+        planningProvider.createActivityReminderNotification(
+          childId: authProvider.user!.id,
+          date: DateTime.now(),
+        );
+      }
     });
+  }
+
+  // Fungsi untuk menandai aktivitas sebagai selesai
+  Future<void> _markAsCompleted(
+    BuildContext context,
+    PlannedActivity plannedActivity,
+    PlanningProvider planningProvider,
+  ) async {
+    // Tambahkan dialog konfirmasi untuk mencegah klik yang tidak disengaja
+    final bool confirm =
+        await showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Konfirmasi'),
+                content: const Text(
+                  'Apakah Anda yakin akan menandai aktivitas ini sebagai selesai?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Batal'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Ya, Selesaikan'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    try {
+      // Tampilkan loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Dialog(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text("Memproses..."),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      await planningProvider.markActivityAsCompleted(
+        planId: plannedActivity.planId ?? '',
+        activityId: plannedActivity.activityId,
+        scheduledDate: plannedActivity.scheduledDate,
+      );
+
+      // Tutup dialog loading
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!mounted) return;
+
+      // Force refresh UI
+      setState(() {});
+
+      // Paksa reload data dari server
+      await planningProvider.fetchPlans();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aktivitas berhasil ditandai selesai'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } catch (e) {
+      // Tutup dialog loading jika terjadi error
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+      );
+    }
   }
 
   @override
@@ -177,36 +286,17 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         final todayActivities = planningProvider.getActivitiesForDate(
           DateTime.now(),
         );
+        final userId =
+            Provider.of<AuthProvider>(context, listen: false).user?.id;
 
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final childProvider = Provider.of<ChildProvider>(
-          context,
-          listen: false,
-        );
+        if (userId == null) return const SizedBox.shrink();
 
-        if (authProvider.user == null) return const SizedBox.shrink();
-
-        // Filter aktivitas berdasarkan peran pengguna
-        List<PlannedActivity> filteredActivities = [];
-        if (authProvider.user!.isTeacher) {
-          // Guru dapat melihat semua aktivitas
-          filteredActivities = todayActivities;
-        } else {
-          // Orangtua hanya melihat aktivitas untuk anak-anak mereka
-          // atau aktivitas umum (childId = null)
-          filteredActivities =
-              todayActivities.where((activity) {
-                final plan = planningProvider.getPlanById(
-                  activity.planId ?? '',
-                );
-                // Aktivitas untuk semua anak (childId null) atau untuk anak dari orangtua ini
-                if (plan?.childId == null) return true;
-
-                return childProvider.children.any(
-                  (child) => child.id == plan?.childId,
-                );
-              }).toList();
-        }
+        // Filter aktivitas untuk anak dari orangtua ini saja
+        final filteredActivities =
+            todayActivities.where((activity) {
+              final plan = planningProvider.getPlanById(activity.planId ?? '');
+              return plan?.childId == null || plan?.childId == userId;
+            }).toList();
 
         final completedCount =
             filteredActivities.where((a) => a.completed).length;
@@ -356,49 +446,27 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final childProvider = Provider.of<ChildProvider>(
-          context,
-          listen: false,
-        );
-
-        if (authProvider.user == null) {
+        final userId =
+            Provider.of<AuthProvider>(context, listen: false).user?.id;
+        if (userId == null) {
           return const Center(child: Text('Silakan login terlebih dahulu'));
         }
 
-        // Dapatkan aktivitas untuk tanggal yang dipilih
-        final activitiesForDate = planningProvider.getActivitiesForDate(
-          _selectedDay,
-        );
+        // Filter aktivitas untuk anak dari orangtua ini saja
+        final activitiesForDate =
+            planningProvider.getActivitiesForDate(_selectedDay).where((
+              activity,
+            ) {
+              final plan = planningProvider.getPlanById(activity.planId ?? '');
+              return plan?.childId == null || plan?.childId == userId;
+            }).toList();
 
-        // Filter aktivitas berdasarkan peran pengguna
-        List<PlannedActivity> filteredActivities = [];
-        if (authProvider.user!.isTeacher) {
-          // Guru dapat melihat semua aktivitas
-          filteredActivities = activitiesForDate;
-        } else {
-          // Orangtua hanya melihat aktivitas untuk anak-anak mereka
-          // atau aktivitas umum (childId = null)
-          filteredActivities =
-              activitiesForDate.where((activity) {
-                final plan = planningProvider.getPlanById(
-                  activity.planId ?? '',
-                );
-                // Aktivitas untuk semua anak (childId null) atau untuk anak dari orangtua ini
-                if (plan?.childId == null) return true;
-
-                return childProvider.children.any(
-                  (child) => child.id == plan?.childId,
-                );
-              }).toList();
-        }
-
-        if (filteredActivities.isEmpty) {
+        if (activitiesForDate.isEmpty) {
           return _buildEmptySchedule();
         }
 
         return _buildScheduleList(
-          filteredActivities,
+          activitiesForDate,
           activityProvider.activities,
           planningProvider,
         );
@@ -581,10 +649,39 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
             Text(
               activity.description,
               style: TextStyle(color: AppTheme.onSurfaceVariant),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
+            if (activity.customSteps.isEmpty)
+              const Text('Tidak ada langkah khusus untuk aktivitas ini.')
+            else
+              ...activity.customSteps.map((customStep) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Langkah-langkah dari guru ${customStep.teacherId}:',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ...customStep.steps.map((stepText) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8, left: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• '),
+                            Expanded(child: Text(stepText)),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              }).toList(),
             Row(
               children: [
                 Expanded(
@@ -595,16 +692,12 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                         MaterialPageRoute(
                           builder:
                               (context) => PlanningDetailScreen(
-                                plannedActivity: plannedActivity,
-                                activity: activity,
+                                planId: plannedActivity.planId ?? '',
+                                activityId: plannedActivity.activityId,
+                                scheduledDate: plannedActivity.scheduledDate,
                               ),
                         ),
-                      ).then((completed) {
-                        if (completed == true) {
-                          // Refresh data if activity was marked as completed
-                          planningProvider.fetchPlans();
-                        }
-                      });
+                      );
                     },
                     icon: const Icon(Icons.info_outline),
                     label: const Text('Detail'),
@@ -655,33 +748,6 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         ),
       ),
     );
-  }
-
-  void _markAsCompleted(
-    BuildContext context,
-    PlannedActivity plannedActivity,
-    PlanningProvider planningProvider,
-  ) async {
-    try {
-      await planningProvider.markActivityAsCompleted(
-        planId: plannedActivity.planId ?? '',
-        activityId: plannedActivity.activityId,
-        scheduledDate: plannedActivity.scheduledDate,
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aktivitas berhasil ditandai selesai'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-      );
-    }
   }
 
   Color _getDifficultyColor(String difficulty) {

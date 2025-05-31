@@ -393,6 +393,12 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       final timeOfDay = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),
+        builder: (BuildContext context, Widget? child) {
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          );
+        },
       );
 
       setState(() {
@@ -423,6 +429,12 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                 minute: int.parse(plannedActivity.scheduledTime!.split(':')[1]),
               )
               : TimeOfDay.now(),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
 
     if (timeOfDay != null) {

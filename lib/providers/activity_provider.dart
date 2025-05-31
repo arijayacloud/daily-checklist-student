@@ -197,10 +197,11 @@ class ActivityProvider with ChangeNotifier {
         .toList();
   }
 
-  ActivityModel? getActivityById(String id) {
+  ActivityModel? getActivityById(String activityId) {
     try {
-      return _activities.firstWhere((activity) => activity.id == id);
+      return _activities.firstWhere((activity) => activity.id == activityId);
     } catch (e) {
+      debugPrint('Activity with id $activityId not found: $e');
       return null;
     }
   }
