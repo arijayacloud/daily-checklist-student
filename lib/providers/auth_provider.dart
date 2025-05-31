@@ -92,27 +92,85 @@ class AuthProvider with ChangeNotifier {
   Future<void> createParentAccount(
     String email,
     String name,
-    String password,
-  ) async {
+    String password, {
+    String phoneNumber = '',
+    String address = '',
+  }) async {
     if (_user == null || _user!.role != 'teacher') {
       throw 'Only teachers can create parent accounts';
     }
 
     try {
-      // Create Firebase Auth user
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      // Buat instance Firebase Auth kedua untuk operasi create user
+      final secondaryAuth = FirebaseAuth.instance;
 
-      // Create user document
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'email': email,
-        'name': name,
-        'role': 'parent',
-        'createdBy': _user!.id,
-        'isTempPassword': true,
-      });
+      // Simpan data user yang sedang aktif
+      final currentUser = _firebaseUser;
+      final currentUserData = _user;
+
+      try {
+        // Create Firebase Auth user dengan instance terpisah
+        await secondaryAuth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        // Dapatkan UID dari user yang baru dibuat
+        final parentUserRecord =
+            await _firestore
+                .collection('users')
+                .where('email', isEqualTo: email)
+                .limit(1)
+                .get();
+
+        String parentUserId = '';
+
+        if (parentUserRecord.docs.isEmpty) {
+          // Dapatkan UID secara manual dari autentikasi
+          final checkUser = await secondaryAuth.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          parentUserId = checkUser.user!.uid;
+
+          // Sign out dari instance kedua
+          await secondaryAuth.signOut();
+        } else {
+          parentUserId = parentUserRecord.docs.first.id;
+        }
+
+        // Create user document
+        await _firestore.collection('users').doc(parentUserId).set({
+          'email': email,
+          'name': name,
+          'role': 'parent',
+          'createdBy': _user!.id,
+          'isTempPassword': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'phoneNumber': phoneNumber,
+          'address': address,
+          'profilePicture': '',
+          'status': 'active',
+        });
+
+        // Pastikan user guru tetap yang aktif
+        if (_firebaseUser?.uid != currentUser?.uid) {
+          // Jika sesi terganti, kembalikan ke user guru
+          await _auth.signInWithEmailAndPassword(
+            email: currentUser!.email!,
+            password:
+                '', // Ini tidak akan digunakan karena kita sudah memiliki token refresh
+          );
+
+          // Update data user
+          _firebaseUser = currentUser;
+          _user = currentUserData;
+          notifyListeners();
+        }
+      } catch (e) {
+        debugPrint('Error saat pembuatan akun: $e');
+        throw _handleAuthError(e);
+      }
     } catch (e) {
       debugPrint('Create parent account error: $e');
       throw _handleAuthError(e);

@@ -6,6 +6,7 @@ class PlannedActivity {
   final String? scheduledTime; // Format: 'HH:MM'
   final bool reminder;
   final bool completed;
+  final String? planId; // ID dari plan yang memiliki aktivitas ini
 
   PlannedActivity({
     required this.activityId,
@@ -13,15 +14,22 @@ class PlannedActivity {
     this.scheduledTime,
     this.reminder = true,
     this.completed = false,
+    this.planId,
   });
 
-  factory PlannedActivity.fromJson(Map<String, dynamic> json) {
+  factory PlannedActivity.fromJson(
+    Map<String, dynamic> json, {
+    String? parentPlanId,
+  }) {
     return PlannedActivity(
       activityId: json['activityId'] ?? '',
       scheduledDate: json['scheduledDate'] ?? Timestamp.now(),
       scheduledTime: json['scheduledTime'],
       reminder: json['reminder'] ?? true,
       completed: json['completed'] ?? false,
+      planId:
+          json['planId'] ??
+          parentPlanId, // Menggunakan ID dari parent plan jika tidak ada
     );
   }
 
@@ -32,6 +40,7 @@ class PlannedActivity {
       'scheduledTime': scheduledTime,
       'reminder': reminder,
       'completed': completed,
+      'planId': planId,
     };
   }
 }
@@ -84,11 +93,27 @@ class PlanningModel {
       DateTime(date.year, date.month, date.day),
     );
 
-    return activities.where((activity) {
-      final activityDate = activity.scheduledDate.toDate();
-      return activityDate.year == date.year &&
-          activityDate.month == date.month &&
-          activityDate.day == date.day;
-    }).toList();
+    return activities
+        .where((activity) {
+          final activityDate = activity.scheduledDate.toDate();
+          return activityDate.year == date.year &&
+              activityDate.month == date.month &&
+              activityDate.day == date.day;
+        })
+        .map((activity) {
+          // Pastikan setiap aktivitas memiliki planId
+          if (activity.planId == null) {
+            return PlannedActivity(
+              activityId: activity.activityId,
+              scheduledDate: activity.scheduledDate,
+              scheduledTime: activity.scheduledTime,
+              reminder: activity.reminder,
+              completed: activity.completed,
+              planId: id, // Gunakan id dari plan ini
+            );
+          }
+          return activity;
+        })
+        .toList();
   }
 }

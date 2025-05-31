@@ -17,12 +17,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-  final _parentEmailController = TextEditingController();
-  final _parentNameController = TextEditingController();
-  final _parentPasswordController = TextEditingController();
   int _age = 4;
-  bool _createNewParent = false;
-
   bool _isSubmitting = false;
   bool _isLoadingParents = true;
   List<UserModel> _parents = [];
@@ -74,9 +69,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _parentEmailController.dispose();
-    _parentNameController.dispose();
-    _parentPasswordController.dispose();
     super.dispose();
   }
 
@@ -90,39 +82,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
     });
 
     try {
-      String parentId = '';
-
-      // If creating a new parent
-      if (_createNewParent) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-        // Create parent account
-        await authProvider.createParentAccount(
-          _parentEmailController.text.trim(),
-          _parentNameController.text.trim(),
-          _parentPasswordController.text,
-        );
-
-        // Fetch the newly created parent
-        final snapshot =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .where('email', isEqualTo: _parentEmailController.text.trim())
-                .limit(1)
-                .get();
-
-        if (snapshot.docs.isNotEmpty) {
-          parentId = snapshot.docs.first.id;
-        } else {
-          throw 'Failed to find newly created parent';
-        }
-      } else {
-        // Use selected parent ID
-        if (_selectedParentId == null) {
-          throw 'Please select a parent';
-        }
-        parentId = _selectedParentId!;
+      // Use selected parent ID
+      if (_selectedParentId == null) {
+        throw 'Silahkan pilih orang tua';
       }
+      String parentId = _selectedParentId!;
 
       // Generate avatar URL using DiceBear API
       final name = _nameController.text.trim();
@@ -141,7 +105,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Child added successfully'),
+          content: Text('Anak berhasil ditambahkan'),
           backgroundColor: AppTheme.success,
         ),
       );
@@ -161,7 +125,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Student')),
+      appBar: AppBar(title: const Text('Tambah Murid')),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -171,7 +135,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
             children: [
               // Child information
               const Text(
-                'Child Information',
+                'Informasi Anak',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
@@ -180,8 +144,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: 'Child Name',
-                  hintText: 'Enter the child\'s name',
+                  labelText: 'Nama Anak',
+                  hintText: 'Masukkan nama anak',
                   filled: true,
                   fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
                   border: OutlineInputBorder(
@@ -191,7 +155,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a name';
+                    return 'Silahkan masukkan nama';
                   }
                   return null;
                 },
@@ -200,7 +164,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
               // Child age
               Text(
-                'Age: $_age years',
+                'Usia: $_age tahun',
                 style: TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 16,
@@ -222,145 +186,88 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
               // Parent information
               const Text(
-                'Parent Information',
+                'Informasi Orang Tua',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-
-              // Create new parent or use existing
-              SwitchListTile(
-                title: const Text('Create new parent account'),
-                value: _createNewParent,
-                onChanged: (value) {
-                  setState(() {
-                    _createNewParent = value;
-                  });
-                },
-                activeColor: AppTheme.primary,
-                contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 16),
 
-              if (_createNewParent) ...[
-                // Parent email
-                TextFormField(
-                  controller: _parentEmailController,
-                  decoration: InputDecoration(
-                    labelText: 'Parent Email',
-                    hintText: 'Enter the parent\'s email',
-                    filled: true,
-                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (_createNewParent &&
-                        (value == null || value.trim().isEmpty)) {
-                      return 'Please enter an email';
-                    }
-                    if (_createNewParent &&
-                        (!value!.contains('@') || !value.contains('.'))) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _parentNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Parent Name',
-                    hintText: 'Enter the parent\'s name',
-                    filled: true,
-                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (_createNewParent &&
-                        (value == null || value.trim().isEmpty)) {
-                      return 'Please enter a name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _parentPasswordController,
-                  decoration: InputDecoration(
-                    labelText: 'Temporary Password',
-                    hintText: 'Create a temporary password',
-                    filled: true,
-                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  obscureText: true,
-                  validator: (value) {
-                    if (_createNewParent &&
-                        (value == null || value.length < 6)) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Note: The parent will be asked to change this password on first login.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ] else ...[
-                // Dropdown to select existing parent
-                _isLoadingParents
-                    ? const Center(child: CircularProgressIndicator())
-                    : _parents.isEmpty
-                    ? const Text(
-                      'No parents available. Please create a new parent account.',
-                      style: TextStyle(color: Colors.red),
-                    )
-                    : DropdownButtonFormField<String>(
-                      value: _selectedParentId,
-                      decoration: InputDecoration(
-                        labelText: 'Select Parent',
-                        filled: true,
-                        fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+              // Dropdown to select existing parent
+              _isLoadingParents
+                  ? const Center(child: CircularProgressIndicator())
+                  : _parents.isEmpty
+                  ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Tidak ada orang tua yang tersedia.',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/add-parent',
+                          ).then((_) => _fetchParents());
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Tambah Orang Tua Baru'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.secondary,
+                          foregroundColor: Colors.white,
                         ),
                       ),
-                      items:
-                          _parents.map((parent) {
-                            return DropdownMenuItem(
-                              value: parent.id,
-                              child: Text('${parent.name} (${parent.email})'),
-                            );
-                          }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedParentId = newValue;
-                        });
-                      },
-                      validator: (value) {
-                        if (!_createNewParent && value == null) {
-                          return 'Please select a parent';
-                        }
-                        return null;
-                      },
-                    ),
-              ],
+                    ],
+                  )
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedParentId,
+                        decoration: InputDecoration(
+                          labelText: 'Pilih Orang Tua',
+                          filled: true,
+                          fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        items:
+                            _parents.map((parent) {
+                              return DropdownMenuItem(
+                                value: parent.id,
+                                child: Text('${parent.name} (${parent.email})'),
+                              );
+                            }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedParentId = newValue;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Silahkan pilih orang tua';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/add-parent',
+                          ).then((_) => _fetchParents());
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Tambah Orang Tua Baru'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.secondary,
+                        ),
+                      ),
+                    ],
+                  ),
 
               const SizedBox(height: 32),
 
@@ -388,7 +295,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                           ),
                         )
                         : const Text(
-                          'Add Student',
+                          'Tambah Murid',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

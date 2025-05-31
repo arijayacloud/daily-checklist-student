@@ -6,6 +6,7 @@ import '/providers/activity_provider.dart';
 import '/screens/activities/teacher_activities_screen.dart';
 import '/screens/children/teacher_children_screen.dart';
 import '/screens/planning/teacher_planning_screen.dart';
+import '/screens/parents/parents_screen.dart';
 import '/screens/profile/profile_screen.dart';
 import '/lib/theme/app_theme.dart';
 
@@ -46,6 +47,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     final screens = [
       const TeacherChildrenScreen(),
       const TeacherActivitiesScreen(),
+      const ParentsScreen(),
       const TeacherPlanningScreen(),
       const ProfileScreen(),
     ];
@@ -60,22 +62,27 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.child_care_outlined),
             activeIcon: Icon(Icons.child_care),
-            label: 'Children',
+            label: 'Murid',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_outlined),
             activeIcon: Icon(Icons.assignment),
-            label: 'Activities',
+            label: 'Aktivitas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Orang Tua',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),
             activeIcon: Icon(Icons.calendar_today),
-            label: 'Planning',
+            label: 'Perencanaan',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'Profil',
           ),
         ],
         selectedItemColor: AppTheme.primary,

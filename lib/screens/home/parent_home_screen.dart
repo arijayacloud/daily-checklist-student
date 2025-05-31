@@ -5,6 +5,7 @@ import '/providers/auth_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/checklist_provider.dart';
 import '/screens/checklist/parent_checklist_screen.dart';
+import '/screens/planning/parent_planning_screen.dart';
 import '/screens/profile/profile_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/home/child_avatar.dart';
@@ -38,7 +39,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = [const ParentDashboardTab(), const ProfileScreen()];
+    final screens = [
+      const ParentDashboardTab(),
+      const ParentPlanningScreen(),
+      const ProfileScreen(),
+    ];
 
     return Scaffold(
       body: screens[_selectedIndex],
@@ -49,15 +54,19 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: 'Home',
+            label: 'Beranda',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            activeIcon: Icon(Icons.calendar_today),
+            label: 'Jadwal',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'Profil',
           ),
         ],
-        selectedItemColor: AppTheme.primary,
       ),
     );
   }
@@ -168,32 +177,34 @@ class ParentDashboardTab extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              ChildAvatar(child: child, size: 80),
-              const SizedBox(height: 12),
+              ChildAvatar(child: child, size: 70),
+              const SizedBox(height: 8),
               Text(
                 child.name,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 '${child.age} years old',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   color: AppTheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: 12,
+                  vertical: 4,
                 ),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryContainer,
@@ -204,6 +215,7 @@ class ParentDashboardTab extends StatelessWidget {
                   style: TextStyle(
                     color: AppTheme.onPrimaryContainer,
                     fontWeight: FontWeight.w500,
+                    fontSize: 12,
                   ),
                 ),
               ),

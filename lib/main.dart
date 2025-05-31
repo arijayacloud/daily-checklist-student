@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import '/providers/auth_provider.dart';
 import '/providers/activity_provider.dart';
@@ -8,12 +9,14 @@ import '/providers/checklist_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/planning_provider.dart';
 import '/screens/auth/login_screen.dart';
+import '/screens/parents/add_parent_screen.dart';
 import '/screens/splash_screen.dart';
 import '/lib/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeDateFormatting('id_ID', null);
   runApp(const MyApp());
 }
 
@@ -49,7 +52,10 @@ class MyApp extends StatelessWidget {
         themeMode: ThemeMode.light,
         debugShowCheckedModeBanner: false,
         home: const SplashScreen(),
-        routes: {'/login': (context) => const LoginScreen()},
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/add-parent': (context) => const AddParentScreen(),
+        },
       ),
     );
   }
