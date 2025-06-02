@@ -2,36 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '/providers/auth_provider.dart';
-import '/screens/home/parent_home_screen.dart';
 import '/screens/home/teacher_home_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/auth/custom_text_field.dart';
-import '/screens/auth/teacher_register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class TeacherRegisterScreen extends StatefulWidget {
+  static const routeName = '/teacher-register';
+
+  const TeacherRegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<TeacherRegisterScreen> createState() => _TeacherRegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _accessCodeController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _accessCodeController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -43,21 +45,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.signIn(
+      await authProvider.createTeacherAccount(
         _emailController.text.trim(),
+        _nameController.text.trim(),
         _passwordController.text,
       );
 
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder:
-              (context) =>
-                  authProvider.userRole == 'teacher'
-                      ? const TeacherHomeScreen()
-                      : const ParentHomeScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const TeacherHomeScreen()),
       );
     } catch (e) {
       setState(() {
@@ -72,92 +69,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showTeacherRegistrationDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Text(
-              'Kode Akses',
-              style: TextStyle(
-                color: AppTheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Masukkan kode akses untuk registrasi guru',
-                  style: TextStyle(color: AppTheme.secondary),
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  controller: _accessCodeController,
-                  hintText: 'Kode Akses',
-                  prefixIcon: Icons.key_outlined,
-                  obscureText: true,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  _accessCodeController.clear();
-                },
-                child: Text(
-                  'Batal',
-                  style: TextStyle(color: AppTheme.secondary),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (_accessCodeController.text.trim() == 'DAFTAR') {
-                    Navigator.of(ctx).pop();
-                    _accessCodeController.clear();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const TeacherRegisterScreen(),
-                      ),
-                    );
-                  } else {
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Kode akses tidak valid'),
-                        backgroundColor: AppTheme.error,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    );
-                    _accessCodeController.clear();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('Lanjut'),
-              ),
-            ],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            backgroundColor: AppTheme.surface,
-          ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.primary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -177,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Icon(
-                      Icons.check_circle_outline_rounded,
+                      Icons.school_rounded,
                       size: 64,
                       color: AppTheme.primary,
                     ),
@@ -189,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                        'Selamat Datang',
+                        'Pendaftaran Guru',
                         style: Theme.of(
                           context,
                         ).textTheme.headlineMedium?.copyWith(
@@ -206,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       .slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 8),
                   Text(
-                        'Silakan masuk untuk melanjutkan',
+                        'Silakan lengkapi data untuk mendaftar sebagai guru',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(color: AppTheme.secondary),
                         textAlign: TextAlign.center,
@@ -240,6 +163,26 @@ class _LoginScreenState extends State<LoginScreen> {
                         .fadeIn(duration: const Duration(milliseconds: 300))
                         .slideY(begin: 0.2, end: 0),
                   if (_errorMessage != null) const SizedBox(height: 24),
+
+                  // Name field
+                  CustomTextField(
+                        controller: _nameController,
+                        hintText: 'Nama Lengkap',
+                        prefixIcon: Icons.person_outline,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Nama tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      )
+                      .animate()
+                      .fadeIn(
+                        duration: const Duration(milliseconds: 600),
+                        delay: const Duration(milliseconds: 400),
+                      )
+                      .slideY(begin: 0.2, end: 0),
+                  const SizedBox(height: 16),
 
                   // Email field
                   CustomTextField(
@@ -287,11 +230,35 @@ class _LoginScreenState extends State<LoginScreen> {
                         delay: const Duration(milliseconds: 600),
                       )
                       .slideY(begin: 0.2, end: 0),
+                  const SizedBox(height: 16),
+
+                  // Confirm Password field
+                  CustomTextField(
+                        controller: _confirmPasswordController,
+                        hintText: 'Konfirmasi Kata Sandi',
+                        prefixIcon: Icons.lock_outline,
+                        obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Konfirmasi kata sandi tidak boleh kosong';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Kata sandi tidak sama';
+                          }
+                          return null;
+                        },
+                      )
+                      .animate()
+                      .fadeIn(
+                        duration: const Duration(milliseconds: 600),
+                        delay: const Duration(milliseconds: 700),
+                      )
+                      .slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 32),
 
-                  // Login button
+                  // Register button
                   ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
+                        onPressed: _isLoading ? null : _register,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           backgroundColor: AppTheme.primary,
@@ -314,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                                 : const Text(
-                                  'Masuk',
+                                  'Daftar',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -324,7 +291,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       .animate()
                       .fadeIn(
                         duration: const Duration(milliseconds: 600),
-                        delay: const Duration(milliseconds: 700),
+                        delay: const Duration(milliseconds: 800),
                       )
                       .slideY(begin: 0.2, end: 0),
 
@@ -335,13 +302,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Belum memiliki akun? ',
+                        'Sudah memiliki akun? ',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                       GestureDetector(
-                        onTap: () => _showTeacherRegistrationDialog(),
+                        onTap: () => Navigator.of(context).pop(),
                         child: Text(
-                          'Daftar sebagai guru',
+                          'Masuk',
                           style: TextStyle(
                             color: AppTheme.primary,
                             fontWeight: FontWeight.bold,
@@ -351,7 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ).animate().fadeIn(
                     duration: const Duration(milliseconds: 600),
-                    delay: const Duration(milliseconds: 800),
+                    delay: const Duration(milliseconds: 900),
                   ),
                 ],
               ),

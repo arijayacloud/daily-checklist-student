@@ -10,6 +10,7 @@ import '/providers/child_provider.dart';
 import '/providers/planning_provider.dart';
 import '/providers/notification_provider.dart';
 import '/screens/auth/login_screen.dart';
+import '/screens/auth/teacher_register_screen.dart';
 import '/screens/parents/add_parent_screen.dart';
 import '/screens/splash_screen.dart';
 import '/screens/progress/progress_dashboard.dart';
@@ -62,6 +63,8 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/add-parent': (context) => const AddParentScreen(),
+          TeacherRegisterScreen.routeName:
+              (context) => const TeacherRegisterScreen(),
           ProgressDashboard.routeName: (context) => const ProgressDashboard(),
           ChildChecklistScreen.routeName:
               (context) => const ChildChecklistScreen(),

@@ -1,0 +1,48 @@
+{
+  "teachers": [
+    {
+      "id": "teacher1",
+      "name": "Budi Santoso",
+      "email": "budi.santoso@example.com",
+      "password": "password123",
+      "role": "teacher",
+      "phone": "081234567890",
+      "address": "Jl. Pendidikan No. 1, Jakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Budi",
+      "createdAt": "2023-01-01T08:00:00Z"
+    },
+    {
+      "id": "teacher2",
+      "name": "Siti Rahayu",
+      "email": "siti.rahayu@example.com",
+      "password": "password123",
+      "role": "teacher",
+      "phone": "081234567891",
+      "address": "Jl. Guru No. 5, Bandung",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Siti",
+      "createdAt": "2023-01-02T09:00:00Z"
+    },
+    {
+      "id": "teacher3",
+      "name": "Ahmad Wijaya",
+      "email": "ahmad.wijaya@example.com",
+      "password": "password123",
+      "role": "teacher",
+      "phone": "081234567892",
+      "address": "Jl. Pendidikan No. 12, Surabaya",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Ahmad",
+      "createdAt": "2023-01-03T10:00:00Z"
+    },
+    {
+      "id": "teacher4",
+      "name": "Dewi Kusuma",
+      "email": "dewi.kusuma@example.com",
+      "password": "password123",
+      "role": "teacher",
+      "phone": "081234567893",
+      "address": "Jl. Pahlawan No. 7, Yogyakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Dewi",
+      "createdAt": "2023-01-04T11:00:00Z"
+    }
+  ]
+} 

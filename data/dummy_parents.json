@@ -1,0 +1,148 @@
+{
+  "parents": [
+    {
+      "id": "parent1",
+      "name": "Agus Setiawan",
+      "email": "agus.setiawan@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765432",
+      "address": "Jl. Mawar No. 10, Jakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Agus",
+      "createdBy": "teacher1",
+      "createdAt": "2023-01-10T08:00:00Z"
+    },
+    {
+      "id": "parent2",
+      "name": "Rina Hidayat",
+      "email": "rina.hidayat@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765433",
+      "address": "Jl. Melati No. 15, Jakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Rina",
+      "createdBy": "teacher1",
+      "createdAt": "2023-01-11T09:00:00Z"
+    },
+    {
+      "id": "parent3",
+      "name": "Joko Purnomo",
+      "email": "joko.purnomo@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765434",
+      "address": "Jl. Anggrek No. 20, Bandung",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Joko",
+      "createdBy": "teacher2",
+      "createdAt": "2023-01-12T10:00:00Z"
+    },
+    {
+      "id": "parent4",
+      "name": "Maya Indah",
+      "email": "maya.indah@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765435",
+      "address": "Jl. Kamboja No. 25, Bandung",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Maya",
+      "createdBy": "teacher2",
+      "createdAt": "2023-01-13T11:00:00Z"
+    },
+    {
+      "id": "parent5",
+      "name": "Surya Wibowo",
+      "email": "surya.wibowo@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765436",
+      "address": "Jl. Dahlia No. 30, Surabaya",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Surya",
+      "createdBy": "teacher3",
+      "createdAt": "2023-01-14T12:00:00Z"
+    },
+    {
+      "id": "parent6",
+      "name": "Linda Susanto",
+      "email": "linda.susanto@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765437",
+      "address": "Jl. Tulip No. 35, Surabaya",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Linda",
+      "createdBy": "teacher3",
+      "createdAt": "2023-01-15T13:00:00Z"
+    },
+    {
+      "id": "parent7",
+      "name": "Dedi Sutrisno",
+      "email": "dedi.sutrisno@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765438",
+      "address": "Jl. Teratai No. 40, Yogyakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Dedi",
+      "createdBy": "teacher4",
+      "createdAt": "2023-01-16T14:00:00Z"
+    },
+    {
+      "id": "parent8",
+      "name": "Ratna Dewi",
+      "email": "ratna.dewi@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765439",
+      "address": "Jl. Kenanga No. 45, Yogyakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Ratna",
+      "createdBy": "teacher4",
+      "createdAt": "2023-01-17T15:00:00Z"
+    },
+    {
+      "id": "parent9",
+      "name": "Bambang Santoso",
+      "email": "bambang.santoso@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765440",
+      "address": "Jl. Bougenville No. 50, Jakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Bambang",
+      "createdBy": "teacher1",
+      "createdAt": "2023-01-18T16:00:00Z"
+    },
+    {
+      "id": "parent10",
+      "name": "Nita Pratiwi",
+      "email": "nita.pratiwi@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765441",
+      "address": "Jl. Cempaka No. 55, Bandung",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Nita",
+      "createdBy": "teacher2",
+      "createdAt": "2023-01-19T17:00:00Z"
+    },
+    {
+      "id": "parent11",
+      "name": "Tono Wijaya",
+      "email": "tono.wijaya@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765442",
+      "address": "Jl. Sakura No. 60, Surabaya",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Tono",
+      "createdBy": "teacher3",
+      "createdAt": "2023-01-20T18:00:00Z"
+    },
+    {
+      "id": "parent12",
+      "name": "Sari Indah",
+      "email": "sari.indah@example.com",
+      "password": "password123",
+      "role": "parent",
+      "phone": "081298765443",
+      "address": "Jl. Lily No. 65, Yogyakarta",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Sari",
+      "createdBy": "teacher4",
+      "createdAt": "2023-01-21T19:00:00Z"
+    }
+  ]
+} 

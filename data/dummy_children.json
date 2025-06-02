@@ -1,0 +1,166 @@
+{
+  "children": [
+    {
+      "id": "child1",
+      "name": "Andi Setiawan",
+      "age": 3,
+      "parentId": "parent1",
+      "teacherId": "teacher1",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Andi",
+      "createdAt": "2023-01-10T09:00:00Z"
+    },
+    {
+      "id": "child2",
+      "name": "Dina Setiawan",
+      "age": 5,
+      "parentId": "parent1",
+      "teacherId": "teacher1",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Dina",
+      "createdAt": "2023-01-10T09:30:00Z"
+    },
+    {
+      "id": "child3",
+      "name": "Roni Hidayat",
+      "age": 4,
+      "parentId": "parent2",
+      "teacherId": "teacher1",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Roni",
+      "createdAt": "2023-01-11T10:00:00Z"
+    },
+    {
+      "id": "child4",
+      "name": "Sinta Purnomo",
+      "age": 6,
+      "parentId": "parent3",
+      "teacherId": "teacher2",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Sinta",
+      "createdAt": "2023-01-12T11:00:00Z"
+    },
+    {
+      "id": "child5",
+      "name": "Bima Purnomo",
+      "age": 3,
+      "parentId": "parent3",
+      "teacherId": "teacher2",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Bima",
+      "createdAt": "2023-01-12T11:30:00Z"
+    },
+    {
+      "id": "child6",
+      "name": "Putri Indah",
+      "age": 5,
+      "parentId": "parent4",
+      "teacherId": "teacher2",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Putri",
+      "createdAt": "2023-01-13T12:00:00Z"
+    },
+    {
+      "id": "child7",
+      "name": "Reza Wibowo",
+      "age": 4,
+      "parentId": "parent5",
+      "teacherId": "teacher3",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Reza",
+      "createdAt": "2023-01-14T13:00:00Z"
+    },
+    {
+      "id": "child8",
+      "name": "Citra Susanto",
+      "age": 5,
+      "parentId": "parent6",
+      "teacherId": "teacher3",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Citra",
+      "createdAt": "2023-01-15T14:00:00Z"
+    },
+    {
+      "id": "child9",
+      "name": "Rizki Susanto",
+      "age": 3,
+      "parentId": "parent6",
+      "teacherId": "teacher3",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Rizki",
+      "createdAt": "2023-01-15T14:30:00Z"
+    },
+    {
+      "id": "child10",
+      "name": "Nina Sutrisno",
+      "age": 6,
+      "parentId": "parent7",
+      "teacherId": "teacher4",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Nina",
+      "createdAt": "2023-01-16T15:00:00Z"
+    },
+    {
+      "id": "child11",
+      "name": "Farhan Dewi",
+      "age": 4,
+      "parentId": "parent8",
+      "teacherId": "teacher4",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Farhan",
+      "createdAt": "2023-01-17T16:00:00Z"
+    },
+    {
+      "id": "child12",
+      "name": "Diana Santoso",
+      "age": 5,
+      "parentId": "parent9",
+      "teacherId": "teacher1",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Diana",
+      "createdAt": "2023-01-18T17:00:00Z"
+    },
+    {
+      "id": "child13",
+      "name": "Yoga Pratiwi",
+      "age": 3,
+      "parentId": "parent10",
+      "teacherId": "teacher2",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Yoga",
+      "createdAt": "2023-01-19T18:00:00Z"
+    },
+    {
+      "id": "child14",
+      "name": "Ayu Wijaya",
+      "age": 6,
+      "parentId": "parent11",
+      "teacherId": "teacher3",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Ayu",
+      "createdAt": "2023-01-20T19:00:00Z"
+    },
+    {
+      "id": "child15",
+      "name": "Dimas Indah",
+      "age": 4,
+      "parentId": "parent12",
+      "teacherId": "teacher4",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Dimas",
+      "createdAt": "2023-01-21T20:00:00Z"
+    },
+    {
+      "id": "child16",
+      "name": "Tasya Hidayat",
+      "age": 5,
+      "parentId": "parent2",
+      "teacherId": "teacher1",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Tasya",
+      "createdAt": "2023-01-22T09:00:00Z"
+    },
+    {
+      "id": "child17",
+      "name": "Arif Pratiwi",
+      "age": 3,
+      "parentId": "parent10",
+      "teacherId": "teacher2",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Arif",
+      "createdAt": "2023-01-23T10:00:00Z"
+    },
+    {
+      "id": "child18",
+      "name": "Mira Wijaya",
+      "age": 4,
+      "parentId": "parent11",
+      "teacherId": "teacher3",
+      "avatarUrl": "https://api.dicebear.com/9.x/thumbs/png?seed=Mira",
+      "createdAt": "2023-01-24T11:00:00Z"
+    }
+  ]
+} 

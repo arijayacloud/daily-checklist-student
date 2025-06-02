@@ -1,0 +1,484 @@
+{
+  "checklist_items": [
+    {
+      "id": "checklist1",
+      "childId": "child1",
+      "activityId": "activity1",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 4,
+        "notes": "Andi sangat antusias mengenal warna-warna. Sudah bisa menyebutkan warna merah dan biru dengan benar."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 5,
+        "processNotes": "Andi dapat mengikuti kegiatan dengan baik, mampu menyebutkan warna dengan benar.",
+        "learningOutcomes": "Dapat membedakan warna dasar dengan baik."
+      },
+      "customStepsUsed": ["teacher1"]
+    },
+    {
+      "id": "checklist2",
+      "childId": "child2",
+      "activityId": "activity2",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 20,
+        "engagement": 5,
+        "notes": "Dina sangat senang mengenal bentuk. Sudah bisa mengidentifikasi lingkaran dan persegi."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 5,
+        "processNotes": "Dina sangat aktif dalam kegiatan, dapat mengenali bentuk dengan baik.",
+        "learningOutcomes": "Mengenali bentuk dasar dan dapat mencocokkan dengan benda nyata."
+      },
+      "customStepsUsed": ["teacher1"]
+    },
+    {
+      "id": "checklist3",
+      "childId": "child3",
+      "activityId": "activity3",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 4,
+        "notes": "Roni menyukai cerita tentang hewan. Bisa menceritakan kembali beberapa bagian dari cerita."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 35,
+        "engagement": 4,
+        "processNotes": "Roni memperhatikan dengan baik saat cerita dibacakan, mampu merespon pertanyaan sederhana.",
+        "learningOutcomes": "Meningkatkan kemampuan mendengarkan dan memahami cerita."
+      },
+      "customStepsUsed": ["teacher2"]
+    },
+    {
+      "id": "checklist4",
+      "childId": "child4",
+      "activityId": "activity4",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 5,
+        "notes": "Sinta sangat kreatif dalam melipat kertas. Berhasil membuat perahu dan topi sederhana."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 5,
+        "processNotes": "Sinta menunjukkan kesabaran dan konsentrasi yang baik saat melipat kertas.",
+        "learningOutcomes": "Mengembangkan keterampilan motorik halus dan konsentrasi."
+      },
+      "customStepsUsed": ["teacher2"]
+    },
+    {
+      "id": "checklist5",
+      "childId": "child5",
+      "activityId": "activity5",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher3"]
+    },
+    {
+      "id": "checklist6",
+      "childId": "child6",
+      "activityId": "activity6",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "in-progress",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 20,
+        "engagement": 4,
+        "notes": "Putri sudah mulai mengenal angka 1-5 dengan baik. Masih perlu latihan untuk angka 6-10."
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher3"]
+    },
+    {
+      "id": "checklist7",
+      "childId": "child7",
+      "activityId": "activity7",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 5,
+        "notes": "Reza sangat suka menggambar dan mewarnai. Menggambar rumah dan matahari dengan warna-warna cerah."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 35,
+        "engagement": 5,
+        "processNotes": "Reza menunjukkan kreativitas yang tinggi dalam menggambar dan memilih warna.",
+        "learningOutcomes": "Mengembangkan kreativitas dan keterampilan motorik halus."
+      },
+      "customStepsUsed": ["teacher4"]
+    },
+    {
+      "id": "checklist8",
+      "childId": "child8",
+      "activityId": "activity8",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 5,
+        "notes": "Citra sangat suka bermain playdough. Membuat bentuk kue dan binatang sederhana."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 5,
+        "processNotes": "Citra menunjukkan imajinasi yang baik saat bermain playdough, dapat membuat bentuk yang beragam.",
+        "learningOutcomes": "Mengembangkan kreativitas dan keterampilan motorik halus."
+      },
+      "customStepsUsed": ["teacher4"]
+    },
+    {
+      "id": "checklist9",
+      "childId": "child9",
+      "activityId": "activity9",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher1"]
+    },
+    {
+      "id": "checklist10",
+      "childId": "child10",
+      "activityId": "activity10",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "in-progress",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 4,
+        "notes": "Nina sangat tertarik dengan eksperimen pencampuran warna. Bisa mengamati perubahan warna dengan baik."
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher2"]
+    },
+    {
+      "id": "checklist11",
+      "childId": "child11",
+      "activityId": "activity11",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 4,
+        "notes": "Farhan masih perlu bantuan dalam menggunakan gunting, tapi sangat suka menempel."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 4,
+        "processNotes": "Farhan menunjukkan peningkatan dalam menggunakan gunting, perlu pendampingan lebih lanjut.",
+        "learningOutcomes": "Mengembangkan koordinasi mata-tangan dan keterampilan motorik halus."
+      },
+      "customStepsUsed": ["teacher3"]
+    },
+    {
+      "id": "checklist12",
+      "childId": "child12",
+      "activityId": "activity12",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 20,
+        "engagement": 5,
+        "notes": "Diana sangat suka bernyanyi dan bergerak. Hafal lagu 'Kepala Pundak' dengan gerakannya."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 5,
+        "processNotes": "Diana aktif bernyanyi dan bergerak, mampu mengikuti gerakan dengan tepat.",
+        "learningOutcomes": "Mengembangkan kemampuan motorik kasar, ritme, dan kemampuan mengikuti instruksi."
+      },
+      "customStepsUsed": ["teacher4"]
+    },
+    {
+      "id": "checklist13",
+      "childId": "child13",
+      "activityId": "activity13",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher1"]
+    },
+    {
+      "id": "checklist14",
+      "childId": "child14",
+      "activityId": "activity14",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "in-progress",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 35,
+        "engagement": 5,
+        "notes": "Ayu sangat tertarik dengan berkebun. Sudah menanam biji kacang dan rajin menyiramnya."
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher2"]
+    },
+    {
+      "id": "checklist15",
+      "childId": "child15",
+      "activityId": "activity15",
+      "assignedDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674172800, "nanoseconds": 0},
+      "status": "completed",
+      "homeObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674000000, "nanoseconds": 0},
+        "duration": 25,
+        "engagement": 5,
+        "notes": "Dimas sangat suka mengenal hewan. Bisa menirukan suara berbagai hewan dengan baik."
+      },
+      "schoolObservation": {
+        "completed": true,
+        "completedAt": {"seconds": 1674086400, "nanoseconds": 0},
+        "duration": 30,
+        "engagement": 5,
+        "processNotes": "Dimas menunjukkan pengetahuan yang baik tentang berbagai jenis hewan dan habitatnya.",
+        "learningOutcomes": "Mengenal berbagai jenis hewan dan karakteristiknya."
+      },
+      "customStepsUsed": ["teacher3"]
+    },
+    {
+      "id": "checklist16",
+      "childId": "child1",
+      "activityId": "activity16",
+      "assignedDate": {"seconds": 1674000000, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674259200, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher4"]
+    },
+    {
+      "id": "checklist17",
+      "childId": "child2",
+      "activityId": "activity17",
+      "assignedDate": {"seconds": 1674000000, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674259200, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher1"]
+    },
+    {
+      "id": "checklist18",
+      "childId": "child3",
+      "activityId": "activity18",
+      "assignedDate": {"seconds": 1674000000, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674259200, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher2"]
+    },
+    {
+      "id": "checklist19",
+      "childId": "child4",
+      "activityId": "activity19",
+      "assignedDate": {"seconds": 1674000000, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674259200, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher3"]
+    },
+    {
+      "id": "checklist20",
+      "childId": "child5",
+      "activityId": "activity20",
+      "assignedDate": {"seconds": 1674000000, "nanoseconds": 0},
+      "dueDate": {"seconds": 1674259200, "nanoseconds": 0},
+      "status": "pending",
+      "homeObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "notes": ""
+      },
+      "schoolObservation": {
+        "completed": false,
+        "completedAt": null,
+        "duration": 0,
+        "engagement": 0,
+        "processNotes": "",
+        "learningOutcomes": ""
+      },
+      "customStepsUsed": ["teacher4"]
+    }
+  ]
+} 

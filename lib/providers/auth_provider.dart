@@ -242,4 +242,43 @@ class AuthProvider with ChangeNotifier {
       throw _handleAuthError(e);
     }
   }
+
+  // Fungsi untuk membuat akun guru
+  Future<void> createTeacherAccount(
+    String email,
+    String name,
+    String password, {
+    String phoneNumber = '',
+    String address = '',
+  }) async {
+    try {
+      // Buat akun pengguna dengan Firebase Auth
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final uid = userCredential.user!.uid;
+
+      // Buat dokumen pengguna di Firestore
+      await _firestore.collection('users').doc(uid).set({
+        'email': email,
+        'name': name,
+        'role': 'teacher',
+        'createdAt': FieldValue.serverTimestamp(),
+        'phoneNumber': phoneNumber,
+        'address': address,
+        'profilePicture': '',
+        'status': 'active',
+        'isTempPassword': false,
+      });
+
+      // Update data pengguna saat ini
+      _firebaseUser = userCredential.user;
+      await _fetchUserData(uid);
+    } catch (e) {
+      debugPrint('Create teacher account error: $e');
+      throw _handleAuthError(e);
+    }
+  }
 }

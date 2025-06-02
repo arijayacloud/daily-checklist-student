@@ -1,0 +1,400 @@
+{
+  "plans": [
+    {
+      "id": "plan1",
+      "teacherId": "teacher1",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengenalan Warna dan Bentuk",
+      "description": "Rencana aktivitas mingguan untuk mengenalkan warna dan bentuk dasar",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child1",
+      "activities": [
+        {
+          "activityId": "activity1",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity2",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity16",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity17",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan2",
+      "teacherId": "teacher1",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengenalan Warna dan Bentuk",
+      "description": "Rencana aktivitas mingguan untuk mengenalkan warna dan bentuk dasar",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child2",
+      "activities": [
+        {
+          "activityId": "activity2",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity1",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity17",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity16",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan3",
+      "teacherId": "teacher2",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengembangan Bahasa dan Kreativitas",
+      "description": "Rencana aktivitas mingguan untuk mengembangkan kemampuan bahasa dan kreativitas",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child3",
+      "activities": [
+        {
+          "activityId": "activity3",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity4",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity18",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity10",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan4",
+      "teacherId": "teacher2",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengembangan Bahasa dan Kreativitas",
+      "description": "Rencana aktivitas mingguan untuk mengembangkan kemampuan bahasa dan kreativitas",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child4",
+      "activities": [
+        {
+          "activityId": "activity4",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity3",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity10",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity19",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan5",
+      "teacherId": "teacher3",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengenalan Huruf dan Angka",
+      "description": "Rencana aktivitas mingguan untuk mengenalkan huruf dan angka",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child5",
+      "activities": [
+        {
+          "activityId": "activity5",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity6",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity15",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity20",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan6",
+      "teacherId": "teacher3",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengenalan Huruf dan Angka",
+      "description": "Rencana aktivitas mingguan untuk mengenalkan huruf dan angka",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child6",
+      "activities": [
+        {
+          "activityId": "activity6",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity5",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity11",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity15",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan7",
+      "teacherId": "teacher4",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengembangan Kreativitas dan Motorik",
+      "description": "Rencana aktivitas mingguan untuk mengembangkan kreativitas dan kemampuan motorik",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child7",
+      "activities": [
+        {
+          "activityId": "activity7",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity8",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity12",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity16",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan8",
+      "teacherId": "teacher4",
+      "type": "weekly",
+      "title": "Rencana Mingguan - Pengembangan Kreativitas dan Motorik",
+      "description": "Rencana aktivitas mingguan untuk mengembangkan kreativitas dan kemampuan motorik",
+      "startDate": {"seconds": 1673827200, "nanoseconds": 0},
+      "endDate": {"seconds": 1674432000, "nanoseconds": 0},
+      "childId": "child8",
+      "activities": [
+        {
+          "activityId": "activity8",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "09:00",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity7",
+          "scheduledDate": {"seconds": 1674000000, "nanoseconds": 0},
+          "scheduledTime": "10:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity16",
+          "scheduledDate": {"seconds": 1674086400, "nanoseconds": 0},
+          "scheduledTime": "09:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity12",
+          "scheduledDate": {"seconds": 1674172800, "nanoseconds": 0},
+          "scheduledTime": "11:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan9",
+      "teacherId": "teacher1",
+      "type": "daily",
+      "title": "Rencana Harian - Pengenalan Bermain Peran",
+      "description": "Rencana aktivitas harian untuk bermain peran",
+      "startDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "endDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "childId": "child9",
+      "activities": [
+        {
+          "activityId": "activity9",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "08:30",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity13",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "10:00",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity17",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "13:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    },
+    {
+      "id": "plan10",
+      "teacherId": "teacher2",
+      "type": "daily",
+      "title": "Rencana Harian - Eksperimen Sains",
+      "description": "Rencana aktivitas harian untuk eksperimen sains sederhana",
+      "startDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "endDate": {"seconds": 1673913600, "nanoseconds": 0},
+      "childId": "child10",
+      "activities": [
+        {
+          "activityId": "activity10",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "08:30",
+          "reminder": true,
+          "completed": true
+        },
+        {
+          "activityId": "activity14",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "10:00",
+          "reminder": true,
+          "completed": false
+        },
+        {
+          "activityId": "activity18",
+          "scheduledDate": {"seconds": 1673913600, "nanoseconds": 0},
+          "scheduledTime": "13:00",
+          "reminder": true,
+          "completed": false
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0}
+    }
+  ]
+} 

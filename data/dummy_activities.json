@@ -1,0 +1,444 @@
+{
+  "activities": [
+    {
+      "id": "activity1",
+      "title": "Mengenal Warna",
+      "description": "Aktivitas mengenali warna-warna dasar dan menyebutkan benda-benda yang memiliki warna tersebut.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 4},
+      "customSteps": [
+        {
+          "teacherId": "teacher1",
+          "steps": [
+            "Siapkan kartu warna atau benda dengan warna dasar (merah, kuning, biru, hijau)",
+            "Tunjukkan kartu satu persatu dan sebutkan nama warnanya",
+            "Minta anak untuk mengulang nama warna tersebut",
+            "Minta anak menyebutkan benda di sekitar yang memiliki warna sama",
+            "Puji anak setiap kali berhasil menyebutkan dengan benar"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1672531200, "nanoseconds": 0},
+      "createdBy": "teacher1"
+    },
+    {
+      "id": "activity2",
+      "title": "Mengenal Bentuk",
+      "description": "Aktivitas mengenali bentuk-bentuk dasar seperti lingkaran, segitiga, persegi, dan persegi panjang.",
+      "environment": "School",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 4},
+      "customSteps": [
+        {
+          "teacherId": "teacher1",
+          "steps": [
+            "Siapkan potongan berbagai bentuk dasar",
+            "Tunjukkan bentuk satu persatu dan sebutkan namanya",
+            "Minta anak untuk memegang dan merasakan bentuknya",
+            "Minta anak menyebutkan benda di sekitar yang memiliki bentuk serupa",
+            "Buat permainan mencocokkan bentuk dengan tempat yang sesuai"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1672617600, "nanoseconds": 0},
+      "createdBy": "teacher1"
+    },
+    {
+      "id": "activity3",
+      "title": "Bercerita dan Bertukar Pendapat",
+      "description": "Aktivitas bercerita dan mendiskusikan cerita bersama untuk mengembangkan kemampuan berbahasa.",
+      "environment": "Both",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher2",
+          "steps": [
+            "Pilih buku cerita dengan gambar yang menarik",
+            "Baca cerita dengan ekspresi dan intonasi yang jelas",
+            "Ajak anak untuk menceritakan kembali bagian yang mereka ingat",
+            "Tanyakan pendapat anak tentang tokoh atau kejadian dalam cerita",
+            "Diskusikan pesan moral dari cerita tersebut"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1672704000, "nanoseconds": 0},
+      "createdBy": "teacher2"
+    },
+    {
+      "id": "activity4",
+      "title": "Melipat Kertas (Origami)",
+      "description": "Aktivitas melipat kertas untuk membuat bentuk-bentuk sederhana.",
+      "environment": "Both",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher2",
+          "steps": [
+            "Siapkan kertas origami warna-warni",
+            "Mulai dengan lipatan sederhana seperti membuat topi atau perahu",
+            "Demonstrasikan dengan perlahan setiap langkah pelipatan",
+            "Bantu anak jika kesulitan, tapi biarkan mereka mencoba sendiri",
+            "Ajak anak untuk menghias hasil lipatan mereka"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1672790400, "nanoseconds": 0},
+      "createdBy": "teacher2"
+    },
+    {
+      "id": "activity5",
+      "title": "Mengenal Huruf",
+      "description": "Aktivitas mengenali huruf-huruf alfabet dan bunyinya.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 5},
+      "customSteps": [
+        {
+          "teacherId": "teacher3",
+          "steps": [
+            "Siapkan kartu huruf A-Z atau buku alfabet bergambar",
+            "Tunjukkan huruf satu persatu dan sebutkan bunyinya",
+            "Minta anak untuk mengulang bunyi huruf",
+            "Ajak anak menemukan benda yang namanya dimulai dengan huruf tertentu",
+            "Buat permainan mencari huruf yang tersembunyi di ruangan"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1672876800, "nanoseconds": 0},
+      "createdBy": "teacher3"
+    },
+    {
+      "id": "activity6",
+      "title": "Mengenal Angka",
+      "description": "Aktivitas mengenali angka 1-10 dan konsep berhitung dasar.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 5},
+      "customSteps": [
+        {
+          "teacherId": "teacher3",
+          "steps": [
+            "Siapkan kartu angka 1-10",
+            "Tunjukkan angka satu persatu dan sebutkan namanya",
+            "Minta anak untuk menghitung benda sesuai dengan angka yang ditunjukkan",
+            "Ajak anak bernyanyi lagu tentang angka",
+            "Bermain permainan sederhana dengan mencocokkan jumlah benda dengan angka"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1672963200, "nanoseconds": 0},
+      "createdBy": "teacher3"
+    },
+    {
+      "id": "activity7",
+      "title": "Menggambar dan Mewarnai",
+      "description": "Aktivitas menggambar bentuk sederhana dan mewarnai untuk mengembangkan kreativitas.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher4",
+          "steps": [
+            "Siapkan kertas gambar dan crayon/pensil warna",
+            "Ajak anak menggambar bentuk sederhana seperti rumah, pohon, atau matahari",
+            "Biarkan anak mewarnai gambar sesuai kreativitas mereka",
+            "Tanyakan tentang gambar yang mereka buat",
+            "Pajang hasil karya anak di tempat yang mereka bisa lihat"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673049600, "nanoseconds": 0},
+      "createdBy": "teacher4"
+    },
+    {
+      "id": "activity8",
+      "title": "Bermain Playdough",
+      "description": "Aktivitas bermain playdough untuk mengembangkan motorik halus dan kreativitas.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher4",
+          "steps": [
+            "Siapkan playdough berbagai warna",
+            "Ajarkan anak cara meremas, menekan, dan membentuk playdough",
+            "Buat bentuk sederhana seperti bola, ular, atau kue",
+            "Ajak anak membuat bentuk sesuai imajinasi mereka",
+            "Diskusikan bentuk yang telah dibuat bersama anak"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673136000, "nanoseconds": 0},
+      "createdBy": "teacher4"
+    },
+    {
+      "id": "activity9",
+      "title": "Bermain Peran",
+      "description": "Aktivitas bermain peran untuk mengembangkan kemampuan sosial dan imajinasi.",
+      "environment": "School",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher1",
+          "steps": [
+            "Siapkan kostum sederhana atau alat peraga untuk peran tertentu",
+            "Diskusikan peran yang akan dimainkan (dokter, guru, penjual, dll)",
+            "Berikan contoh dialog sederhana",
+            "Biarkan anak berimprovisasi dengan peran mereka",
+            "Diskusikan tentang pengalaman bermain peran setelah selesai"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673222400, "nanoseconds": 0},
+      "createdBy": "teacher1"
+    },
+    {
+      "id": "activity10",
+      "title": "Eksperimen Sains Sederhana",
+      "description": "Aktivitas eksperimen sains sederhana untuk mengenalkan konsep ilmiah dasar.",
+      "environment": "Both",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher2",
+          "steps": [
+            "Siapkan bahan eksperimen (misal: air, minyak, pewarna makanan)",
+            "Jelaskan secara sederhana apa yang akan diamati",
+            "Lakukan eksperimen bersama dengan anak",
+            "Tanyakan pada anak apa yang mereka lihat terjadi",
+            "Jelaskan fenomena yang terjadi dengan bahasa sederhana"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673308800, "nanoseconds": 0},
+      "createdBy": "teacher2"
+    },
+    {
+      "id": "activity11",
+      "title": "Memotong dan Menempel",
+      "description": "Aktivitas memotong dan menempel untuk mengembangkan keterampilan motorik halus.",
+      "environment": "School",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher3",
+          "steps": [
+            "Siapkan gunting anak-anak, kertas warna, dan lem",
+            "Ajari anak cara memegang dan menggunakan gunting dengan aman",
+            "Mulai dengan pola sederhana seperti garis lurus atau zigzag",
+            "Minta anak menempel potongan kertas pada kertas lain membentuk kolase",
+            "Beri pujian atas hasil karya mereka"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673395200, "nanoseconds": 0},
+      "createdBy": "teacher3"
+    },
+    {
+      "id": "activity12",
+      "title": "Bernyanyi dan Bergerak",
+      "description": "Aktivitas bernyanyi sambil bergerak untuk mengembangkan kemampuan musik dan motorik kasar.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher4",
+          "steps": [
+            "Pilih lagu anak-anak yang menyenangkan dan mudah diikuti",
+            "Demonstrasikan gerakan yang sesuai dengan lirik lagu",
+            "Ajak anak bernyanyi bersama sambil menirukan gerakan",
+            "Beri kesempatan anak untuk membuat gerakan mereka sendiri",
+            "Ulangi lagu beberapa kali hingga anak hafal"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673481600, "nanoseconds": 0},
+      "createdBy": "teacher4"
+    },
+    {
+      "id": "activity13",
+      "title": "Mengenal Anggota Tubuh",
+      "description": "Aktivitas mengenali anggota tubuh dan fungsinya.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 4},
+      "customSteps": [
+        {
+          "teacherId": "teacher1",
+          "steps": [
+            "Gunakan gambar atau boneka untuk menunjukkan anggota tubuh",
+            "Sebutkan nama anggota tubuh dan fungsinya dengan bahasa sederhana",
+            "Ajak anak menunjuk bagian tubuh mereka sendiri",
+            "Bernyanyi lagu tentang anggota tubuh (misal: Kepala Pundak)",
+            "Bermain permainan 'Simon Says' dengan instruksi menyentuh bagian tubuh"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673568000, "nanoseconds": 0},
+      "createdBy": "teacher1"
+    },
+    {
+      "id": "activity14",
+      "title": "Berkebun Sederhana",
+      "description": "Aktivitas menanam dan merawat tanaman sederhana untuk mengenalkan anak pada alam.",
+      "environment": "Both",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher2",
+          "steps": [
+            "Siapkan pot kecil, tanah, dan biji tanaman yang mudah tumbuh",
+            "Jelaskan tentang kebutuhan tanaman (air, sinar matahari, tanah)",
+            "Bantu anak mengisi pot dengan tanah dan menanam biji",
+            "Buat jadwal menyiram tanaman bersama anak",
+            "Amati pertumbuhan tanaman dan diskusikan perubahan yang terjadi"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673654400, "nanoseconds": 0},
+      "createdBy": "teacher2"
+    },
+    {
+      "id": "activity15",
+      "title": "Mengenal Hewan",
+      "description": "Aktivitas mengenali berbagai jenis hewan dan karakteristiknya.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 5},
+      "customSteps": [
+        {
+          "teacherId": "teacher3",
+          "steps": [
+            "Gunakan buku bergambar atau kartu bergambar hewan",
+            "Tunjukkan gambar hewan dan sebutkan namanya",
+            "Ajak anak menirukan suara hewan tersebut",
+            "Diskusikan ciri khas hewan (memiliki bulu, sirip, sayap, dll)",
+            "Bermain permainan menebak hewan dari ciri-ciri atau suaranya"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673740800, "nanoseconds": 0},
+      "createdBy": "teacher3"
+    },
+    {
+      "id": "activity16",
+      "title": "Bermain Balok",
+      "description": "Aktivitas bermain balok untuk mengembangkan kreativitas dan kemampuan spasial.",
+      "environment": "School",
+      "difficulty": "Medium",
+      "ageRange": {"min": 3, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher4",
+          "steps": [
+            "Siapkan berbagai bentuk dan ukuran balok",
+            "Ajak anak mengeksplorasi balok secara bebas",
+            "Berikan tantangan seperti membuat menara setinggi mungkin",
+            "Ajak anak membuat bangunan tertentu (rumah, jembatan, dll)",
+            "Diskusikan struktur yang telah dibuat bersama anak"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673827200, "nanoseconds": 0},
+      "createdBy": "teacher4"
+    },
+    {
+      "id": "activity17",
+      "title": "Mengenal Cuaca",
+      "description": "Aktivitas mengenali berbagai jenis cuaca dan perbedaannya.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 5},
+      "customSteps": [
+        {
+          "teacherId": "teacher1",
+          "steps": [
+            "Gunakan gambar atau jendela untuk mengamati cuaca hari ini",
+            "Diskusikan karakteristik cuaca (cerah, hujan, berawan, dll)",
+            "Ajak anak menggambar cuaca favorit mereka",
+            "Bicara tentang pakaian yang sesuai untuk berbagai cuaca",
+            "Membuat jurnal cuaca sederhana untuk diamati setiap hari"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1673913600, "nanoseconds": 0},
+      "createdBy": "teacher1"
+    },
+    {
+      "id": "activity18",
+      "title": "Meronce Manik-manik",
+      "description": "Aktivitas meronce manik-manik untuk mengembangkan koordinasi mata-tangan.",
+      "environment": "School",
+      "difficulty": "Medium",
+      "ageRange": {"min": 4, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher2",
+          "steps": [
+            "Siapkan manik-manik besar dengan lubang yang cukup besar dan tali",
+            "Demonstrasikan cara memasukkan tali ke dalam lubang manik-manik",
+            "Buat pola sederhana jika anak sudah bisa meronce dasar",
+            "Biarkan anak berkreasi dengan warna dan urutan manik-manik",
+            "Jadikan hasil roncean sebagai gelang atau kalung sederhana"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0},
+      "createdBy": "teacher2"
+    },
+    {
+      "id": "activity19",
+      "title": "Mengenal Alat Transportasi",
+      "description": "Aktivitas mengenali berbagai jenis alat transportasi dan fungsinya.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 5},
+      "customSteps": [
+        {
+          "teacherId": "teacher3",
+          "steps": [
+            "Gunakan buku bergambar atau mainan alat transportasi",
+            "Tunjukkan dan sebutkan nama alat transportasi (mobil, pesawat, kapal, dll)",
+            "Diskusikan di mana alat transportasi tersebut beroperasi (darat, laut, udara)",
+            "Ajak anak menirukan suara alat transportasi",
+            "Bermain permainan mengelompokkan transportasi berdasarkan jenisnya"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1674086400, "nanoseconds": 0},
+      "createdBy": "teacher3"
+    },
+    {
+      "id": "activity20",
+      "title": "Bermain Petak Umpet",
+      "description": "Aktivitas bermain petak umpet untuk mengembangkan kemampuan sosial dan kognitif.",
+      "environment": "Both",
+      "difficulty": "Easy",
+      "ageRange": {"min": 3, "max": 6},
+      "customSteps": [
+        {
+          "teacherId": "teacher4",
+          "steps": [
+            "Jelaskan aturan bermain petak umpet dengan sederhana",
+            "Tentukan area yang aman untuk bersembunyi",
+            "Lakukan hitung mundur dengan suara keras saat jaga",
+            "Ajari anak untuk bersembunyi dengan baik tapi tetap aman",
+            "Diskusikan strategi bersembunyi setelah permainan selesai"
+          ]
+        }
+      ],
+      "createdAt": {"seconds": 1674172800, "nanoseconds": 0},
+      "createdBy": "teacher4"
+    }
+  ]
+} 

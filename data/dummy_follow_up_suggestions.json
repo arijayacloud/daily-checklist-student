@@ -1,0 +1,104 @@
+{
+  "follow_up_suggestions": [
+    {
+      "id": "followup1",
+      "childId": "child1",
+      "completedActivityId": "activity1",
+      "suggestedActivityId": "activity2",
+      "autoAssigned": true,
+      "assignedDate": {"seconds": 1674086400, "nanoseconds": 0},
+      "status": "pending",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup2",
+      "childId": "child2",
+      "completedActivityId": "activity2",
+      "suggestedActivityId": "activity17",
+      "autoAssigned": true,
+      "assignedDate": {"seconds": 1674086400, "nanoseconds": 0},
+      "status": "assigned",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup3",
+      "childId": "child3",
+      "completedActivityId": "activity3",
+      "suggestedActivityId": "activity18",
+      "autoAssigned": true,
+      "assignedDate": {"seconds": 1674086400, "nanoseconds": 0},
+      "status": "assigned",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup4",
+      "childId": "child4",
+      "completedActivityId": "activity4",
+      "suggestedActivityId": "activity10",
+      "autoAssigned": false,
+      "assignedDate": null,
+      "status": "suggested",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup5",
+      "childId": "child7",
+      "completedActivityId": "activity7",
+      "suggestedActivityId": "activity8",
+      "autoAssigned": true,
+      "assignedDate": {"seconds": 1674086400, "nanoseconds": 0},
+      "status": "assigned",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup6",
+      "childId": "child8",
+      "completedActivityId": "activity8",
+      "suggestedActivityId": "activity7",
+      "autoAssigned": true,
+      "assignedDate": {"seconds": 1674086400, "nanoseconds": 0},
+      "status": "assigned",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup7",
+      "childId": "child11",
+      "completedActivityId": "activity11",
+      "suggestedActivityId": "activity15",
+      "autoAssigned": false,
+      "assignedDate": null,
+      "status": "suggested",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup8",
+      "childId": "child12",
+      "completedActivityId": "activity12",
+      "suggestedActivityId": "activity7",
+      "autoAssigned": false,
+      "assignedDate": null,
+      "status": "suggested",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup9",
+      "childId": "child15",
+      "completedActivityId": "activity15",
+      "suggestedActivityId": "activity19",
+      "autoAssigned": false,
+      "assignedDate": null,
+      "status": "suggested",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    },
+    {
+      "id": "followup10",
+      "childId": "child10",
+      "completedActivityId": "activity10",
+      "suggestedActivityId": "activity14",
+      "autoAssigned": true,
+      "assignedDate": {"seconds": 1674086400, "nanoseconds": 0},
+      "status": "assigned",
+      "createdAt": {"seconds": 1674000000, "nanoseconds": 0}
+    }
+  ]
+} 
