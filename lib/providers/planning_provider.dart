@@ -154,7 +154,7 @@ class PlanningProvider with ChangeNotifier {
     }
   }
 
-  Future<void> createWeeklyPlan({
+  Future<String> createWeeklyPlan({
     required DateTime startDate,
     String? childId,
     required List<PlannedActivity> activities,
@@ -189,11 +189,14 @@ class PlanningProvider with ChangeNotifier {
       }
 
       await fetchPlans();
+
+      return planId;
     } catch (e) {
       debugPrint('Error creating weekly plan: $e');
       _error = 'Failed to create plan. Please try again.';
       _isLoading = false;
       notifyListeners();
+      throw e;
     }
   }
 

@@ -52,26 +52,6 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Murid Saya'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddChildScreen()),
-              );
-            },
-            tooltip: 'Tambah Murid',
-          ),
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: () => authProvider.signOut(),
-            tooltip: 'Keluar',
-          ),
-        ],
-      ),
       body: Column(
         children: [_buildSearchBar(), Expanded(child: _buildChildrenGrid())],
       ),

@@ -297,16 +297,6 @@ class _ParentsScreenState extends State<ParentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kelola Orang Tua'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchParents,
-            tooltip: 'Muat Ulang',
-          ),
-        ],
-      ),
       body: Column(
         children: [
           // Search & Filter Bar

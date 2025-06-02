@@ -68,16 +68,16 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               : AppBar(
                 title: _getAppBarTitle(),
                 actions: [
-                  // Progress Dashboard button
-                  IconButton(
-                    icon: const Icon(Icons.dashboard),
-                    tooltip: 'Dashboard Perkembangan Peserta Didik',
-                    onPressed: () {
-                      Navigator.of(
-                        context,
-                      ).pushNamed(ProgressDashboard.routeName);
-                    },
-                  ),
+                  // // Progress Dashboard button
+                  // IconButton(
+                  //   icon: const Icon(Icons.dashboard),
+                  //   tooltip: 'Dashboard Perkembangan Peserta Didik',
+                  //   onPressed: () {
+                  //     Navigator.of(
+                  //       context,
+                  //     ).pushNamed(ProgressDashboard.routeName);
+                  //   },
+                  // ),
                   const NotificationBadge(),
                   IconButton(
                     icon: const Icon(Icons.add_alert),

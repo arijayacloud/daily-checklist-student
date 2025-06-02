@@ -68,14 +68,55 @@ class _AddParentScreenState extends State<AddParentScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Akun orang tua berhasil dibuat'),
-          backgroundColor: AppTheme.success,
-        ),
+      // Tampilkan dialog sukses dengan informasi
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (ctx) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppTheme.success),
+                  const SizedBox(width: 8),
+                  const Text('Berhasil'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Akun orang tua berhasil dibuat:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Email: ${_emailController.text.trim()}'),
+                  Text('Nama: ${_nameController.text.trim()}'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Catatan: Orang tua akan diminta untuk mengubah password saat pertama kali login.',
+                    style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Selesai'),
+                ),
+              ],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
       );
-
-      Navigator.pop(context);
     } catch (e) {
       setState(() {
         _isSubmitting = false;

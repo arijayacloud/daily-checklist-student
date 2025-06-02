@@ -42,18 +42,6 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perencanaan Mingguan'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined),
-            tooltip: 'Ringkasan Mingguan',
-            onPressed: () {
-              _showWeeklySummary(context);
-            },
-          ),
-        ],
-      ),
       body: Column(
         children: [_buildCalendar(), Expanded(child: _buildDailySchedule())],
       ),
@@ -643,6 +631,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                       plannedActivity.activityId,
                       planningProvider,
                       checklistProvider,
+                      activity,
                     );
                   },
                   child: const Text('Pilih Anak'),
@@ -680,14 +669,55 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         plannedActivity.activityId,
         planningProvider,
         checklistProvider,
+        activity,
       );
     } else {
+      // Tampilkan dialog konfirmasi
+      final childProvider = Provider.of<ChildProvider>(context, listen: false);
+      final child = childProvider.getChildById(planData.childId!);
+      final childName = child?.name ?? 'Anak';
+
+      final shouldAdd = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Tambahkan ke Checklist'),
+            content: Text(
+              'Tambahkan aktivitas "${activity.title}" ke checklist $childName?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('BATAL'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('TAMBAHKAN'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldAdd != true) return;
+
       try {
-        await planningProvider.createChecklistFromActivity(
-          activityId: plannedActivity.activityId,
+        // Dapatkan langkah-langkah kustom dari aktivitas
+        List<String> customStepsUsed = [];
+        if (activity.customSteps.isNotEmpty) {
+          customStepsUsed = activity.customSteps.first.steps;
+        }
+
+        // Tambahkan ke checklist
+        await checklistProvider.assignActivity(
           childId: planData.childId!,
-          checklistProvider: checklistProvider,
+          activityId: plannedActivity.activityId,
+          customStepsUsed: customStepsUsed,
+          dueDate: plannedActivity.scheduledDate,
         );
+
+        // Buat notifikasi untuk parent
+        await _createNotificationForParent(planData.childId!, activity.title);
 
         if (!mounted) return;
 
@@ -705,11 +735,49 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
     }
   }
 
+  Future<void> _createNotificationForParent(
+    String childId,
+    String activityTitle,
+  ) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Dapatkan informasi anak
+      final childDoc =
+          await firestore.collection('children').doc(childId).get();
+      if (!childDoc.exists) return;
+
+      final childData = childDoc.data();
+      final String parentId = childData?['parentId'] ?? '';
+      final String childName = childData?['name'] ?? 'Anak';
+
+      if (parentId.isEmpty) return;
+
+      // Buat notifikasi
+      await firestore.collection('notifications').add({
+        'userId': parentId,
+        'title': 'Aktivitas Baru di Checklist',
+        'message':
+            'Aktivitas "$activityTitle" telah ditambahkan ke checklist ${childName}',
+        'type': 'new_checklist_item',
+        'relatedId': childId,
+        'isRead': false,
+        'createdAt': Timestamp.now(),
+      });
+
+      debugPrint('Notification created for parent $parentId');
+    } catch (e) {
+      debugPrint('Error creating notification: $e');
+      // Tidak perlu throw error agar proses utama tetap berjalan
+    }
+  }
+
   Future<void> _showChildSelectionDialog(
     BuildContext context,
     String activityId,
     PlanningProvider planningProvider,
     ChecklistProvider checklistProvider,
+    ActivityModel activity,
   ) async {
     return showDialog(
       context: context,
@@ -737,10 +805,25 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                           Navigator.pop(context);
 
                           try {
-                            await planningProvider.createChecklistFromActivity(
-                              activityId: activityId,
+                            // Dapatkan langkah-langkah kustom dari aktivitas
+                            List<String> customStepsUsed = [];
+                            if (activity.customSteps.isNotEmpty) {
+                              customStepsUsed =
+                                  activity.customSteps.first.steps;
+                            }
+
+                            // Tambahkan ke checklist
+                            await checklistProvider.assignActivity(
                               childId: child.id,
-                              checklistProvider: checklistProvider,
+                              activityId: activityId,
+                              customStepsUsed: customStepsUsed,
+                              dueDate: null,
+                            );
+
+                            // Buat notifikasi untuk parent
+                            await _createNotificationForParent(
+                              child.id,
+                              activity.title,
                             );
 
                             if (!mounted) return;
@@ -802,135 +885,6 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
       default:
         return Colors.grey;
     }
-  }
-
-  void _showWeeklySummary(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Memungkinkan bottom sheet lebih tinggi
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder:
-          (context) => Consumer2<PlanningProvider, ActivityProvider>(
-            builder: (context, planningProvider, activityProvider, child) {
-              // Dapatkan tanggal awal minggu (Senin)
-              final now = DateTime.now();
-              final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-
-              // Hitung jumlah aktivitas per hari selama seminggu
-              final Map<int, int> activitiesPerDay = {};
-              for (int i = 0; i < 7; i++) {
-                final date = startOfWeek.add(Duration(days: i));
-                final activities = planningProvider.getActivitiesForDate(date);
-                activitiesPerDay[i] = activities.length;
-              }
-
-              // Cari hari dengan aktivitas terbanyak
-              int maxActivities = 0;
-              for (final count in activitiesPerDay.values) {
-                if (count > maxActivities) maxActivities = count;
-              }
-
-              return DraggableScrollableSheet(
-                initialChildSize: 0.5, // 50% dari layar
-                minChildSize: 0.3, // Minimum 30% dari layar
-                maxChildSize: 0.85, // Maximum 85% dari layar
-                expand: false,
-                builder: (context, scrollController) {
-                  return SingleChildScrollView(
-                    controller: scrollController,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Ringkasan Minggu Ini',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primary,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            height: 200, // Fixed height untuk grafik
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: List.generate(7, (index) {
-                                final date = startOfWeek.add(
-                                  Duration(days: index),
-                                );
-                                final activityCount =
-                                    activitiesPerDay[index] ?? 0;
-                                final barHeight =
-                                    maxActivities > 0
-                                        ? 150 * (activityCount / maxActivities)
-                                        : 0.0;
-
-                                return Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      activityCount.toString(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppTheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      width: 30,
-                                      height: barHeight,
-                                      decoration: BoxDecoration(
-                                        color: _getBarColor(index, now),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      DateFormat('E', 'id_ID').format(date),
-                                      style: TextStyle(
-                                        color: _getBarColor(index, now),
-                                        fontWeight:
-                                            isSameDay(date, now)
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildWeeklyProgress(planningProvider),
-                          const SizedBox(height: 24),
-                          _buildDailyActivitiesList(
-                            planningProvider,
-                            startOfWeek,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-    );
   }
 
   Widget _buildWeeklyProgress(PlanningProvider provider) {

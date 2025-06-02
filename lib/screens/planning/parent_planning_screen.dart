@@ -162,11 +162,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         ],
       ),
       body: Column(
-        children: [
-          _buildCalendar(),
-          _buildActivitySummary(),
-          Expanded(child: _buildDailySchedule()),
-        ],
+        children: [_buildCalendar(), Expanded(child: _buildDailySchedule())],
       ),
     );
   }
@@ -277,89 +273,6 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     }
 
     return eventDates;
-  }
-
-  Widget _buildActivitySummary() {
-    return Consumer<PlanningProvider>(
-      builder: (context, planningProvider, child) {
-        // Hitung total aktivitas untuk hari ini
-        final todayActivities = planningProvider.getActivitiesForDate(
-          DateTime.now(),
-        );
-        final userId =
-            Provider.of<AuthProvider>(context, listen: false).user?.id;
-
-        if (userId == null) return const SizedBox.shrink();
-
-        // Filter aktivitas untuk anak dari orangtua ini saja
-        final filteredActivities =
-            todayActivities.where((activity) {
-              final plan = planningProvider.getPlanById(activity.planId ?? '');
-              return plan?.childId == null || plan?.childId == userId;
-            }).toList();
-
-        final completedCount =
-            filteredActivities.where((a) => a.completed).length;
-        final pendingCount = filteredActivities.length - completedCount;
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        color: AppTheme.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Aktivitas Hari Ini',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primary,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem(
-                        filteredActivities.length.toString(),
-                        'Total',
-                        AppTheme.primary,
-                      ),
-                      _buildStatItem(
-                        completedCount.toString(),
-                        'Selesai',
-                        AppTheme.success,
-                      ),
-                      _buildStatItem(
-                        pendingCount.toString(),
-                        'Belum',
-                        Colors.orange,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Widget _buildStatItem(String value, String label, Color color) {

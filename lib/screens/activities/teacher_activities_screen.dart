@@ -109,18 +109,14 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Aktivitas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
-            tooltip: 'Filter',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [_buildSearchBar(), Expanded(child: _buildActivityList())],
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildSearchBar(),
+            _buildFilterBar(),
+            Expanded(child: _buildActivityList()),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -136,7 +132,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
@@ -166,6 +162,53 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
             _searchQuery = value;
           });
         },
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          Text(
+            'Filter: ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip(
+                    label:
+                        _difficultyFilter == 'Semua'
+                            ? 'Semua Tingkat'
+                            : _difficultyFilter,
+                    isSelected: _difficultyFilter != 'Semua',
+                    onSelected: (_) => _showFilterDialog(),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    label: 'Usia: $_minAgeFilter-$_maxAgeFilter tahun',
+                    isSelected: _minAgeFilter != 3 || _maxAgeFilter != 6,
+                    onSelected: (_) => _showFilterDialog(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter Detail',
+            iconSize: 20,
+          ),
+        ],
       ),
     );
   }

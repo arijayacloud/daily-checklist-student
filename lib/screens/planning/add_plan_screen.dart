@@ -9,6 +9,7 @@ import '/models/planning_model.dart';
 import '/providers/activity_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/planning_provider.dart';
+import '/providers/checklist_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class AddPlanScreen extends StatefulWidget {
@@ -575,7 +576,8 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             );
           }).toList();
 
-      await Provider.of<PlanningProvider>(
+      // Simpan rencana
+      final String planId = await Provider.of<PlanningProvider>(
         context,
         listen: false,
       ).createWeeklyPlan(
@@ -583,6 +585,11 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
         childId: _selectedChildId,
         activities: plannedActivities,
       );
+
+      // Jika ada childId yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
+      if (_selectedChildId != null) {
+        await _confirmAddToChecklist(planId, plannedActivities);
+      }
 
       if (!mounted) return;
 
@@ -602,6 +609,96 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
       );
+    }
+  }
+
+  Future<void> _confirmAddToChecklist(
+    String planId,
+    List<PlannedActivity> activities,
+  ) async {
+    if (!mounted) return;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tambahkan ke Checklist'),
+          content: const Text(
+            'Apakah Anda ingin langsung menambahkan aktivitas-aktivitas ini ke checklist anak?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('TIDAK'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('YA'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      await _addActivitiesToChecklist(activities);
+    }
+  }
+
+  Future<void> _addActivitiesToChecklist(
+    List<PlannedActivity> activities,
+  ) async {
+    if (_selectedChildId == null) return;
+
+    final checklistProvider = Provider.of<ChecklistProvider>(
+      context,
+      listen: false,
+    );
+
+    final activityProvider = Provider.of<ActivityProvider>(
+      context,
+      listen: false,
+    );
+
+    try {
+      // Tambahkan setiap aktivitas ke checklist
+      for (final activity in activities) {
+        final activityModel = activityProvider.getActivityById(
+          activity.activityId,
+        );
+        if (activityModel == null) continue;
+
+        // Dapatkan langkah-langkah kustom dari aktivitas
+        List<String> customStepsUsed = [];
+        if (activityModel.customSteps.isNotEmpty) {
+          customStepsUsed = activityModel.customSteps.first.steps;
+        }
+
+        await checklistProvider.assignActivity(
+          childId: _selectedChildId!,
+          activityId: activity.activityId,
+          customStepsUsed: customStepsUsed,
+          dueDate: activity.scheduledDate,
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aktivitas berhasil ditambahkan ke checklist'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error menambahkan ke checklist: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
     }
   }
 
