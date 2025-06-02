@@ -609,7 +609,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    activity.difficulty,
+                    _getTranslatedDifficulty(activity.difficulty),
                     style: TextStyle(
                       color: _getDifficultyColor(activity.difficulty),
                       fontWeight: FontWeight.bold,
@@ -630,7 +630,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    activity.environment,
+                    _getTranslatedEnvironment(activity.environment),
                     style: TextStyle(
                       color: _getEnvironmentColor(activity.environment),
                       fontWeight: FontWeight.bold,
@@ -748,6 +748,32 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         ),
       ),
     );
+  }
+
+  String _getTranslatedDifficulty(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _getTranslatedEnvironment(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
+    }
   }
 
   Color _getDifficultyColor(String difficulty) {
