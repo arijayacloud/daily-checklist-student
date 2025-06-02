@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/models/activity_model.dart';
 import '/models/child_model.dart';
@@ -20,23 +21,99 @@ class AddPlanScreen extends StatefulWidget {
 }
 
 class _AddPlanScreenState extends State<AddPlanScreen> {
-  final List<PlannedActivity> _activities = [];
+  final List<Map<String, dynamic>> _activities = [];
   String? _selectedChildId;
   bool _isSubmitting = false;
+  String _planType = 'daily'; // 'daily' or 'weekly'
+  DateTime _startDate = DateTime.now();
+  String? _filterEnvironment;
+  String? _filterDifficulty;
+  RangeValues _ageFilter = const RangeValues(3, 6);
+  String _searchQuery = '';
+
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Inisialisasi locale data untuk format tanggal bahasa Indonesia
+    initializeDateFormatting('id_ID', null);
+
+    _startDate = widget.selectedDate;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Plan')),
+      appBar: AppBar(
+        title: Text(
+          _planType == 'daily'
+              ? 'Tambah Rencana Harian'
+              : 'Tambah Rencana Mingguan',
+        ),
+      ),
       body: Column(
         children: [
-          _buildDateHeader(),
-          _buildChildSelector(),
-          Expanded(child: _buildActivityList()),
-          _buildAddButton(),
+          _buildPlanTypeSelector(),
+          Expanded(child: _buildFormContent()),
         ],
       ),
-      bottomNavigationBar: _buildSaveButton(),
+      bottomNavigationBar: _buildBottomBar(),
+    );
+  }
+
+  Widget _buildPlanTypeSelector() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _buildPlanTypeOption('daily', 'Harian')),
+          Expanded(child: _buildPlanTypeOption('weekly', 'Mingguan')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanTypeOption(String type, String label) {
+    final isSelected = _planType == type;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _planType = type;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppTheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormContent() {
+    return Column(
+      children: [
+        _buildDateHeader(),
+        _buildChildSelector(),
+        Expanded(child: _buildActivityList()),
+        _buildAddButton(),
+      ],
     );
   }
 
@@ -51,9 +128,12 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Planning for:', style: TextStyle(fontSize: 14)),
+              const Text('Perencanaan untuk:', style: TextStyle(fontSize: 14)),
               Text(
-                DateFormat('EEEE, MMMM d, yyyy').format(widget.selectedDate),
+                DateFormat(
+                  'EEEE, d MMMM yyyy',
+                  'id_ID',
+                ).format(widget.selectedDate),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -81,14 +161,14 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Select Child (Optional):',
+                'Pilih Anak (Opsional):',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _selectedChildId,
                 decoration: InputDecoration(
-                  hintText: 'All Children',
+                  hintText: 'Semua Anak',
                   filled: true,
                   fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
                   border: OutlineInputBorder(
@@ -103,12 +183,12 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                 items: [
                   const DropdownMenuItem<String>(
                     value: null,
-                    child: Text('All Children'),
+                    child: Text('Semua Anak'),
                   ),
                   ...children.map((child) {
                     return DropdownMenuItem<String>(
                       value: child.id,
-                      child: Text('${child.name} (${child.age} yrs)'),
+                      child: Text('${child.name} (${child.age} tahun)'),
                     );
                   }).toList(),
                 ],
@@ -149,7 +229,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No activities planned yet',
+            'Belum ada aktivitas yang direncanakan',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -158,7 +238,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap the + button to add activities to this plan',
+            'Tekan tombol + untuk menambahkan aktivitas ke rencana ini',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -168,13 +248,14 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
   }
 
   Widget _buildActivityItem(int index) {
-    final plannedActivity = _activities[index];
+    final activityData = _activities[index];
+    final activityId = activityData['activityId'] as String;
+    final scheduledTime = activityData['scheduledTime'] as String?;
+    final reminder = activityData['reminder'] as bool;
 
     return Consumer<ActivityProvider>(
       builder: (context, activityProvider, child) {
-        final activity = activityProvider.getActivityById(
-          plannedActivity.activityId,
-        );
+        final activity = activityProvider.getActivityById(activityId);
 
         if (activity == null) {
           return const SizedBox.shrink();
@@ -193,7 +274,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
               children: [
                 Row(
                   children: [
-                    if (plannedActivity.scheduledTime != null)
+                    if (scheduledTime != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -204,7 +285,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          plannedActivity.scheduledTime!,
+                          scheduledTime,
                           style: TextStyle(
                             color: AppTheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
@@ -256,7 +337,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        activity.difficulty,
+                        _translateDifficultyToIndonesian(activity.difficulty),
                         style: TextStyle(
                           color: _getDifficultyColor(activity.difficulty),
                           fontWeight: FontWeight.bold,
@@ -277,7 +358,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        activity.environment,
+                        _translateEnvironmentToIndonesian(activity.environment),
                         style: TextStyle(
                           color: _getEnvironmentColor(activity.environment),
                           fontWeight: FontWeight.bold,
@@ -297,27 +378,21 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      plannedActivity.scheduledTime ?? 'No specific time',
+                      scheduledTime ?? 'Tidak ada waktu spesifik',
                       style: TextStyle(color: AppTheme.onSurfaceVariant),
                     ),
                     const Spacer(),
                     Switch(
-                      value: plannedActivity.reminder,
+                      value: reminder,
                       onChanged: (value) {
                         setState(() {
-                          _activities[index] = PlannedActivity(
-                            activityId: plannedActivity.activityId,
-                            scheduledDate: plannedActivity.scheduledDate,
-                            scheduledTime: plannedActivity.scheduledTime,
-                            reminder: value,
-                            completed: plannedActivity.completed,
-                          );
+                          _activities[index]['reminder'] = value;
                         });
                       },
                       activeColor: AppTheme.primary,
                     ),
                     Text(
-                      'Reminder',
+                      'Pengingat',
                       style: TextStyle(color: AppTheme.onSurfaceVariant),
                     ),
                   ],
@@ -330,13 +405,39 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     );
   }
 
+  String _translateDifficultyToIndonesian(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateEnvironmentToIndonesian(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
+    }
+  }
+
   Widget _buildAddButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ElevatedButton.icon(
         onPressed: _addActivity,
         icon: const Icon(Icons.add),
-        label: const Text('Add Activity'),
+        label: const Text('Tambah Aktivitas'),
         style: ElevatedButton.styleFrom(
           foregroundColor: Colors.white,
           backgroundColor: AppTheme.primary,
@@ -350,9 +451,20 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildBottomBar() {
     return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 5,
+          ),
+        ],
+      ),
       child: ElevatedButton(
         onPressed: _activities.isEmpty || _isSubmitting ? null : _savePlan,
         style: ElevatedButton.styleFrom(
@@ -376,7 +488,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                   ),
                 )
                 : const Text(
-                  'Save Plan',
+                  'Simpan Rencana',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
       ),
@@ -402,31 +514,29 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       );
 
       setState(() {
-        _activities.add(
-          PlannedActivity(
-            activityId: selectedActivity,
-            scheduledDate: Timestamp.fromDate(widget.selectedDate),
-            scheduledTime:
-                timeOfDay != null
-                    ? '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}'
-                    : null,
-            reminder: true,
-          ),
-        );
+        _activities.add({
+          'activityId': selectedActivity,
+          'scheduledTime':
+              timeOfDay != null
+                  ? '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}'
+                  : null,
+          'reminder': true,
+        });
       });
     }
   }
 
   void _editActivity(int index) async {
-    final plannedActivity = _activities[index];
+    final activityData = _activities[index];
+    final scheduledTime = activityData['scheduledTime'] as String?;
 
     final timeOfDay = await showTimePicker(
       context: context,
       initialTime:
-          plannedActivity.scheduledTime != null
+          scheduledTime != null
               ? TimeOfDay(
-                hour: int.parse(plannedActivity.scheduledTime!.split(':')[0]),
-                minute: int.parse(plannedActivity.scheduledTime!.split(':')[1]),
+                hour: int.parse(scheduledTime.split(':')[0]),
+                minute: int.parse(scheduledTime.split(':')[1]),
               )
               : TimeOfDay.now(),
       builder: (BuildContext context, Widget? child) {
@@ -439,14 +549,8 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
 
     if (timeOfDay != null) {
       setState(() {
-        _activities[index] = PlannedActivity(
-          activityId: plannedActivity.activityId,
-          scheduledDate: plannedActivity.scheduledDate,
-          scheduledTime:
-              '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}',
-          reminder: plannedActivity.reminder,
-          completed: plannedActivity.completed,
-        );
+        _activities[index]['scheduledTime'] =
+            '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}';
       });
     }
   }
@@ -461,20 +565,30 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     });
 
     try {
+      final List<PlannedActivity> plannedActivities =
+          _activities.map((data) {
+            return PlannedActivity(
+              activityId: data['activityId'],
+              scheduledDate: Timestamp.fromDate(_startDate),
+              scheduledTime: data['scheduledTime'],
+              reminder: data['reminder'],
+            );
+          }).toList();
+
       await Provider.of<PlanningProvider>(
         context,
         listen: false,
       ).createWeeklyPlan(
-        startDate: widget.selectedDate,
+        startDate: _startDate,
         childId: _selectedChildId,
-        activities: _activities,
+        activities: plannedActivities,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Plan created successfully'),
+          content: Text('Rencana berhasil dibuat'),
           backgroundColor: AppTheme.success,
         ),
       );
@@ -557,14 +671,14 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
         child: Column(
           children: [
             const Text(
-              'Select an Activity',
+              'Pilih Aktivitas',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search activities...',
+                hintText: 'Cari aktivitas...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon:
                     _searchQuery.isNotEmpty
@@ -602,7 +716,7 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
                   if (activityProvider.activities.isEmpty) {
                     return Center(
                       child: Text(
-                        'No activities found',
+                        'Tidak ada aktivitas ditemukan',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                     );
@@ -615,7 +729,7 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
                   if (filteredActivities.isEmpty) {
                     return Center(
                       child: Text(
-                        'No matching activities',
+                        'Tidak ada aktivitas yang cocok',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                     );
@@ -649,7 +763,7 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
                           ),
                         ),
                         trailing: Text(
-                          '${activity.ageRange.min}-${activity.ageRange.max} yrs',
+                          '${activity.ageRange.min}-${activity.ageRange.max} thn',
                           style: TextStyle(color: AppTheme.onSurfaceVariant),
                         ),
                         onTap: () {
@@ -674,7 +788,7 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
                 ),
                 minimumSize: const Size(double.infinity, 0),
               ),
-              child: const Text('Cancel'),
+              child: const Text('Batal'),
             ),
           ],
         ),

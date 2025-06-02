@@ -34,7 +34,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.mark_email_read),
-            tooltip: 'Tandai semua dibaca',
+            tooltip: 'Tandai semua sudah dibaca',
             onPressed: () {
               Provider.of<NotificationProvider>(
                 context,
@@ -44,7 +44,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.add_alert),
-            tooltip: 'Tambah Notifikasi Test',
+            tooltip: 'Tambah Notifikasi Uji Coba',
             onPressed: () {
               _showAddTestNotificationDialog(context);
             },
@@ -103,7 +103,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ElevatedButton.icon(
                     onPressed: () => _showAddTestNotificationDialog(context),
                     icon: const Icon(Icons.add_alert),
-                    label: const Text('Tambah Notifikasi Test'),
+                    label: const Text('Tambah Notifikasi Uji Coba'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
@@ -147,9 +147,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
       direction: DismissDirection.endToStart,
       onDismissed: (_) {
         provider.deleteNotification(notification.id);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Notifikasi dihapus')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notifikasi telah dihapus')),
+        );
       },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -283,7 +283,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'new_plan':
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Navigasi ke plan ID: ${notification.relatedId}'),
+            content: Text('Navigasi ke rencana ID: ${notification.relatedId}'),
           ),
         );
         break;
@@ -303,9 +303,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   void _showAddTestNotificationDialog(BuildContext context) {
-    final titleController = TextEditingController(text: 'Notifikasi Test');
+    final titleController = TextEditingController(text: 'Notifikasi Uji Coba');
     final messageController = TextEditingController(
-      text: 'Ini adalah notifikasi untuk keperluan testing.',
+      text: 'Ini adalah notifikasi untuk keperluan pengujian.',
     );
     String selectedType = 'test';
 
@@ -313,7 +313,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Tambah Notifikasi Test'),
+            title: const Text('Tambah Notifikasi Uji Coba'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -342,7 +342,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       return Column(
                         children: [
                           RadioListTile<String>(
-                            title: const Text('Test'),
+                            title: const Text('Uji Coba'),
                             value: 'test',
                             groupValue: selectedType,
                             onChanged: (value) {
@@ -393,7 +393,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   if (title.isEmpty || message.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Judul dan pesan harus diisi'),
+                        content: Text('Judul dan pesan wajib diisi'),
                       ),
                     );
                     return;

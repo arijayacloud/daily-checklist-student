@@ -12,6 +12,8 @@ import '/providers/notification_provider.dart';
 import '/screens/auth/login_screen.dart';
 import '/screens/parents/add_parent_screen.dart';
 import '/screens/splash_screen.dart';
+import '/screens/progress/progress_dashboard.dart';
+import '/screens/progress/child_checklist_screen.dart';
 import '/lib/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -60,6 +62,9 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/add-parent': (context) => const AddParentScreen(),
+          ProgressDashboard.routeName: (context) => const ProgressDashboard(),
+          ChildChecklistScreen.routeName:
+              (context) => const ChildChecklistScreen(),
         },
       ),
     );

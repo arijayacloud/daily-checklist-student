@@ -74,10 +74,10 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activities'),
+        title: const Text('Aktivitas'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [Tab(text: 'Pending'), Tab(text: 'Completed')],
+          tabs: const [Tab(text: 'Belum Selesai'), Tab(text: 'Sudah Selesai')],
         ),
       ),
       body:
@@ -118,7 +118,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${widget.child.age} years old',
+                  '${widget.child.age} tahun',
                   style: TextStyle(
                     fontSize: 16,
                     color: AppTheme.onSurfaceVariant,
@@ -152,7 +152,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'All activities completed!',
+              'Semua aktivitas telah selesai!',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -161,7 +161,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Check back later for new activities',
+              'Periksa kembali nanti untuk aktivitas baru',
               style: TextStyle(color: AppTheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),

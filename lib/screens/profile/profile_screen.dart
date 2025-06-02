@@ -187,7 +187,7 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   Center(
                     child: Text(
-                      'TK Activity Checklist v1.0.0',
+                      'Aplikasi Daftar Kegiatan TK v1.0.0',
                       style: TextStyle(
                         fontSize: 14,
                         color: colorScheme.onSurfaceVariant.withOpacity(0.7),

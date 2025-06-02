@@ -10,6 +10,7 @@ import '/screens/planning/teacher_planning_screen.dart';
 import '/screens/parents/parents_screen.dart';
 import '/screens/profile/profile_screen.dart';
 import '/screens/notification/notification_screen.dart';
+import '/screens/progress/progress_dashboard.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/notification_badge.dart';
 
@@ -67,10 +68,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               : AppBar(
                 title: _getAppBarTitle(),
                 actions: [
+                  // Progress Dashboard button
+                  IconButton(
+                    icon: const Icon(Icons.dashboard),
+                    tooltip: 'Dashboard Perkembangan Peserta Didik',
+                    onPressed: () {
+                      Navigator.of(
+                        context,
+                      ).pushNamed(ProgressDashboard.routeName);
+                    },
+                  ),
                   const NotificationBadge(),
                   IconButton(
                     icon: const Icon(Icons.add_alert),
-                    tooltip: 'Tambah Notifikasi Test',
+                    tooltip: 'Tambah Notifikasi Uji Coba',
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -91,7 +102,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.child_care_outlined),
             activeIcon: Icon(Icons.child_care),
-            label: 'Murid',
+            label: 'Peserta Didik',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_outlined),
@@ -106,7 +117,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),
             activeIcon: Icon(Icons.calendar_today),
-            label: 'Perencanaan',
+            label: 'Jadwal',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -122,15 +133,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   Widget _getAppBarTitle() {
     switch (_selectedIndex) {
       case 0:
-        return const Text('Daftar Murid');
+        return const Text('Daftar Peserta Didik');
       case 1:
-        return const Text('Aktivitas');
+        return const Text('Daftar Aktivitas');
       case 2:
-        return const Text('Orang Tua');
+        return const Text('Data Orang Tua');
       case 3:
-        return const Text('Perencanaan');
+        return const Text('Jadwal Kegiatan');
       default:
-        return const Text('TK Activity Checklist');
+        return const Text('Aplikasi Daftar Kegiatan TK');
     }
   }
 }

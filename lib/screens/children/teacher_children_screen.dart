@@ -53,7 +53,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Students'),
+        title: const Text('Murid Saya'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -63,12 +63,12 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                 MaterialPageRoute(builder: (context) => const AddChildScreen()),
               );
             },
-            tooltip: 'Add Child',
+            tooltip: 'Tambah Murid',
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
             onPressed: () => authProvider.signOut(),
-            tooltip: 'Logout',
+            tooltip: 'Keluar',
           ),
         ],
       ),
@@ -93,7 +93,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Search children...',
+          hintText: 'Cari murid...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon:
               _searchQuery.isNotEmpty
@@ -172,7 +172,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No children yet',
+            'Belum ada murid',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -181,7 +181,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add your first student by tapping the + button',
+            'Tambahkan murid pertama Anda dengan menekan tombol +',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -202,7 +202,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No matching children',
+            'Tidak ada murid yang cocok',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -211,7 +211,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Try changing your search query',
+            'Coba ubah kata pencarian Anda',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -230,7 +230,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Clear Search'),
+            child: const Text('Hapus Pencarian'),
           ),
         ],
       ),
@@ -278,7 +278,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${child.age} years old',
+                    '${child.age} tahun',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppTheme.onSurfaceVariant,
@@ -295,7 +295,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      'View Activities',
+                      'Lihat Aktivitas',
                       style: TextStyle(
                         color: AppTheme.onPrimaryContainer,
                         fontWeight: FontWeight.w500,

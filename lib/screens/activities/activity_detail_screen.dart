@@ -21,7 +21,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Activity Details')),
+      appBar: AppBar(title: const Text('Detail Aktivitas')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -38,6 +38,32 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         ),
       ),
     );
+  }
+
+  String _translateDifficultyToIndonesian(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateEnvironmentToIndonesian(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
+    }
   }
 
   Widget _buildActivityHeader() {
@@ -71,17 +97,21 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               Row(
                 children: [
                   _buildBadge(
-                    widget.activity.difficulty,
+                    _translateDifficultyToIndonesian(
+                      widget.activity.difficulty,
+                    ),
                     _getDifficultyColor(widget.activity.difficulty),
                   ),
                   const SizedBox(width: 8),
                   _buildBadge(
-                    widget.activity.environment,
+                    _translateEnvironmentToIndonesian(
+                      widget.activity.environment,
+                    ),
                     _getEnvironmentColor(widget.activity.environment),
                   ),
                   const SizedBox(width: 8),
                   _buildBadge(
-                    '${widget.activity.ageRange.min}-${widget.activity.ageRange.max} yrs',
+                    '${widget.activity.ageRange.min}-${widget.activity.ageRange.max} thn',
                     AppTheme.primary,
                   ),
                 ],
@@ -116,7 +146,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Description',
+          'Deskripsi',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -142,7 +172,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Instruction Steps',
+          'Langkah-langkah Instruksi',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
@@ -212,7 +242,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Assign to Children',
+              'Tetapkan kepada Anak',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -244,7 +274,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                             child.name,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text('${child.age} years old'),
+                          subtitle: Text('${child.age} tahun'),
                           secondary: Container(
                             width: 40,
                             height: 40,
@@ -298,7 +328,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                         ),
                       )
                       : Text(
-                        'Assign to ${_selectedChildIds.length} ${_selectedChildIds.length == 1 ? 'Child' : 'Children'}',
+                        'Tetapkan kepada ${_selectedChildIds.length} ${_selectedChildIds.length == 1 ? 'Anak' : 'Anak'}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -342,7 +372,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Activity assigned successfully'),
+          content: Text('Aktivitas berhasil ditetapkan'),
           backgroundColor: AppTheme.success,
         ),
       );

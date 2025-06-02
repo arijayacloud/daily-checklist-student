@@ -17,7 +17,7 @@ class TeacherActivitiesScreen extends StatefulWidget {
 
 class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   String _searchQuery = '';
-  String _difficultyFilter = 'All';
+  String _difficultyFilter = 'Semua';
   int _minAgeFilter = 3;
   int _maxAgeFilter = 6;
 
@@ -51,8 +51,9 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
       }
 
       // Difficulty filter
-      if (_difficultyFilter != 'All' &&
-          activity.difficulty != _difficultyFilter) {
+      if (_difficultyFilter != 'Semua' &&
+          activity.difficulty !=
+              _translateDifficultyToEnglish(_difficultyFilter)) {
         return false;
       }
 
@@ -66,11 +67,50 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
     }).toList();
   }
 
+  String _translateDifficultyToEnglish(String difficulty) {
+    switch (difficulty) {
+      case 'Mudah':
+        return 'Easy';
+      case 'Sedang':
+        return 'Medium';
+      case 'Sulit':
+        return 'Hard';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateDifficultyToIndonesian(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateEnvironmentToIndonesian(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activities'),
+        title: const Text('Aktivitas'),
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
@@ -100,7 +140,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Search activities...',
+          hintText: 'Cari aktivitas...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon:
               _searchQuery.isNotEmpty
@@ -176,7 +216,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No activities yet',
+            'Belum ada aktivitas',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -185,7 +225,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Create your first activity by tapping the + button',
+            'Buat aktivitas pertama Anda dengan menekan tombol +',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -206,7 +246,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No matching activities',
+            'Tidak ada aktivitas yang sesuai',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -215,7 +255,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Try changing your search or filters',
+            'Coba ubah pencarian atau filter Anda',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -225,7 +265,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
               setState(() {
                 _searchController.clear();
                 _searchQuery = '';
-                _difficultyFilter = 'All';
+                _difficultyFilter = 'Semua';
                 _minAgeFilter = 3;
                 _maxAgeFilter = 6;
               });
@@ -237,7 +277,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Clear Filters'),
+            child: const Text('Hapus Filter'),
           ),
         ],
       ),
@@ -282,7 +322,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          activity.difficulty,
+                          _translateDifficultyToIndonesian(activity.difficulty),
                           style: TextStyle(
                             color: _getDifficultyColor(activity.difficulty),
                             fontWeight: FontWeight.bold,
@@ -300,7 +340,9 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          activity.environment,
+                          _translateEnvironmentToIndonesian(
+                            activity.environment,
+                          ),
                           style: TextStyle(
                             color: _getEnvironmentColor(activity.environment),
                             fontWeight: FontWeight.bold,
@@ -316,7 +358,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '${activity.ageRange.min}-${activity.ageRange.max} yrs',
+                          '${activity.ageRange.min}-${activity.ageRange.max} thn',
                           style: TextStyle(
                             color: AppTheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
@@ -347,8 +389,8 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                     children: [
                       Text(
                         activity.customSteps.isNotEmpty
-                            ? '${activity.customSteps.first.steps.length} steps'
-                            : 'No steps',
+                            ? '${activity.customSteps.first.steps.length} langkah'
+                            : 'Tidak ada langkah',
                         style: TextStyle(
                           color: AppTheme.onSurfaceVariant,
                           fontSize: 14,
@@ -357,7 +399,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                       Row(
                         children: [
                           Text(
-                            'View Details',
+                            'Lihat Detail',
                             style: TextStyle(
                               color: AppTheme.primary,
                               fontWeight: FontWeight.w500,
@@ -405,7 +447,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                   Row(
                     children: [
                       const Text(
-                        'Filter Activities',
+                        'Filter Aktivitas',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -415,12 +457,12 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                       TextButton(
                         onPressed: () {
                           setState(() {
-                            _difficultyFilter = 'All';
+                            _difficultyFilter = 'Semua';
                             _minAgeFilter = 3;
                             _maxAgeFilter = 6;
                           });
                         },
-                        child: const Text('Reset'),
+                        child: const Text('Atur Ulang'),
                       ),
                     ],
                   ),
@@ -428,7 +470,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
 
                   // Difficulty filter
                   const Text(
-                    'Difficulty',
+                    'Tingkat Kesulitan',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -437,38 +479,38 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                     child: Row(
                       children: [
                         _buildFilterChip(
-                          label: 'All',
-                          isSelected: _difficultyFilter == 'All',
+                          label: 'Semua',
+                          isSelected: _difficultyFilter == 'Semua',
                           onSelected: (selected) {
                             setState(() {
-                              _difficultyFilter = 'All';
+                              _difficultyFilter = 'Semua';
                             });
                           },
                         ),
                         _buildFilterChip(
-                          label: 'Easy',
-                          isSelected: _difficultyFilter == 'Easy',
+                          label: 'Mudah',
+                          isSelected: _difficultyFilter == 'Mudah',
                           onSelected: (selected) {
                             setState(() {
-                              _difficultyFilter = 'Easy';
+                              _difficultyFilter = 'Mudah';
                             });
                           },
                         ),
                         _buildFilterChip(
-                          label: 'Medium',
-                          isSelected: _difficultyFilter == 'Medium',
+                          label: 'Sedang',
+                          isSelected: _difficultyFilter == 'Sedang',
                           onSelected: (selected) {
                             setState(() {
-                              _difficultyFilter = 'Medium';
+                              _difficultyFilter = 'Sedang';
                             });
                           },
                         ),
                         _buildFilterChip(
-                          label: 'Hard',
-                          isSelected: _difficultyFilter == 'Hard',
+                          label: 'Sulit',
+                          isSelected: _difficultyFilter == 'Sulit',
                           onSelected: (selected) {
                             setState(() {
-                              _difficultyFilter = 'Hard';
+                              _difficultyFilter = 'Sulit';
                             });
                           },
                         ),
@@ -479,7 +521,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
 
                   // Age range filter
                   const Text(
-                    'Age Range',
+                    'Rentang Usia',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -506,11 +548,11 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '3 years',
+                        '3 tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                       Text(
-                        '6 years',
+                        '6 tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                     ],
@@ -537,7 +579,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                       minimumSize: const Size(double.infinity, 50),
                     ),
                     child: const Text(
-                      'Apply Filters',
+                      'Terapkan Filter',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

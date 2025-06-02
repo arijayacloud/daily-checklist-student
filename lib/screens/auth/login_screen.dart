@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                        'Welcome Back',
+                        'Selamat Datang',
                         style: Theme.of(
                           context,
                         ).textTheme.headlineMedium?.copyWith(
@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       .slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 8),
                   Text(
-                        'Sign in to continue',
+                        'Silakan masuk untuk melanjutkan',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(color: AppTheme.secondary),
                         textAlign: TextAlign.center,
@@ -164,10 +164,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
+                            return 'Email tidak boleh kosong';
                           }
                           if (!value.contains('@') || !value.contains('.')) {
-                            return 'Please enter a valid email';
+                            return 'Format email tidak valid';
                           }
                           return null;
                         },
@@ -183,15 +183,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Password field
                   CustomTextField(
                         controller: _passwordController,
-                        hintText: 'Password',
+                        hintText: 'Kata Sandi',
                         prefixIcon: Icons.lock_outline,
                         obscureText: true,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
+                            return 'Kata sandi tidak boleh kosong';
                           }
                           if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
+                            return 'Kata sandi minimal 6 karakter';
                           }
                           return null;
                         },
@@ -229,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                                 : const Text(
-                                  'Login',
+                                  'Masuk',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -250,11 +250,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'New account? ',
+                        'Belum memiliki akun? ',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                       Text(
-                        'Contact administrator',
+                        'Hubungi administrator',
                         style: TextStyle(
                           color: AppTheme.primary,
                           fontWeight: FontWeight.bold,

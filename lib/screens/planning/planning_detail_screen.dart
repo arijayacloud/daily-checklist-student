@@ -149,7 +149,7 @@ class PlanningDetailScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    activity.difficulty,
+                    _translateDifficultyToIndonesian(activity.difficulty),
                     style: TextStyle(
                       color: _getDifficultyColor(activity.difficulty),
                       fontWeight: FontWeight.bold,
@@ -168,7 +168,7 @@ class PlanningDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  activity.environment,
+                  _translateEnvironmentToIndonesian(activity.environment),
                   style: TextStyle(
                     color: _getEnvironmentColor(activity.environment),
                     fontWeight: FontWeight.bold,
@@ -201,49 +201,75 @@ class PlanningDetailScreen extends StatelessWidget {
     );
   }
 
+  String _translateDifficultyToIndonesian(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateEnvironmentToIndonesian(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
+    }
+  }
+
   Widget _buildInfoSection(ActivityModel activity) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Informasi Aktivitas'),
-        const SizedBox(height: 12),
+        const Text(
+          'Informasi Aktivitas',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
         Card(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoItem(
-                  icon: Icons.category,
-                  title: 'Kesulitan',
-                  value: activity.difficulty,
-                  color: _getDifficultyColor(activity.difficulty),
+                _buildInfoRow(
+                  'Tingkat Kesulitan',
+                  _translateDifficultyToIndonesian(activity.difficulty),
+                  _getDifficultyColor(activity.difficulty),
                 ),
                 const Divider(),
-                _buildInfoItem(
-                  icon: _getEnvironmentIcon(activity.environment),
-                  title: 'Lingkungan',
-                  value: activity.environment,
-                  color: _getEnvironmentColor(activity.environment),
+                _buildInfoRow(
+                  'Lingkungan',
+                  _translateEnvironmentToIndonesian(activity.environment),
+                  _getEnvironmentColor(activity.environment),
                 ),
                 const Divider(),
-                _buildInfoItem(
-                  icon: Icons.child_care,
-                  title: 'Rentang Usia',
-                  value:
-                      '${activity.ageRange.min}-${activity.ageRange.max} tahun',
-                  color: Colors.blue,
+                _buildInfoRow(
+                  'Rentang Usia',
+                  '${activity.ageRange.min}-${activity.ageRange.max} tahun',
+                  AppTheme.primary,
                 ),
-                const Divider(),
-                _buildInfoItem(
-                  icon: Icons.person,
-                  title: 'Dibuat Oleh',
-                  value: activity.createdBy,
-                  color: AppTheme.primary,
-                ),
+                if (activity.nextActivityId != null) ...[
+                  const Divider(),
+                  _buildInfoRow(
+                    'Aktivitas Lanjutan',
+                    'Tersedia',
+                    AppTheme.tertiary,
+                  ),
+                ],
               ],
             ),
           ),
@@ -252,79 +278,100 @@ class PlanningDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildInfoRow(String label, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(color: valueColor, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStepsSection(ActivityModel activity) {
+    final steps =
+        activity.customSteps.isNotEmpty
+            ? activity.customSteps.first.steps
+            : <String>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Langkah-langkah Aktivitas'),
-        const SizedBox(height: 12),
+        const Text(
+          'Langkah-langkah Aktivitas',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
         Card(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child:
-                activity.customSteps.isEmpty
+                steps.isEmpty
                     ? const Center(
-                      child: Text(
-                        'Tidak ada langkah khusus untuk aktivitas ini.',
-                        style: TextStyle(fontStyle: FontStyle.italic),
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(
+                          'Tidak ada langkah yang ditentukan untuk aktivitas ini',
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey,
+                          ),
+                        ),
                       ),
                     )
                     : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children:
-                          activity.customSteps.map((customStep) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Dari guru ${customStep.teacherId}:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                ...customStep.steps.asMap().entries.map((
-                                  entry,
-                                ) {
-                                  final index = entry.key;
-                                  final step = entry.value;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          width: 24,
-                                          height: 24,
-                                          alignment: Alignment.center,
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.primaryContainer,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Text(
-                                            '${index + 1}',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color:
-                                                  AppTheme.onPrimaryContainer,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(child: Text(step)),
-                                      ],
+                          steps.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final step = entry.value;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryContainer,
+                                      shape: BoxShape.circle,
                                     ),
-                                  );
-                                }).toList(),
-                                if (customStep != activity.customSteps.last)
-                                  const Divider(height: 24),
-                              ],
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          color: AppTheme.onPrimaryContainer,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      step,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           }).toList(),
                     ),
@@ -335,52 +382,78 @@ class PlanningDetailScreen extends StatelessWidget {
   }
 
   Widget _buildScheduleSection(PlannedActivity plannedActivity) {
-    final date = DateFormat(
-      'EEEE, d MMMM yyyy',
-      'id_ID',
-    ).format(plannedActivity.scheduledDate.toDate());
+    final scheduledDate = plannedActivity.scheduledDate.toDate();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Jadwal'),
-        const SizedBox(height: 12),
+        const Text(
+          'Detail Jadwal',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
         Card(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoItem(
-                  icon: Icons.event,
-                  title: 'Tanggal',
-                  value: date,
-                  color: AppTheme.primary,
+                _buildScheduleRow(
+                  'Tanggal',
+                  DateFormat(
+                    'EEEE, d MMMM yyyy',
+                    'id_ID',
+                  ).format(scheduledDate),
+                  AppTheme.primary,
                 ),
-                if (plannedActivity.scheduledTime != null) ...[
-                  const Divider(),
-                  _buildInfoItem(
-                    icon: Icons.access_time,
-                    title: 'Waktu',
-                    value: plannedActivity.scheduledTime!,
-                    color: AppTheme.primary,
-                  ),
-                ],
                 const Divider(),
-                _buildInfoItem(
-                  icon: Icons.notifications,
-                  title: 'Pengingat',
-                  value: plannedActivity.reminder ? 'Aktif' : 'Tidak aktif',
-                  color: plannedActivity.reminder ? Colors.green : Colors.grey,
+                _buildScheduleRow(
+                  'Waktu',
+                  plannedActivity.scheduledTime ?? 'Tidak ditentukan',
+                  AppTheme.tertiary,
+                ),
+                const Divider(),
+                _buildScheduleRow(
+                  'Pengingat',
+                  plannedActivity.reminder ? 'Aktif' : 'Tidak Aktif',
+                  plannedActivity.reminder ? AppTheme.success : Colors.grey,
+                ),
+                const Divider(),
+                _buildScheduleRow(
+                  'Status',
+                  plannedActivity.completed ? 'Selesai' : 'Belum Selesai',
+                  plannedActivity.completed ? AppTheme.success : Colors.orange,
                 ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildScheduleRow(String label, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(color: valueColor, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 
@@ -392,58 +465,64 @@ class PlanningDetailScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Status'),
-        const SizedBox(height: 12),
+        const Text(
+          'Status Penyelesaian',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
         Card(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color:
-                            plannedActivity.completed
-                                ? AppTheme.success.withOpacity(0.2)
-                                : Colors.orange.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        plannedActivity.completed ? Icons.check : Icons.pending,
-                        size: 16,
-                        color:
-                            plannedActivity.completed
-                                ? AppTheme.success
-                                : Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      plannedActivity.completed ? 'Selesai' : 'Belum Selesai',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color:
-                            plannedActivity.completed
-                                ? AppTheme.success
-                                : Colors.orange,
-                      ),
-                    ),
-                  ],
+                _buildStatusIndicator(plannedActivity.completed),
+                const SizedBox(height: 16),
+                Text(
+                  plannedActivity.completed
+                      ? 'Aktivitas ini telah diselesaikan'
+                      : 'Aktivitas ini belum diselesaikan',
+                  style: TextStyle(
+                    color:
+                        plannedActivity.completed
+                            ? AppTheme.success
+                            : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                // Di sini bisa ditambahkan informasi tambahan seperti
-                // siapa yang menyelesaikan, kapan diselesaikan, dll.
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusIndicator(bool completed) {
+    return Container(
+      width: double.infinity,
+      height: 10,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryContainer,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: completed ? 100 : 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.success,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ),
+          Expanded(flex: completed ? 0 : 100, child: Container()),
+        ],
+      ),
     );
   }
 
@@ -456,36 +535,50 @@ class PlanningDetailScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Tindakan'),
-        const SizedBox(height: 12),
+        const Text(
+          'Tindakan',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed:
-                    plannedActivity.completed
-                        ? null
-                        : () => _markAsCompleted(
-                          context,
-                          plannedActivity,
-                          planningProvider,
-                        ),
-                icon: Icon(
-                  plannedActivity.completed
-                      ? Icons.check
-                      : Icons.assignment_turned_in,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // Implementasi edit jadwal
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Fitur edit jadwal akan datang segera'),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.edit),
+                label: const Text('Edit Jadwal'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                label: Text(
-                  plannedActivity.completed
-                      ? 'Sudah Selesai'
-                      : 'Tandai Selesai',
-                ),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: AppTheme.primary,
-                  disabledBackgroundColor: AppTheme.success.withOpacity(0.6),
-                  disabledForegroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // Implementasi batalkan aktivitas
+                  _showCancelConfirmationDialog(
+                    context,
+                    plannedActivity,
+                    planningProvider,
+                  );
+                },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Batalkan'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.error,
+                  side: BorderSide(color: AppTheme.error),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -494,84 +587,54 @@ class PlanningDetailScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Consumer<ChecklistProvider>(
-          builder: (context, checklistProvider, _) {
-            return OutlinedButton.icon(
-              onPressed: () {
-                // Implementasi menambahkan ke checklist
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Menambahkan ke Checklist akan diimplementasikan',
-                    ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed:
+              plannedActivity.completed
+                  ? null
+                  : () => _markAsCompleted(
+                    context,
+                    plannedActivity,
+                    planningProvider,
                   ),
-                );
-              },
-              icon: const Icon(Icons.assignment_add),
-              label: const Text('Tambahkan ke Checklist'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.tertiary,
-                side: BorderSide(color: AppTheme.tertiary),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
+          icon: Icon(
+            plannedActivity.completed ? Icons.check_circle : Icons.check,
+          ),
+          label: Text(
+            plannedActivity.completed
+                ? 'Sudah Selesai'
+                : 'Tandai Sebagai Selesai',
+          ),
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor:
+                plannedActivity.completed ? AppTheme.success : AppTheme.primary,
+            disabledBackgroundColor: AppTheme.success.withOpacity(0.6),
+            disabledForegroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            minimumSize: const Size(double.infinity, 0),
+          ),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () {
+            // Implementasi tambahkan ke checklist
+            _showAddToChecklistConfirmation(context, plannedActivity, activity);
           },
+          icon: const Icon(Icons.assignment_turned_in_outlined),
+          label: const Text('Tambahkan ke Checklist Anak'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            minimumSize: const Size(double.infinity, 0),
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.primary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoItem({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -587,18 +650,117 @@ class PlanningDetailScreen extends StatelessWidget {
         scheduledDate: plannedActivity.scheduledDate,
       );
 
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aktivitas berhasil ditandai selesai'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aktivitas telah ditandai sebagai selesai'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+        );
+      }
+    }
+  }
+
+  void _showCancelConfirmationDialog(
+    BuildContext context,
+    PlannedActivity plannedActivity,
+    PlanningProvider planningProvider,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Batalkan Aktivitas'),
+          content: const Text(
+            'Apakah Anda yakin ingin membatalkan aktivitas ini?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('TIDAK'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Tampilkan notifikasi bahwa fitur ini akan segera hadir
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Fitur batalkan aktivitas akan datang segera',
+                    ),
+                    backgroundColor: AppTheme.primary,
+                  ),
+                );
+              },
+              child: const Text('YA, BATALKAN'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddToChecklistConfirmation(
+    BuildContext context,
+    PlannedActivity plannedActivity,
+    ActivityModel activity,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tambahkan ke Checklist'),
+          content: const Text(
+            'Tambahkan aktivitas ini ke checklist anak? Anda akan dialihkan ke halaman pemilihan anak.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('BATAL'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _addToChecklist(context, plannedActivity, activity);
+              },
+              child: const Text('LANJUTKAN'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _addToChecklist(
+    BuildContext context,
+    PlannedActivity plannedActivity,
+    ActivityModel activity,
+  ) {
+    // Implementasi tambahkan ke checklist
+    // Untuk saat ini, kita akan menampilkan pesan saja
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fitur tambahkan ke checklist akan datang segera'),
+      ),
+    );
+  }
+
+  IconData _getEnvironmentIcon(String environment) {
+    switch (environment) {
+      case 'Home':
+        return Icons.home;
+      case 'School':
+        return Icons.school;
+      case 'Both':
+        return Icons.sync;
+      default:
+        return Icons.location_on;
     }
   }
 
@@ -625,19 +787,6 @@ class PlanningDetailScreen extends StatelessWidget {
         return Colors.teal;
       default:
         return Colors.grey;
-    }
-  }
-
-  IconData _getEnvironmentIcon(String environment) {
-    switch (environment) {
-      case 'Home':
-        return Icons.home;
-      case 'School':
-        return Icons.school;
-      case 'Both':
-        return Icons.location_on;
-      default:
-        return Icons.help_outline;
     }
   }
 }

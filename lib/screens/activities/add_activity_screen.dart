@@ -41,7 +41,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     if (steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please add at least one instruction step'),
+          content: Text('Silakan tambahkan minimal satu langkah instruksi'),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -67,7 +67,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Activity created successfully'),
+          content: Text('Aktivitas berhasil dibuat'),
           backgroundColor: AppTheme.success,
         ),
       );
@@ -102,10 +102,62 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     });
   }
 
+  String _getTranslatedEnvironment(String env) {
+    switch (env) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return env;
+    }
+  }
+
+  String _getEnvironmentValue(String translatedEnv) {
+    switch (translatedEnv) {
+      case 'Rumah':
+        return 'Home';
+      case 'Sekolah':
+        return 'School';
+      case 'Keduanya':
+        return 'Both';
+      default:
+        return translatedEnv;
+    }
+  }
+
+  String _getTranslatedDifficulty(String diff) {
+    switch (diff) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return diff;
+    }
+  }
+
+  String _getDifficultyValue(String translatedDiff) {
+    switch (translatedDiff) {
+      case 'Mudah':
+        return 'Easy';
+      case 'Sedang':
+        return 'Medium';
+      case 'Sulit':
+        return 'Hard';
+      default:
+        return translatedDiff;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Activity')),
+      appBar: AppBar(title: const Text('Tambah Aktivitas')),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -117,8 +169,8 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: 'Activity Title',
-                  hintText: 'Enter a title for the activity',
+                  labelText: 'Judul Aktivitas',
+                  hintText: 'Masukkan judul untuk aktivitas',
                   filled: true,
                   fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
                   border: OutlineInputBorder(
@@ -128,7 +180,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a title';
+                    return 'Silakan masukkan judul';
                   }
                   return null;
                 },
@@ -140,8 +192,8 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 controller: _descriptionController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Enter a description for the activity',
+                  labelText: 'Deskripsi',
+                  hintText: 'Masukkan deskripsi untuk aktivitas',
                   filled: true,
                   fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
                   border: OutlineInputBorder(
@@ -151,7 +203,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a description';
+                    return 'Silakan masukkan deskripsi';
                   }
                   return null;
                 },
@@ -160,7 +212,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
 
               // Environment
               Text(
-                'Environment',
+                'Lingkungan',
                 style: TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 16,
@@ -169,16 +221,16 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _buildEnvironmentOption('Home'),
-                  _buildEnvironmentOption('School'),
-                  _buildEnvironmentOption('Both'),
+                  _buildEnvironmentOption('Rumah'),
+                  _buildEnvironmentOption('Sekolah'),
+                  _buildEnvironmentOption('Keduanya'),
                 ],
               ),
               const SizedBox(height: 16),
 
               // Difficulty
               Text(
-                'Difficulty',
+                'Tingkat Kesulitan',
                 style: TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 16,
@@ -187,16 +239,16 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _buildDifficultyOption('Easy'),
-                  _buildDifficultyOption('Medium'),
-                  _buildDifficultyOption('Hard'),
+                  _buildDifficultyOption('Mudah'),
+                  _buildDifficultyOption('Sedang'),
+                  _buildDifficultyOption('Sulit'),
                 ],
               ),
               const SizedBox(height: 16),
 
               // Age Range
               Text(
-                'Age Range: $_minAge - $_maxAge years',
+                'Rentang Usia: $_minAge - $_maxAge tahun',
                 style: TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 16,
@@ -223,7 +275,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Instruction Steps',
+                    'Langkah-langkah Instruksi',
                     style: TextStyle(
                       color: AppTheme.onSurfaceVariant,
                       fontSize: 16,
@@ -232,7 +284,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                   ElevatedButton.icon(
                     onPressed: _addStep,
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Step'),
+                    label: const Text('Tambah Langkah'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryContainer,
                       foregroundColor: AppTheme.onPrimaryContainer,
@@ -270,7 +322,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                         child: TextFormField(
                           initialValue: step,
                           decoration: InputDecoration(
-                            hintText: 'Enter instruction step',
+                            hintText: 'Masukkan langkah instruksi',
                             filled: true,
                             fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
                             border: OutlineInputBorder(
@@ -321,7 +373,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                           ),
                         )
                         : const Text(
-                          'Save Activity',
+                          'Simpan Aktivitas',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -336,13 +388,15 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   }
 
   Widget _buildEnvironmentOption(String option) {
-    final isSelected = _environment == option;
+    final translatedOption = option;
+    final isSelected =
+        _getTranslatedEnvironment(_environment) == translatedOption;
 
     return Expanded(
       child: GestureDetector(
         onTap: () {
           setState(() {
-            _environment = option;
+            _environment = _getEnvironmentValue(translatedOption);
           });
         },
         child: Container(
@@ -351,21 +405,29 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
           decoration: BoxDecoration(
             color:
                 isSelected
-                    ? _getEnvironmentColor(option).withOpacity(0.2)
+                    ? _getEnvironmentColor(
+                      _getEnvironmentValue(translatedOption),
+                    ).withOpacity(0.2)
                     : AppTheme.surfaceVariant.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
             border:
                 isSelected
-                    ? Border.all(color: _getEnvironmentColor(option))
+                    ? Border.all(
+                      color: _getEnvironmentColor(
+                        _getEnvironmentValue(translatedOption),
+                      ),
+                    )
                     : null,
           ),
           alignment: Alignment.center,
           child: Text(
-            option,
+            translatedOption,
             style: TextStyle(
               color:
                   isSelected
-                      ? _getEnvironmentColor(option)
+                      ? _getEnvironmentColor(
+                        _getEnvironmentValue(translatedOption),
+                      )
                       : AppTheme.onSurfaceVariant,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
@@ -376,13 +438,15 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   }
 
   Widget _buildDifficultyOption(String option) {
-    final isSelected = _difficulty == option;
+    final translatedOption = option;
+    final isSelected =
+        _getTranslatedDifficulty(_difficulty) == translatedOption;
 
     return Expanded(
       child: GestureDetector(
         onTap: () {
           setState(() {
-            _difficulty = option;
+            _difficulty = _getDifficultyValue(translatedOption);
           });
         },
         child: Container(
@@ -391,21 +455,29 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
           decoration: BoxDecoration(
             color:
                 isSelected
-                    ? _getDifficultyColor(option).withOpacity(0.2)
+                    ? _getDifficultyColor(
+                      _getDifficultyValue(translatedOption),
+                    ).withOpacity(0.2)
                     : AppTheme.surfaceVariant.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
             border:
                 isSelected
-                    ? Border.all(color: _getDifficultyColor(option))
+                    ? Border.all(
+                      color: _getDifficultyColor(
+                        _getDifficultyValue(translatedOption),
+                      ),
+                    )
                     : null,
           ),
           alignment: Alignment.center,
           child: Text(
-            option,
+            translatedOption,
             style: TextStyle(
               color:
                   isSelected
-                      ? _getDifficultyColor(option)
+                      ? _getDifficultyColor(
+                        _getDifficultyValue(translatedOption),
+                      )
                       : AppTheme.onSurfaceVariant,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),

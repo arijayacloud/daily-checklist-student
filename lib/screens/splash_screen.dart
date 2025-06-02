@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 32),
             Text(
-                  'TK Activity Checklist',
+                  'Daftar Kegiatan TK',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
@@ -91,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 .slideY(begin: 0.2, end: 0),
             const SizedBox(height: 16),
             Text(
-                  'Learning Together',
+                  'Belajar Bersama',
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(color: AppTheme.secondary),

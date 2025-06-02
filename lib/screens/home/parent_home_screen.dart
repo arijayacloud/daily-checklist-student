@@ -218,7 +218,7 @@ class ParentDashboardTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No children found',
+            'Belum Ada Data Anak',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -227,7 +227,7 @@ class ParentDashboardTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Please contact your teacher to add your children',
+            'Silakan hubungi guru untuk menambahkan data anak Anda',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -300,7 +300,7 @@ class ParentDashboardTab extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${child.age} years old',
+                '${child.age} tahun',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.onSurfaceVariant,
@@ -317,7 +317,7 @@ class ParentDashboardTab extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
-                  'View Activities',
+                  'Lihat Aktivitas',
                   style: TextStyle(
                     color: AppTheme.onPrimaryContainer,
                     fontWeight: FontWeight.w500,

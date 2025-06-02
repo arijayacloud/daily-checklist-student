@@ -78,7 +78,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Observation submitted successfully'),
+          content: Text('Observasi berhasil dikirim'),
           backgroundColor: AppTheme.success,
         ),
       );
@@ -98,7 +98,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Complete Activity')),
+      appBar: AppBar(title: const Text('Selesaikan Aktivitas')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -138,7 +138,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${widget.child.age} years old',
+                '${widget.child.age} tahun',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppTheme.onSurfaceVariant,
@@ -171,7 +171,9 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    widget.activity.difficulty,
+                    _translateDifficultyToIndonesian(
+                      widget.activity.difficulty,
+                    ),
                     style: TextStyle(
                       color: _getDifficultyColor(widget.activity.difficulty),
                       fontWeight: FontWeight.bold,
@@ -189,7 +191,9 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    widget.activity.environment,
+                    _translateEnvironmentToIndonesian(
+                      widget.activity.environment,
+                    ),
                     style: TextStyle(
                       color: _getEnvironmentColor(widget.activity.environment),
                       fontWeight: FontWeight.bold,
@@ -199,125 +203,250 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               widget.activity.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               widget.activity.description,
-              style: TextStyle(color: AppTheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Langkah-langkah Instruksi:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...widget.activity.customSteps.isNotEmpty
+                ? _buildStepsList(widget.activity.customSteps.first.steps)
+                : [
+                  Text(
+                    'Tidak ada langkah instruksi yang ditetapkan',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
           ],
         ),
       ),
     );
   }
 
+  List<Widget> _buildStepsList(List<String> steps) {
+    return steps
+        .asMap()
+        .entries
+        .map(
+          (entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${entry.key + 1}',
+                    style: TextStyle(
+                      color: AppTheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(entry.value, style: const TextStyle(height: 1.5)),
+                ),
+              ],
+            ),
+          ),
+        )
+        .toList();
+  }
+
   Widget _buildObservationForm() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Observation Details',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          'Detail Observasi',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primary,
+          ),
         ),
         const SizedBox(height: 16),
+        _buildDurationSelector(),
+        const SizedBox(height: 24),
+        _buildEngagementSelector(),
+        const SizedBox(height: 24),
+        _buildNotesField(),
+        if (widget.isTeacher) const SizedBox(height: 24),
+        if (widget.isTeacher) _buildLearningOutcomesField(),
+      ],
+    );
+  }
 
-        // Duration slider
-        const Text(
-          'Duration (minutes):',
-          style: TextStyle(fontWeight: FontWeight.w500),
+  Widget _buildDurationSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Durasi Aktivitas: $_durationMinutes menit',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Slider(
+          value: _durationMinutes.toDouble(),
+          min: 5,
+          max: 60,
+          divisions: 11,
+          label: '$_durationMinutes menit',
+          onChanged: (value) {
+            setState(() {
+              _durationMinutes = value.toInt();
+            });
+          },
+          activeColor: AppTheme.primary,
         ),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Slider(
-                value: _durationMinutes.toDouble(),
-                min: 5,
-                max: 60,
-                divisions: 11,
-                label: _durationMinutes.toString(),
-                onChanged: (value) {
-                  setState(() {
-                    _durationMinutes = value.round();
-                  });
-                },
-              ),
-            ),
-            Container(
-              width: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '$_durationMinutes',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+            Text('5 menit', style: TextStyle(color: AppTheme.onSurfaceVariant)),
+            Text(
+              '60 menit',
+              style: TextStyle(color: AppTheme.onSurfaceVariant),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-        // Engagement rating
-        const Text(
-          'Engagement Level:',
-          style: TextStyle(fontWeight: FontWeight.w500),
+  Widget _buildEngagementSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tingkat Keterlibatan Anak:',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(5, (index) {
-            final rating = index + 1;
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _engagement = rating;
-                });
-              },
-              child: Column(
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceVariant.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Slider(
+                value: _engagement.toDouble(),
+                min: 1,
+                max: 5,
+                divisions: 4,
+                label: '$_engagement',
+                onChanged: (value) {
+                  setState(() {
+                    _engagement = value.toInt();
+                  });
+                },
+                activeColor: AppTheme.primary,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(
-                    rating <= _engagement ? Icons.star : Icons.star_border,
-                    color:
-                        rating <= _engagement
-                            ? Colors.amber
-                            : AppTheme.onSurfaceVariant,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    rating.toString(),
-                    style: TextStyle(
-                      color:
-                          rating <= _engagement
-                              ? AppTheme.onSurface
-                              : AppTheme.onSurfaceVariant,
-                      fontWeight:
-                          rating <= _engagement
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                    ),
-                  ),
+                  _buildEngagementLevelText(1, 'Sangat Rendah'),
+                  _buildEngagementLevelText(2, 'Rendah'),
+                  _buildEngagementLevelText(3, 'Sedang'),
+                  _buildEngagementLevelText(4, 'Tinggi'),
+                  _buildEngagementLevelText(5, 'Sangat Tinggi'),
                 ],
               ),
-            );
-          }),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-        // Notes
-        const Text('Notes:', style: TextStyle(fontWeight: FontWeight.w500)),
+  Widget _buildEngagementLevelText(int level, String label) {
+    return Column(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color:
+                _engagement == level
+                    ? AppTheme.primary
+                    : AppTheme.surfaceVariant,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '$level',
+            style: TextStyle(
+              color: _engagement == level ? Colors.white : AppTheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color:
+                _engagement == level
+                    ? AppTheme.primary
+                    : AppTheme.onSurfaceVariant,
+            fontWeight:
+                _engagement == level ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotesField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.isTeacher ? 'Catatan Proses:' : 'Catatan Observasi:',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _notesController,
-          maxLines: 3,
+          maxLines: 4,
           decoration: InputDecoration(
-            hintText: 'Enter your observations about the activity...',
+            hintText:
+                widget.isTeacher
+                    ? 'Bagaimana anak mengerjakan aktivitas ini di sekolah?'
+                    : 'Bagaimana anak mengerjakan aktivitas ini di rumah?',
             filled: true,
             fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
             border: OutlineInputBorder(
@@ -326,41 +455,45 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
             ),
           ),
           validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter some notes';
+            if (value == null || value.trim().isEmpty) {
+              return 'Silakan masukkan catatan observasi';
             }
             return null;
           },
         ),
-        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-        // Learning outcomes (for teachers only)
-        if (widget.isTeacher) ...[
-          const Text(
-            'Learning Outcomes:',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _learningOutcomesController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'What did the child learn from this activity?',
-              filled: true,
-              fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
+  Widget _buildLearningOutcomesField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Hasil Pembelajaran:',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _learningOutcomesController,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText:
+                'Apa yang dipelajari anak? Keterampilan apa yang ditunjukkan?',
+            filled: true,
+            fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
-            validator: (value) {
-              if (widget.isTeacher && (value == null || value.isEmpty)) {
-                return 'Please enter learning outcomes';
-              }
-              return null;
-            },
           ),
-        ],
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Silakan masukkan hasil pembelajaran';
+            }
+            return null;
+          },
+        ),
       ],
     );
   }
@@ -387,7 +520,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                 ),
               )
               : const Text(
-                'Submit Observation',
+                'Kirim Observasi',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
     );
@@ -416,6 +549,32 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
         return Colors.teal;
       default:
         return Colors.grey;
+    }
+  }
+
+  String _translateDifficultyToIndonesian(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateEnvironmentToIndonesian(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
     }
   }
 }

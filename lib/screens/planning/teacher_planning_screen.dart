@@ -43,7 +43,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Weekly Planning'),
+        title: const Text('Perencanaan Mingguan'),
         actions: [
           IconButton(
             icon: const Icon(Icons.analytics_outlined),
