@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'dart:async';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -88,7 +90,6 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Merombak fungsi createParentAccount untuk menangani pembuatan akun tanpa logout
   Future<void> createParentAccount(
     String email,
     String name,
@@ -101,28 +102,30 @@ class AuthProvider with ChangeNotifier {
     }
 
     try {
-      // Buat instance Firebase Auth kedua (tidak mengganggu sesi saat ini)
-      final FirebaseAuth tempAuth = FirebaseAuth.instance;
+      final String docId = _firestore.collection('users').doc().id;
 
-      // Simpan user saat ini untuk login kembali nanti jika diperlukan
+      // Simpan referensi user guru saat ini
       final currentUser = _auth.currentUser;
-      final currentEmail = currentUser?.email;
-      String? currentPassword;
+      final currentUserEmail = currentUser?.email;
+      final currentUserId = currentUser?.uid;
 
-      // Buat akun orang tua baru
-      UserCredential parentCredential;
+      // Inisialisasi Firebase App terpisah untuk mencegah logout
+      final parentApp = await Firebase.initializeApp(
+        name: 'parentAuthApp-${DateTime.now().millisecondsSinceEpoch}',
+        options: Firebase.app().options,
+      );
+
       try {
-        // Buat akun baru di Firebase Auth
-        parentCredential = await tempAuth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+        // Gunakan instance terpisah untuk membuat akun parent
+        final parentAuth = FirebaseAuth.instanceFor(app: parentApp);
+        final parentCredential = await parentAuth
+            .createUserWithEmailAndPassword(email: email, password: password);
 
-        // Dapatkan UID dari akun baru
-        final newUserId = parentCredential.user!.uid;
+        final newUserId = parentCredential.user?.uid;
 
         // Simpan data orang tua di Firestore
         await _firestore.collection('users').doc(newUserId).set({
+          'id': newUserId,
           'email': email,
           'name': name,
           'role': 'parent',
@@ -135,17 +138,17 @@ class AuthProvider with ChangeNotifier {
           'status': 'active',
         });
 
-        // Langsung keluar dari akun orang tua
-        await tempAuth.signOut();
-
-        // Pastikan guru tetap login (pengguna saat ini tidak berubah)
-        if (_auth.currentUser?.uid != currentUser?.uid &&
-            currentEmail != null) {
-          // Jika terjadi logout, login kembali (seharusnya tidak terjadi, ini langkah antisipasi)
-          debugPrint('Mencoba login kembali sebagai guru...');
-          // Logic login kembali jika diperlukan
-        }
+        // Hapus Firebase App terpisah
+        await parentApp.delete();
       } catch (authError) {
+        // Hapus app terpisah jika terjadi error
+        await parentApp.delete();
+
+        // Hapus dokumen yang telah dibuat jika gagal
+        if (docId.isNotEmpty) {
+          await _firestore.collection('users').doc(docId).delete();
+        }
+
         debugPrint('Error creating parent account: $authError');
         throw _handleAuthError(authError);
       }
@@ -155,7 +158,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Convert Firebase Auth errors to user-friendly messages
   String _handleAuthError(dynamic e) {
     if (e is FirebaseAuthException) {
       switch (e.code) {
@@ -182,7 +184,6 @@ class AuthProvider with ChangeNotifier {
     return e.toString();
   }
 
-  // Change password
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -192,7 +193,6 @@ class AuthProvider with ChangeNotifier {
     }
 
     try {
-      // Re-authenticate user
       final credential = EmailAuthProvider.credential(
         email: _firebaseUser!.email!,
         password: currentPassword,
@@ -200,16 +200,13 @@ class AuthProvider with ChangeNotifier {
 
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
-      // Change password
       await _firebaseUser!.updatePassword(newPassword);
 
-      // Update isTempPassword to false if applicable
       if (_user?.isTempPassword == true) {
         await _firestore.collection('users').doc(_firebaseUser!.uid).update({
           'isTempPassword': false,
         });
 
-        // Update local user model
         if (_user != null) {
           _user = _user!.copyWith(isTempPassword: false);
           notifyListeners();
@@ -221,7 +218,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Fungsi untuk membuat akun guru
   Future<void> createTeacherAccount(
     String email,
     String name,
@@ -230,7 +226,6 @@ class AuthProvider with ChangeNotifier {
     String address = '',
   }) async {
     try {
-      // Buat akun pengguna dengan Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -238,7 +233,6 @@ class AuthProvider with ChangeNotifier {
 
       final uid = userCredential.user!.uid;
 
-      // Buat dokumen pengguna di Firestore
       await _firestore.collection('users').doc(uid).set({
         'email': email,
         'name': name,
@@ -251,7 +245,6 @@ class AuthProvider with ChangeNotifier {
         'isTempPassword': false,
       });
 
-      // Update data pengguna saat ini
       _firebaseUser = userCredential.user;
       await _fetchUserData(uid);
     } catch (e) {

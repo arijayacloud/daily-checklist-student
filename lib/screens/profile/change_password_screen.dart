@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
+import '/screens/home/parent_home_screen.dart';
+import '/screens/home/teacher_home_screen.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   final bool isForced;
@@ -57,7 +59,20 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pop();
+
+        if (widget.isForced) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      authProvider.userRole == 'teacher'
+                          ? const TeacherHomeScreen()
+                          : const ParentHomeScreen(),
+            ),
+          );
+        } else {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       setState(() {
