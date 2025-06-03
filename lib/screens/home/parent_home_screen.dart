@@ -11,6 +11,7 @@ import '/screens/checklist/parent_checklist_screen.dart';
 import '/screens/planning/parent_planning_screen.dart';
 import '/screens/profile/profile_screen.dart';
 import '/screens/notification/notification_screen.dart';
+import '/screens/children/parent_children_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/home/child_avatar.dart';
 import '/widgets/notification_badge.dart';
@@ -133,7 +134,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const ParentDashboardTab(),
+      const ParentChildrenScreen(),
       const ParentPlanningScreen(),
       const ProfileScreen(),
     ];

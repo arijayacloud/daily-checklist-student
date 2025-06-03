@@ -482,6 +482,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
       floatingActionButton:
           _parents.isNotEmpty
               ? FloatingActionButton(
+                heroTag: 'parents_fab',
                 onPressed: () {
                   Navigator.push(
                     context,

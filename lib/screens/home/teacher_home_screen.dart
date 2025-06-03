@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '/providers/auth_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/activity_provider.dart';
 import '/providers/notification_provider.dart';
 import '/screens/activities/teacher_activities_screen.dart';
+import '/screens/activities/add_activity_screen.dart';
 import '/screens/children/teacher_children_screen.dart';
+import '/screens/children/add_child_screen.dart';
 import '/screens/planning/teacher_planning_screen.dart';
 import '/screens/parents/parents_screen.dart';
 import '/screens/profile/profile_screen.dart';
@@ -21,12 +24,31 @@ class TeacherHomeScreen extends StatefulWidget {
   State<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
 }
 
-class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
+class _TeacherHomeScreenState extends State<TeacherHomeScreen>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
+  late TabController _tabController;
+
+  final List<Widget> _screens = const [
+    TeacherChildrenScreen(),
+    TeacherActivitiesScreen(),
+    ParentsScreen(),
+    TeacherPlanningScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _selectedIndex = _tabController.index;
+        });
+      }
+    });
+
     // Fetch initial data
     final childProvider = Provider.of<ChildProvider>(context, listen: false);
     final activityProvider = Provider.of<ActivityProvider>(
@@ -45,43 +67,35 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      _tabController.animateTo(index);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      const TeacherChildrenScreen(),
-      const TeacherActivitiesScreen(),
-      const ParentsScreen(),
-      const TeacherPlanningScreen(),
-      const ProfileScreen(),
-    ];
-
     return Scaffold(
       appBar:
           _selectedIndex == 4
               ? null
               : AppBar(
+                elevation: 0,
+                scrolledUnderElevation: 3,
                 title: _getAppBarTitle(),
+                centerTitle: true,
                 actions: [
-                  // // Progress Dashboard button
-                  // IconButton(
-                  //   icon: const Icon(Icons.dashboard),
-                  //   tooltip: 'Dashboard Perkembangan Peserta Didik',
-                  //   onPressed: () {
-                  //     Navigator.of(
-                  //       context,
-                  //     ).pushNamed(ProgressDashboard.routeName);
-                  //   },
-                  // ),
                   const NotificationBadge(),
                   IconButton(
                     icon: const Icon(Icons.add_alert),
-                    tooltip: 'Tambah Notifikasi Uji Coba',
+                    tooltip: 'Notifikasi',
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -93,55 +107,118 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   ),
                 ],
               ),
-      body: screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.child_care_outlined),
-            activeIcon: Icon(Icons.child_care),
-            label: 'Peserta Didik',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            activeIcon: Icon(Icons.assignment),
-            label: 'Aktivitas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Orang Tua',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today),
-            label: 'Jadwal',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
-        selectedItemColor: AppTheme.primary,
+      body: TabBarView(
+        controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: _screens,
       ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -1),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.child_care_outlined),
+              activeIcon: Icon(Icons.child_care),
+              label: 'Peserta Didik',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_outlined),
+              activeIcon: Icon(Icons.assignment),
+              label: 'Aktivitas',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_outline),
+              activeIcon: Icon(Icons.people),
+              label: 'Orang Tua',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today_outlined),
+              activeIcon: Icon(Icons.calendar_today),
+              label: 'Jadwal',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profil',
+            ),
+          ],
+          selectedItemColor: AppTheme.primary,
+          unselectedItemColor: Colors.grey,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(fontSize: 11),
+          showUnselectedLabels: true,
+          elevation: 0,
+        ),
+      ),
+      floatingActionButton:
+          _selectedIndex == 0 || _selectedIndex == 1
+              ? FloatingActionButton(
+                heroTag: 'teacher_home_fab',
+                onPressed: () {
+                  // Navigasi ke halaman tambah sesuai dengan tab yang dipilih
+                  if (_selectedIndex == 0) {
+                    // Navigasi ke halaman tambah anak
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddChildScreen(),
+                      ),
+                    );
+                  } else if (_selectedIndex == 1) {
+                    // Navigasi ke halaman tambah aktivitas
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddActivityScreen(),
+                      ),
+                    );
+                  }
+                },
+                child: const Icon(Icons.add),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ).animate().scale(
+                curve: Curves.easeOutBack,
+                duration: const Duration(milliseconds: 500),
+              )
+              : null,
     );
   }
 
   Widget _getAppBarTitle() {
-    switch (_selectedIndex) {
-      case 0:
-        return const Text('Daftar Peserta Didik');
-      case 1:
-        return const Text('Daftar Aktivitas');
-      case 2:
-        return const Text('Data Orang Tua');
-      case 3:
-        return const Text('Jadwal Kegiatan');
-      default:
-        return const Text('Aplikasi Daftar Kegiatan TK');
-    }
+    final titles = [
+      'Daftar Peserta Didik',
+      'Daftar Aktivitas',
+      'Data Orang Tua',
+      'Jadwal Kegiatan',
+      'Profil',
+    ];
+
+    return Text(
+          titles[_selectedIndex],
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        )
+        .animate(key: ValueKey(_selectedIndex))
+        .fadeIn(duration: const Duration(milliseconds: 200))
+        .slideY(
+          begin: 0.2,
+          end: 0,
+          duration: const Duration(milliseconds: 200),
+        );
   }
 }

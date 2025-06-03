@@ -119,6 +119,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'activities_fab',
         onPressed: () {
           Navigator.push(
             context,

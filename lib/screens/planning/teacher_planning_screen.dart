@@ -46,6 +46,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         children: [_buildCalendar(), Expanded(child: _buildDailySchedule())],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'planning_fab',
         onPressed: () {
           Navigator.push(
             context,

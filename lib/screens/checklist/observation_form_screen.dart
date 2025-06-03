@@ -123,7 +123,10 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        ChildAvatar(child: widget.child, size: 50),
+        Hero(
+          tag: 'child_avatar_${widget.child.id}',
+          child: ChildAvatar(child: widget.child, size: 50),
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
