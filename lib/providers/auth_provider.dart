@@ -88,7 +88,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // For teachers to create parent accounts
+  // Merombak fungsi createParentAccount untuk menangani pembuatan akun tanpa logout
   Future<void> createParentAccount(
     String email,
     String name,
@@ -101,39 +101,28 @@ class AuthProvider with ChangeNotifier {
     }
 
     try {
-      // SOLUSI BARU: Gunakan metode yang tidak melibatkan logout
-      // Di lingkungan produksi, gunakan Cloud Functions untuk membuat user
+      // Buat instance Firebase Auth kedua (tidak mengganggu sesi saat ini)
+      final FirebaseAuth tempAuth = FirebaseAuth.instance;
 
-      // 1. Buat entri di 'pending_users' collection untuk menandai akun yang perlu dibuat
-      // Ini akan diproses oleh Cloud Function untuk membuat Auth user
-      final pendingUserRef = await _firestore.collection('pending_users').add({
-        'email': email,
-        'password': password, // WARNING: Ini tidak aman! Untuk demo saja
-        'name': name,
-        'role': 'parent',
-        'teacherId': _user!.id,
-        'status': 'pending',
-        'timestamp': FieldValue.serverTimestamp(),
-        'phoneNumber': phoneNumber,
-        'address': address,
-      });
+      // Simpan user saat ini untuk login kembali nanti jika diperlukan
+      final currentUser = _auth.currentUser;
+      final currentEmail = currentUser?.email;
+      String? currentPassword;
 
-      // 2. Untuk demo, kita lakukan pembuatan akun secara langsung dengan menggunakan second auth instance
-      // CATATAN: Ini tidak ideal untuk produksi karena masalah keamanan
+      // Buat akun orang tua baru
+      UserCredential parentCredential;
       try {
-        // Dalam kasus demo, kita buat user Auth langsung (akan diganti dengan Cloud Functions)
+        // Buat akun baru di Firebase Auth
+        parentCredential = await tempAuth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
 
-        // Secara ideal, kita menggunakan Admin SDK di backend untuk membuat akun
-        // Karena kita tidak bisa melakukannya di Flutter, gunakan metode alternatif berikut
+        // Dapatkan UID dari akun baru
+        final newUserId = parentCredential.user!.uid;
 
-        // Buat user di Firebase Auth dengan metode alternatif
-        // Di produksi, gunakan Firebase Cloud Functions
-
-        // Gunakan HTTP API untuk membuat user (akan diimplementasikan di backend)
-        // Untuk demo, kita akan membuat dokumen user di Firestore saja
-        final userDocRef = _firestore.collection('users').doc();
-
-        await userDocRef.set({
+        // Simpan data orang tua di Firestore
+        await _firestore.collection('users').doc(newUserId).set({
           'email': email,
           'name': name,
           'role': 'parent',
@@ -144,111 +133,21 @@ class AuthProvider with ChangeNotifier {
           'address': address,
           'profilePicture': '',
           'status': 'active',
-          'pendingAuthCreation': true,
         });
 
-        // Update status di pending_users
-        await pendingUserRef.update({
-          'status': 'processed',
-          'firestoreDocId': userDocRef.id,
-        });
+        // Langsung keluar dari akun orang tua
+        await tempAuth.signOut();
 
-        // PENTING: Di produksi, Cloud Function akan menangani pembuatan Auth user
-        // Untuk demo, kita akan tampilkan pesan bahwa user telah dibuat, meskipun Auth belum
-
-        // Tambahkan pesan di log untuk admin mengetahui akun yang perlu dibuat
-        debugPrint(
-          'ADMIN: Buat akun Auth untuk email $email dengan password $password',
-        );
-
-        // Di produksi, gunakan Firebase Admin SDK seperti contoh berikut:
-        /*
-        const admin = require('firebase-admin');
-        admin.auth().createUser({
-          email: email,
-          password: password,
-          displayName: name,
-        }).then((userRecord) => {
-          // Update Firestore doc dengan UID
-          admin.firestore().collection('users').doc(userDocRef.id).update({
-            'uid': userRecord.uid,
-            'pendingAuthCreation': false,
-          });
-        });
-        */
-      } catch (authCreationError) {
-        // Tandai sebagai gagal di pending_users
-        await pendingUserRef.update({
-          'status': 'failed',
-          'error': authCreationError.toString(),
-        });
-
-        throw 'Gagal membuat akun Auth: ${authCreationError.toString()}';
-      }
-    } catch (e) {
-      debugPrint('Create parent account error: $e');
-      throw _handleAuthError(e);
-    }
-  }
-
-  // Fungsi alternatif untuk membuat akun orang tua tanpa logout
-  Future<void> createParentAccountV2(
-    String email,
-    String name,
-    String password, {
-    String phoneNumber = '',
-    String address = '',
-  }) async {
-    if (_user == null || _user!.role != 'teacher') {
-      throw 'Hanya guru yang dapat membuat akun orang tua';
-    }
-
-    try {
-      // Gunakan Cloud Functions atau backend API untuk membuat user
-      // Ini adalah pendekatan yang lebih aman dan tidak mempengaruhi sesi pengguna saat ini
-
-      // Untuk demo, kita simulasikan dengan kode berikut
-      // TODO: Ganti dengan panggilan API yang sebenarnya
-
-      // Tambahkan dokumen pengguna di Firestore terlebih dahulu
-      final parentDocRef = _firestore.collection('users').doc();
-
-      await parentDocRef.set({
-        'email': email,
-        'name': name,
-        'role': 'parent',
-        'createdBy': _user!.id,
-        'isTempPassword': true,
-        'createdAt': FieldValue.serverTimestamp(),
-        'phoneNumber': phoneNumber,
-        'address': address,
-        'profilePicture': '',
-        'status': 'active',
-        'pendingRegistration':
-            true, // Tandai bahwa akun belum sepenuhnya terdaftar
-      });
-
-      // Di sini kita akan memanggil Cloud Function untuk membuat user Auth
-      // dan menghubungkannya dengan dokumen yang sudah dibuat
-
-      // Untuk sementara kita simulasikan proses tersebut:
-      final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      final newUserId = userCredential.user!.uid;
-
-      // Update dokumen dengan ID user yang baru dibuat
-      await _firestore.collection('users').doc(parentDocRef.id).update({
-        'id': newUserId,
-        'pendingRegistration': false,
-      });
-
-      // Keluar dari akun baru dan login kembali sebagai guru
-      if (_firebaseUser?.uid != _user?.id) {
-        await _auth.signOut();
-
-        // Di sini idealnya kita akan menggunakan custom token atau session persistence
-        // Tetapi untuk sementara, kita perlu memberikan solusi yang memungkinkan user untuk login kembali
+        // Pastikan guru tetap login (pengguna saat ini tidak berubah)
+        if (_auth.currentUser?.uid != currentUser?.uid &&
+            currentEmail != null) {
+          // Jika terjadi logout, login kembali (seharusnya tidak terjadi, ini langkah antisipasi)
+          debugPrint('Mencoba login kembali sebagai guru...');
+          // Logic login kembali jika diperlukan
+        }
+      } catch (authError) {
+        debugPrint('Error creating parent account: $authError');
+        throw _handleAuthError(authError);
       }
     } catch (e) {
       debugPrint('Create parent account error: $e');

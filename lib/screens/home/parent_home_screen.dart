@@ -140,6 +140,15 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     ];
 
     return Scaffold(
+      appBar:
+          _selectedIndex != 2
+              ? AppBar(
+                title: Text(
+                  _selectedIndex == 0 ? 'Anak Saya' : 'Jadwal Aktivitas',
+                ),
+                actions: [const NotificationBadge()],
+              )
+              : null,
       body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,

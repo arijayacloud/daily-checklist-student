@@ -4,7 +4,9 @@ import '/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
+  final bool isForced;
+
+  const ChangePasswordScreen({super.key, this.isForced = false});
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
@@ -223,8 +225,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
                   // Cancel button
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('BATAL'),
+                    onPressed:
+                        widget.isForced
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                    child: Text(
+                      'BATAL',
+                      style: TextStyle(
+                        color:
+                            widget.isForced
+                                ? Colors.grey.withOpacity(0.5)
+                                : null,
+                      ),
+                    ),
                   ),
                 ],
               ),

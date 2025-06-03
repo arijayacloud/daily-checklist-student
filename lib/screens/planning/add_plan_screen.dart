@@ -42,6 +42,11 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     initializeDateFormatting('id_ID', null);
 
     _startDate = widget.selectedDate;
+
+    // Jika tipe plan adalah weekly, pastikan tanggal mulainya adalah Senin
+    if (_planType == 'weekly') {
+      _startDate = _getWeekStartDate(_startDate);
+    }
   }
 
   @override
@@ -87,6 +92,11 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       onTap: () {
         setState(() {
           _planType = type;
+
+          // Jika berganti ke weekly, pastikan tanggal mulainya adalah Senin
+          if (type == 'weekly') {
+            _startDate = _getWeekStartDate(_startDate);
+          }
         });
       },
       child: Container(
@@ -130,21 +140,121 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Perencanaan untuk:', style: TextStyle(fontSize: 14)),
-              Text(
-                DateFormat(
-                  'EEEE, d MMMM yyyy',
-                  'id_ID',
-                ).format(widget.selectedDate),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              _planType == 'daily'
+                  ? Text(
+                    DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_startDate),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat(
+                          'EEEE, d MMMM yyyy',
+                          'id_ID',
+                        ).format(_startDate),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Hingga ${DateFormat('d MMMM yyyy', 'id_ID').format(_getEndDateOfWeek())}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
             ],
           ),
+          const Spacer(),
+          if (_planType == 'daily')
+            IconButton(
+              icon: const Icon(Icons.calendar_month),
+              onPressed: () async {
+                final pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: _startDate,
+                  firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                );
+                if (pickedDate != null) {
+                  setState(() {
+                    _startDate = pickedDate;
+                  });
+                }
+              },
+            )
+          else if (_planType == 'weekly')
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios),
+                  onPressed: () {
+                    setState(() {
+                      // Mundur 7 hari
+                      _startDate = _startDate.subtract(const Duration(days: 7));
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.calendar_month),
+                  onPressed: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: _startDate,
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 30),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      selectableDayPredicate: (day) {
+                        // Hanya izinkan memilih hari Senin
+                        return day.weekday == DateTime.monday;
+                      },
+                      helpText: 'Pilih Awal Minggu (Senin)',
+                    );
+                    if (pickedDate != null) {
+                      setState(() {
+                        // Menggunakan hari Senin terdekat sebagai awal minggu
+                        _startDate = _getWeekStartDate(pickedDate);
+                      });
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios),
+                  onPressed: () {
+                    setState(() {
+                      // Maju 7 hari
+                      _startDate = _startDate.add(const Duration(days: 7));
+                    });
+                  },
+                ),
+              ],
+            ),
         ],
       ),
     );
+  }
+
+  // Mendapatkan tanggal akhir minggu (Minggu)
+  DateTime _getEndDateOfWeek() {
+    // Jika _startDate adalah Senin (weekday = 1), maka end date adalah Minggu (weekday = 7)
+    // yang berarti start + 6 hari
+    return _startDate.add(const Duration(days: 6));
+  }
+
+  // Mendapatkan tanggal awal minggu (Senin) dari tanggal yang diberikan
+  DateTime _getWeekStartDate(DateTime date) {
+    // Jika date.weekday = 1 (Senin), kembalikan date
+    // Jika date.weekday > 1, kembalikan date - (weekday - 1) hari
+    final int daysToSubtract = date.weekday - 1;
+    return date.subtract(Duration(days: daysToSubtract));
   }
 
   Widget _buildChildSelector() {
@@ -253,6 +363,8 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     final activityId = activityData['activityId'] as String;
     final scheduledTime = activityData['scheduledTime'] as String?;
     final reminder = activityData['reminder'] as bool;
+    final scheduledDay =
+        activityData['scheduledDay'] as int?; // Hari dalam seminggu (0-6)
 
     return Consumer<ActivityProvider>(
       builder: (context, activityProvider, child) {
@@ -275,8 +387,32 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
               children: [
                 Row(
                   children: [
+                    if (_planType == 'weekly' && scheduledDay != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _getDayName(scheduledDay),
+                          style: TextStyle(
+                            color: AppTheme.onSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     if (scheduledTime != null)
                       Container(
+                        margin: EdgeInsets.only(
+                          left:
+                              _planType == 'weekly' && scheduledDay != null
+                                  ? 8
+                                  : 0,
+                        ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
@@ -503,34 +639,93 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     );
 
     if (selectedActivity != null) {
-      final timeOfDay = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-        builder: (BuildContext context, Widget? child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-            child: child!,
-          );
-        },
-      );
+      if (_planType == 'daily') {
+        // Untuk plan harian, hanya perlu waktu
+        final timeOfDay = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(alwaysUse24HourFormat: true),
+              child: child!,
+            );
+          },
+        );
 
-      setState(() {
-        _activities.add({
-          'activityId': selectedActivity,
-          'scheduledTime':
-              timeOfDay != null
-                  ? '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}'
-                  : null,
-          'reminder': true,
+        setState(() {
+          _activities.add({
+            'activityId': selectedActivity,
+            'scheduledTime':
+                timeOfDay != null
+                    ? '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}'
+                    : null,
+            'reminder': true,
+          });
         });
-      });
+      } else {
+        // Untuk plan mingguan, perlu pilih hari
+        final selectedDay = await showDialog<int>(
+          context: context,
+          builder: (context) => DayPickerDialog(startDate: _startDate),
+        );
+
+        if (selectedDay != null) {
+          // Setelah memilih hari, pilih waktu
+          final timeOfDay = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.now(),
+            builder: (BuildContext context, Widget? child) {
+              return MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(alwaysUse24HourFormat: true),
+                child: child!,
+              );
+            },
+          );
+
+          setState(() {
+            _activities.add({
+              'activityId': selectedActivity,
+              'scheduledDay': selectedDay,
+              'scheduledTime':
+                  timeOfDay != null
+                      ? '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}'
+                      : null,
+              'reminder': true,
+            });
+          });
+        }
+      }
     }
   }
 
   void _editActivity(int index) async {
     final activityData = _activities[index];
     final scheduledTime = activityData['scheduledTime'] as String?;
+    final scheduledDay = activityData['scheduledDay'] as int?;
 
+    if (_planType == 'weekly' && scheduledDay != null) {
+      // Edit hari untuk plan mingguan
+      final newDay = await showDialog<int>(
+        context: context,
+        builder:
+            (context) => DayPickerDialog(
+              startDate: _startDate,
+              initialDay: scheduledDay,
+            ),
+      );
+
+      if (newDay != null) {
+        setState(() {
+          _activities[index]['scheduledDay'] = newDay;
+        });
+      }
+    }
+
+    // Edit waktu untuk semua tipe plan
     final timeOfDay = await showTimePicker(
       context: context,
       initialTime:
@@ -566,24 +761,51 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     });
 
     try {
-      final List<PlannedActivity> plannedActivities =
-          _activities.map((data) {
-            return PlannedActivity(
-              activityId: data['activityId'],
-              scheduledDate: Timestamp.fromDate(_startDate),
-              scheduledTime: data['scheduledTime'],
-              reminder: data['reminder'],
-            );
-          }).toList();
+      List<PlannedActivity> plannedActivities = [];
+
+      if (_planType == 'daily') {
+        // Untuk plan harian, semua aktivitas terjadwal pada tanggal yang sama
+        plannedActivities =
+            _activities.map((data) {
+              return PlannedActivity(
+                activityId: data['activityId'],
+                scheduledDate: Timestamp.fromDate(_startDate),
+                scheduledTime: data['scheduledTime'],
+                reminder: data['reminder'],
+              );
+            }).toList();
+      } else {
+        // Untuk plan mingguan, sesuaikan tanggal berdasarkan scheduledDay
+        plannedActivities =
+            _activities.map((data) {
+              final int scheduledDay = data['scheduledDay'] as int? ?? 0;
+              // Menghitung tanggal dari hari dalam seminggu
+              // startDate adalah hari Senin (weekday = 1), jadi kita tambahkan selisih harinya
+              // Contoh: Jika scheduledDay = 0 (Minggu), maka kita tambahkan 6 hari dari Senin
+              // Jika scheduledDay = 1 (Senin), tambahkan 0 hari, dst
+              final int daysToAdd = (scheduledDay == 0) ? 6 : scheduledDay - 1;
+              final DateTime activityDate = _startDate.add(
+                Duration(days: daysToAdd),
+              );
+
+              return PlannedActivity(
+                activityId: data['activityId'],
+                scheduledDate: Timestamp.fromDate(activityDate),
+                scheduledTime: data['scheduledTime'],
+                reminder: data['reminder'],
+              );
+            }).toList();
+      }
 
       // Simpan rencana
       final String planId = await Provider.of<PlanningProvider>(
         context,
         listen: false,
-      ).createWeeklyPlan(
+      ).createPlan(
         startDate: _startDate,
         childId: _selectedChildId,
         activities: plannedActivities,
+        planType: _planType,
       );
 
       // Jika ada childId yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
@@ -726,6 +948,19 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       default:
         return Colors.grey;
     }
+  }
+
+  String _getDayName(int day) {
+    final List<String> dayNames = [
+      'Minggu',
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+    ];
+    return dayNames[day % 7];
   }
 }
 
@@ -886,6 +1121,136 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
                 minimumSize: const Size(double.infinity, 0),
               ),
               child: const Text('Batal'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DayPickerDialog extends StatefulWidget {
+  final DateTime startDate;
+  final int? initialDay;
+
+  const DayPickerDialog({super.key, required this.startDate, this.initialDay});
+
+  @override
+  State<DayPickerDialog> createState() => _DayPickerDialogState();
+}
+
+class _DayPickerDialogState extends State<DayPickerDialog> {
+  int _selectedDay = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Jika ada initialDay, gunakan itu, jika tidak, gunakan hari dari startDate
+    _selectedDay = widget.initialDay ?? widget.startDate.weekday % 7;
+  }
+
+  String _getDayName(int day) {
+    final List<String> dayNames = [
+      'Minggu',
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+    ];
+    return dayNames[day % 7];
+  }
+
+  DateTime _getDateForDay(int day) {
+    // Hitung tanggal berdasarkan hari dalam seminggu
+    final startWeekday = widget.startDate.weekday % 7;
+    return widget.startDate.add(Duration(days: (day - startWeekday + 7) % 7));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Pilih Hari',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ...List.generate(7, (index) {
+              final day = index;
+              final date = _getDateForDay(day);
+              final isSelected = _selectedDay == day;
+
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedDay = day;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color:
+                        isSelected
+                            ? AppTheme.primaryContainer
+                            : AppTheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        _getDayName(day),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color:
+                              isSelected
+                                  ? AppTheme.onPrimaryContainer
+                                  : AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        DateFormat('d MMM', 'id_ID').format(date),
+                        style: TextStyle(
+                          color:
+                              isSelected
+                                  ? AppTheme.onPrimaryContainer
+                                  : AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('BATAL'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, _selectedDay),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('PILIH'),
+                ),
+              ],
             ),
           ],
         ),

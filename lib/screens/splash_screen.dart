@@ -5,6 +5,7 @@ import '/providers/auth_provider.dart';
 import '/screens/auth/login_screen.dart';
 import '/screens/home/parent_home_screen.dart';
 import '/screens/home/teacher_home_screen.dart';
+import '/screens/auth/password_check_screen.dart';
 import '/lib/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -32,13 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(const Duration(seconds: 2), () {
       if (authProvider.isAuthenticated) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder:
-                (context) =>
-                    authProvider.userRole == 'teacher'
-                        ? const TeacherHomeScreen()
-                        : const ParentHomeScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const PasswordCheckScreen()),
         );
       } else {
         Navigator.of(context).pushReplacement(

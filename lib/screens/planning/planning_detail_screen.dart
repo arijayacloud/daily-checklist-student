@@ -32,23 +32,7 @@ class PlanningDetailScreen extends StatelessWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Aktivitas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: 'Bagikan',
-            onPressed: () {
-              // Implementasi bagikan aktivitas
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fitur berbagi akan datang segera'),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Detail Aktivitas')),
       body: Consumer2<PlanningProvider, ActivityProvider>(
         builder: (context, planningProvider, activityProvider, _) {
           // Ambil detail plan dan aktivitas

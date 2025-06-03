@@ -292,7 +292,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap tombol + untuk menambahkan aktivitas pada hari ini',
+            'Ketuk tombol + untuk menambahkan aktivitas pada hari ini',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -405,7 +405,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    activity.difficulty,
+                    _translateDifficultyToIndonesian(activity.difficulty),
                     style: TextStyle(
                       color: _getDifficultyColor(activity.difficulty),
                       fontWeight: FontWeight.bold,
@@ -426,7 +426,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    activity.environment,
+                    _translateEnvironmentToIndonesian(activity.environment),
                     style: TextStyle(
                       color: _getEnvironmentColor(activity.environment),
                       fontWeight: FontWeight.bold,
@@ -578,7 +578,7 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Activity marked as completed'),
+          content: Text('Aktivitas telah ditandai selesai'),
           backgroundColor: AppTheme.success,
         ),
       );
@@ -588,153 +588,6 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
       );
     }
   }
-
-  // void _createChecklistFromActivity(
-  //   BuildContext context,
-  //   PlannedActivity plannedActivity,
-  //   ActivityModel activity,
-  // ) async {
-  //   // Verifikasi planId ada dan valid
-  //   final planId = plannedActivity.planId;
-  //   if (planId == null || planId.isEmpty) {
-  //     debugPrint(
-  //       'Error: planId kosong atau null: ${plannedActivity.activityId}',
-  //     );
-
-  //     // Tampilkan dialog untuk meminta pengguna mencoba lagi atau memilih anak langsung
-  //     showDialog(
-  //       context: context,
-  //       builder:
-  //           (context) => AlertDialog(
-  //             title: const Text('Informasi Aktivitas Tidak Lengkap'),
-  //             content: const Text(
-  //               'Data plan tidak lengkap untuk aktivitas ini. Anda dapat memilih anak secara langsung untuk menambahkan aktivitas ke checklist mereka.',
-  //             ),
-  //             actions: [
-  //               TextButton(
-  //                 onPressed: () => Navigator.pop(context),
-  //                 child: const Text('Batal'),
-  //               ),
-  //               TextButton(
-  //                 onPressed: () {
-  //                   Navigator.pop(context);
-  //                   // Tampilkan dialog pemilihan anak langsung
-  //                   final planningProvider = Provider.of<PlanningProvider>(
-  //                     context,
-  //                     listen: false,
-  //                   );
-  //                   final checklistProvider = Provider.of<ChecklistProvider>(
-  //                     context,
-  //                     listen: false,
-  //                   );
-  //                   _showChildSelectionDialog(
-  //                     context,
-  //                     plannedActivity.activityId,
-  //                     planningProvider,
-  //                     checklistProvider,
-  //                     activity,
-  //                   );
-  //                 },
-  //                 child: const Text('Pilih Anak'),
-  //               ),
-  //             ],
-  //           ),
-  //     );
-  //     return;
-  //   }
-
-  //   final planningProvider = Provider.of<PlanningProvider>(
-  //     context,
-  //     listen: false,
-  //   );
-  //   final checklistProvider = Provider.of<ChecklistProvider>(
-  //     context,
-  //     listen: false,
-  //   );
-  //   final planData = planningProvider.getPlanById(planId);
-
-  //   if (planData == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(
-  //         content: Text('Tidak dapat menemukan data perencanaan'),
-  //         backgroundColor: AppTheme.error,
-  //       ),
-  //     );
-  //     return;
-  //   }
-
-  //   // Jika plan untuk semua anak, tampilkan dialog untuk memilih anak
-  //   if (planData.childId == null) {
-  //     await _showChildSelectionDialog(
-  //       context,
-  //       plannedActivity.activityId,
-  //       planningProvider,
-  //       checklistProvider,
-  //       activity,
-  //     );
-  //   } else {
-  //     // Tampilkan dialog konfirmasi
-  //     final childProvider = Provider.of<ChildProvider>(context, listen: false);
-  //     final child = childProvider.getChildById(planData.childId!);
-  //     final childName = child?.name ?? 'Anak';
-
-  //     final shouldAdd = await showDialog<bool>(
-  //       context: context,
-  //       builder: (context) {
-  //         return AlertDialog(
-  //           title: const Text('Tambahkan ke Checklist'),
-  //           content: Text(
-  //             'Tambahkan aktivitas "${activity.title}" ke checklist $childName?',
-  //           ),
-  //           actions: [
-  //             TextButton(
-  //               onPressed: () => Navigator.of(context).pop(false),
-  //               child: const Text('BATAL'),
-  //             ),
-  //             TextButton(
-  //               onPressed: () => Navigator.of(context).pop(true),
-  //               child: const Text('TAMBAHKAN'),
-  //             ),
-  //           ],
-  //         );
-  //       },
-  //     );
-
-  //     if (shouldAdd != true) return;
-
-  //     try {
-  //       // Dapatkan langkah-langkah kustom dari aktivitas
-  //       List<String> customStepsUsed = [];
-  //       if (activity.customSteps.isNotEmpty) {
-  //         customStepsUsed = activity.customSteps.first.steps;
-  //       }
-
-  //       // Tambahkan ke checklist
-  //       await checklistProvider.assignActivity(
-  //         childId: planData.childId!,
-  //         activityId: plannedActivity.activityId,
-  //         customStepsUsed: customStepsUsed,
-  //         dueDate: plannedActivity.scheduledDate,
-  //       );
-
-  //       // Buat notifikasi untuk parent
-  //       await _createNotificationForParent(planData.childId!, activity.title);
-
-  //       if (!mounted) return;
-
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(
-  //           content: Text('Berhasil ditambahkan ke checklist'),
-  //           backgroundColor: AppTheme.success,
-  //         ),
-  //       );
-  //     } catch (e) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-  //       );
-  //     }
-  //   }
-  // }
 
   Future<void> _createNotificationForParent(
     String childId,
@@ -860,6 +713,32 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
             ],
           ),
     );
+  }
+
+  String _translateDifficultyToIndonesian(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return 'Mudah';
+      case 'Medium':
+        return 'Sedang';
+      case 'Hard':
+        return 'Sulit';
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateEnvironmentToIndonesian(String environment) {
+    switch (environment) {
+      case 'Home':
+        return 'Rumah';
+      case 'School':
+        return 'Sekolah';
+      case 'Both':
+        return 'Keduanya';
+      default:
+        return environment;
+    }
   }
 
   Color _getDifficultyColor(String difficulty) {

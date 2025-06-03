@@ -154,10 +154,11 @@ class PlanningProvider with ChangeNotifier {
     }
   }
 
-  Future<String> createWeeklyPlan({
+  Future<String> createPlan({
     required DateTime startDate,
     String? childId,
     required List<PlannedActivity> activities,
+    String planType = 'weekly',
   }) async {
     if (_user == null || !_user!.isTeacher) {
       throw 'Only teachers can create plans';
@@ -172,7 +173,7 @@ class PlanningProvider with ChangeNotifier {
 
       await _firestore.collection('plans').doc(planId).set({
         'teacherId': _user!.id,
-        'type': 'weekly',
+        'type': planType,
         'startDate': Timestamp.fromDate(startDate),
         'childId': childId,
         'activities': activities.map((activity) => activity.toJson()).toList(),
@@ -192,7 +193,7 @@ class PlanningProvider with ChangeNotifier {
 
       return planId;
     } catch (e) {
-      debugPrint('Error creating weekly plan: $e');
+      debugPrint('Error creating plan: $e');
       _error = 'Failed to create plan. Please try again.';
       _isLoading = false;
       notifyListeners();
@@ -480,6 +481,10 @@ class PlanningProvider with ChangeNotifier {
     return _plans.where((plan) => plan.type == 'weekly').toList();
   }
 
+  List<PlanningModel> getDailyPlans() {
+    return _plans.where((plan) => plan.type == 'daily').toList();
+  }
+
   List<PlannedActivity> getActivitiesForDate(DateTime date) {
     final List<PlannedActivity> result = [];
 
@@ -488,9 +493,40 @@ class PlanningProvider with ChangeNotifier {
     debugPrint('Getting activities for date: ${normalizedDate.toString()}');
 
     for (final plan in _plans) {
-      // Dapatkan aktivitas dengan planId
-      final activitiesWithPlanId = plan.getActivitiesForDate(normalizedDate);
-      result.addAll(activitiesWithPlanId);
+      // Filter berdasarkan tipe plan
+      if (plan.type == 'daily') {
+        // Untuk plan harian, cek persis tanggalnya
+        final planStartDate = plan.startDate.toDate();
+        final normalizedPlanDate = DateTime(
+          planStartDate.year,
+          planStartDate.month,
+          planStartDate.day,
+        );
+
+        if (normalizedPlanDate.isAtSameMomentAs(normalizedDate)) {
+          // Tambahkan semua aktivitas dari plan harian ini
+          result.addAll(
+            plan.activities.map((activity) {
+              // Pastikan setiap aktivitas memiliki planId
+              if (activity.planId == null) {
+                return PlannedActivity(
+                  activityId: activity.activityId,
+                  scheduledDate: activity.scheduledDate,
+                  scheduledTime: activity.scheduledTime,
+                  reminder: activity.reminder,
+                  completed: activity.completed,
+                  planId: plan.id,
+                );
+              }
+              return activity;
+            }),
+          );
+        }
+      } else {
+        // Untuk plan mingguan, gunakan getActivitiesForDate yang ada
+        final activitiesWithPlanId = plan.getActivitiesForDate(normalizedDate);
+        result.addAll(activitiesWithPlanId);
+      }
     }
 
     debugPrint(

@@ -7,6 +7,7 @@ import '/screens/home/teacher_home_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/auth/custom_text_field.dart';
 import '/screens/auth/teacher_register_screen.dart';
+import '/screens/auth/password_check_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -51,13 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder:
-              (context) =>
-                  authProvider.userRole == 'teacher'
-                      ? const TeacherHomeScreen()
-                      : const ParentHomeScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const PasswordCheckScreen()),
       );
     } catch (e) {
       setState(() {
