@@ -115,7 +115,7 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.85,
+              childAspectRatio: 0.8,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
@@ -229,38 +229,39 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
             },
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Hero(
                     tag: 'child_avatar_${child.id}',
-                    child: ChildAvatar(child: child, size: 80),
+                    child: ChildAvatar(child: child, size: 70),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     child.name,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     '${child.age} tahun',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       color: AppTheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                      horizontal: 8,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryContainer,
@@ -271,15 +272,19 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                       children: [
                         Icon(
                           Icons.assignment,
-                          size: 16,
+                          size: 14,
                           color: AppTheme.onPrimaryContainer,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Lihat Aktivitas',
-                          style: TextStyle(
-                            color: AppTheme.onPrimaryContainer,
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Lihat Aktivitas',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

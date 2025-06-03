@@ -9,6 +9,7 @@ import '/models/planning_model.dart';
 import '/providers/activity_provider.dart';
 import '/providers/planning_provider.dart';
 import '/providers/auth_provider.dart';
+import '/providers/user_provider.dart';
 import '/lib/theme/app_theme.dart';
 import '/screens/planning/planning_detail_screen.dart';
 
@@ -38,6 +39,9 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       );
       planningProvider.fetchPlans();
 
+      // Memuat data guru
+      Provider.of<UserProvider>(context, listen: false).fetchTeachers();
+
       // Buat notifikasi pengingat aktivitas untuk hari ini
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.user != null) {
@@ -49,102 +53,102 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     });
   }
 
-  // Fungsi untuk menandai aktivitas sebagai selesai
-  Future<void> _markAsCompleted(
-    BuildContext context,
-    PlannedActivity plannedActivity,
-    PlanningProvider planningProvider,
-  ) async {
-    // Tambahkan dialog konfirmasi untuk mencegah klik yang tidak disengaja
-    final bool confirm =
-        await showDialog(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('Konfirmasi'),
-                content: const Text(
-                  'Apakah Anda yakin akan menandai aktivitas ini sebagai selesai?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Batal'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Ya, Selesaikan'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-        ) ??
-        false;
+  // // Fungsi untuk menandai aktivitas sebagai selesai
+  // Future<void> _markAsCompleted(
+  //   BuildContext context,
+  //   PlannedActivity plannedActivity,
+  //   PlanningProvider planningProvider,
+  // ) async {
+  //   // Tambahkan dialog konfirmasi untuk mencegah klik yang tidak disengaja
+  //   final bool confirm =
+  //       await showDialog(
+  //         context: context,
+  //         builder:
+  //             (context) => AlertDialog(
+  //               title: const Text('Konfirmasi'),
+  //               content: const Text(
+  //                 'Apakah Anda yakin akan menandai aktivitas ini sebagai selesai?',
+  //               ),
+  //               actions: [
+  //                 TextButton(
+  //                   onPressed: () => Navigator.of(context).pop(false),
+  //                   child: const Text('Batal'),
+  //                 ),
+  //                 ElevatedButton(
+  //                   onPressed: () => Navigator.of(context).pop(true),
+  //                   child: const Text('Ya, Selesaikan'),
+  //                   style: ElevatedButton.styleFrom(
+  //                     backgroundColor: AppTheme.primary,
+  //                     foregroundColor: Colors.white,
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //       ) ??
+  //       false;
 
-    if (!confirm) return;
+  //   if (!confirm) return;
 
-    try {
-      // Tampilkan loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const Dialog(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 20),
-                  Text("Memproses..."),
-                ],
-              ),
-            ),
-          );
-        },
-      );
+  //   try {
+  //     // Tampilkan loading indicator
+  //     showDialog(
+  //       context: context,
+  //       barrierDismissible: false,
+  //       builder: (BuildContext context) {
+  //         return const Dialog(
+  //           child: Padding(
+  //             padding: EdgeInsets.all(20.0),
+  //             child: Row(
+  //               mainAxisSize: MainAxisSize.min,
+  //               children: [
+  //                 CircularProgressIndicator(),
+  //                 SizedBox(width: 20),
+  //                 Text("Memproses..."),
+  //               ],
+  //             ),
+  //           ),
+  //         );
+  //       },
+  //     );
 
-      await planningProvider.markActivityAsCompleted(
-        planId: plannedActivity.planId ?? '',
-        activityId: plannedActivity.activityId,
-        scheduledDate: plannedActivity.scheduledDate,
-      );
+  //     await planningProvider.markActivityAsCompleted(
+  //       planId: plannedActivity.planId ?? '',
+  //       activityId: plannedActivity.activityId,
+  //       scheduledDate: plannedActivity.scheduledDate,
+  //     );
 
-      // Tutup dialog loading
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
+  //     // Tutup dialog loading
+  //     if (context.mounted) {
+  //       Navigator.of(context).pop();
+  //     }
 
-      if (!mounted) return;
+  //     if (!mounted) return;
 
-      // Force refresh UI
-      setState(() {});
+  //     // Force refresh UI
+  //     setState(() {});
 
-      // Paksa reload data dari server
-      await planningProvider.fetchPlans();
+  //     // Paksa reload data dari server
+  //     await planningProvider.fetchPlans();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aktivitas berhasil ditandai selesai'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
-    } catch (e) {
-      // Tutup dialog loading jika terjadi error
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Aktivitas berhasil ditandai selesai'),
+  //         backgroundColor: AppTheme.success,
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     // Tutup dialog loading jika terjadi error
+  //     if (context.mounted) {
+  //       Navigator.of(context).pop();
+  //     }
 
-      if (!mounted) return;
+  //     if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-      );
-    }
-  }
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -568,31 +572,41 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
               const Text('Tidak ada langkah khusus untuk aktivitas ini.')
             else
               ...activity.customSteps.map((customStep) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Langkah-langkah dari guru ${customStep.teacherId}:',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    ...customStep.steps.map((stepText) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8, left: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• '),
-                            Expanded(child: Text(stepText)),
-                          ],
+                // Menggunakan Consumer untuk mendapatkan data guru
+                return Consumer<UserProvider>(
+                  builder: (context, userProvider, _) {
+                    // Mendapatkan nama guru berdasarkan ID
+                    final teacherName =
+                        userProvider.getTeacherNameById(customStep.teacherId) ??
+                        'Guru';
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Langkah-langkah dari $teacherName:',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
-                      );
-                    }).toList(),
-                    const SizedBox(height: 8),
-                  ],
+                        const SizedBox(height: 4),
+                        ...customStep.steps.map((stepText) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8, left: 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• '),
+                                Expanded(child: Text(stepText)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        const SizedBox(height: 8),
+                      ],
+                    );
+                  },
                 );
               }).toList(),
             Row(
@@ -623,38 +637,38 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed:
-                        plannedActivity.completed
-                            ? null
-                            : () => _markAsCompleted(
-                              context,
-                              plannedActivity,
-                              planningProvider,
-                            ),
-                    icon: Icon(
-                      plannedActivity.completed
-                          ? Icons.check
-                          : Icons.assignment_turned_in,
-                    ),
-                    label: Text(
-                      plannedActivity.completed ? 'Selesai' : 'Selesaikan',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: AppTheme.primary,
-                      disabledBackgroundColor: AppTheme.success.withOpacity(
-                        0.6,
-                      ),
-                      disabledForegroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
+                // const SizedBox(width: 8),
+                // Expanded(
+                //   child: ElevatedButton.icon(
+                //     onPressed:
+                //         plannedActivity.completed
+                //             ? null
+                //             : () => _markAsCompleted(
+                //               context,
+                //               plannedActivity,
+                //               planningProvider,
+                //             ),
+                //     icon: Icon(
+                //       plannedActivity.completed
+                //           ? Icons.check
+                //           : Icons.assignment_turned_in,
+                //     ),
+                //     label: Text(
+                //       plannedActivity.completed ? 'Selesai' : 'Selesaikan',
+                //     ),
+                //     style: ElevatedButton.styleFrom(
+                //       foregroundColor: Colors.white,
+                //       backgroundColor: AppTheme.primary,
+                //       disabledBackgroundColor: AppTheme.success.withOpacity(
+                //         0.6,
+                //       ),
+                //       disabledForegroundColor: Colors.white,
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(12),
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ],

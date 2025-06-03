@@ -9,6 +9,7 @@ import '/providers/checklist_provider.dart';
 import '/providers/child_provider.dart';
 import '/providers/planning_provider.dart';
 import '/providers/notification_provider.dart';
+import '/providers/user_provider.dart';
 import '/screens/auth/login_screen.dart';
 import '/screens/auth/teacher_register_screen.dart';
 import '/screens/parents/add_parent_screen.dart';
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
           create: (_) => NotificationProvider(),
           update: (_, auth, previous) => previous!..update(auth.user),
         ),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: MaterialApp(
         title: 'TK Activity Checklist',

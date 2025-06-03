@@ -10,6 +10,7 @@ import '/lib/theme/app_theme.dart';
 import '/providers/checklist_provider.dart';
 import '/models/user_model.dart';
 import '/providers/child_provider.dart';
+import '/providers/user_provider.dart';
 
 class PlanningDetailScreen extends StatelessWidget {
   final String planId;
@@ -25,6 +26,11 @@ class PlanningDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Memastikan data guru dimuat
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<UserProvider>(context, listen: false).fetchTeachers();
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Aktivitas'),
@@ -330,45 +336,80 @@ class PlanningDetailScreen extends StatelessWidget {
                         ),
                       ),
                     )
-                    : Column(
-                      children:
-                          steps.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final step = entry.value;
+                    : Consumer<UserProvider>(
+                      builder: (context, userProvider, _) {
+                        // Dapatkan nama guru
+                        final teacherId = activity.customSteps.first.teacherId;
+                        final teacherName =
+                            userProvider.getTeacherNameById(teacherId) ??
+                            'Guru';
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Tampilkan nama guru
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
                               child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryContainer,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: TextStyle(
-                                          color: AppTheme.onPrimaryContainer,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
+                                  Icon(
+                                    Icons.person,
+                                    size: 16,
+                                    color: AppTheme.primary,
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      step,
-                                      style: const TextStyle(fontSize: 16),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Dibuat oleh: $teacherName',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: AppTheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
                               ),
-                            );
-                          }).toList(),
+                            ),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            ...steps.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final step = entry.value;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryContainer,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: TextStyle(
+                                            color: AppTheme.onPrimaryContainer,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        step,
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        );
+                      },
                     ),
           ),
         ),

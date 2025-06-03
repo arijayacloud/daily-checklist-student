@@ -12,6 +12,7 @@ import '/providers/activity_provider.dart';
 import '/providers/auth_provider.dart';
 import '/providers/checklist_provider.dart';
 import '/providers/planning_provider.dart';
+import '/providers/user_provider.dart';
 import '/screens/checklist/observation_form_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/home/child_avatar.dart';
@@ -58,6 +59,9 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
           _currentParent = authProvider.user;
         });
       }
+
+      // Muat data pengguna untuk mendapatkan informasi guru dan orang tua
+      Provider.of<UserProvider>(context, listen: false).fetchParents();
     });
   }
 
@@ -151,19 +155,28 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
           ),
           if (_currentParent != null) ...[
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.person, size: 16, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Orang tua: ${_currentParent!.name}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Consumer<UserProvider>(
+              builder: (context, userProvider, _) {
+                // Dapatkan nama orang tua yang sebenarnya
+                final parentName =
+                    userProvider.getParentNameById(_currentParent!.id) ??
+                    _currentParent!.name;
+
+                return Row(
+                  children: [
+                    Icon(Icons.person, size: 16, color: AppTheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Orang tua: $parentName',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ],

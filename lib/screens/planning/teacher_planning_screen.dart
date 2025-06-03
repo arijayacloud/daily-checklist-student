@@ -511,45 +511,45 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed:
-                        () => _createChecklistFromActivity(
-                          context,
-                          plannedActivity,
-                          activity,
-                        ),
-                    icon: const Icon(Icons.assignment_add),
-                    label: const Text('Tambahkan ke Checklist'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.tertiary,
-                      side: BorderSide(color: AppTheme.tertiary),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed:
-                        () => _showCompletionUsers(
-                          context,
-                          plannedActivity,
-                          activity,
-                        ),
-                    icon: const Icon(Icons.people),
-                    label: const Text('Lihat Progress'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      side: BorderSide(color: AppTheme.primary),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
+                // Expanded(
+                //   child: OutlinedButton.icon(
+                //     onPressed:
+                //         () => _createChecklistFromActivity(
+                //           context,
+                //           plannedActivity,
+                //           activity,
+                //         ),
+                //     icon: const Icon(Icons.assignment_add),
+                //     label: const Text('Tambahkan ke Checklist'),
+                //     style: OutlinedButton.styleFrom(
+                //       foregroundColor: AppTheme.tertiary,
+                //       side: BorderSide(color: AppTheme.tertiary),
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(12),
+                //       ),
+                //     ),
+                //   ),
+                // ),
+                // const SizedBox(width: 8),
+                // Expanded(
+                //   child: OutlinedButton.icon(
+                //     onPressed:
+                //         () => _showCompletionUsers(
+                //           context,
+                //           plannedActivity,
+                //           activity,
+                //         ),
+                //     icon: const Icon(Icons.people),
+                //     label: const Text('Lihat Progress'),
+                //     style: OutlinedButton.styleFrom(
+                //       foregroundColor: AppTheme.primary,
+                //       side: BorderSide(color: AppTheme.primary),
+                //       shape: RoundedRectangleBorder(
+                //         borderRadius: BorderRadius.circular(12),
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ],
@@ -589,152 +589,152 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
     }
   }
 
-  void _createChecklistFromActivity(
-    BuildContext context,
-    PlannedActivity plannedActivity,
-    ActivityModel activity,
-  ) async {
-    // Verifikasi planId ada dan valid
-    final planId = plannedActivity.planId;
-    if (planId == null || planId.isEmpty) {
-      debugPrint(
-        'Error: planId kosong atau null: ${plannedActivity.activityId}',
-      );
+  // void _createChecklistFromActivity(
+  //   BuildContext context,
+  //   PlannedActivity plannedActivity,
+  //   ActivityModel activity,
+  // ) async {
+  //   // Verifikasi planId ada dan valid
+  //   final planId = plannedActivity.planId;
+  //   if (planId == null || planId.isEmpty) {
+  //     debugPrint(
+  //       'Error: planId kosong atau null: ${plannedActivity.activityId}',
+  //     );
 
-      // Tampilkan dialog untuk meminta pengguna mencoba lagi atau memilih anak langsung
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Informasi Aktivitas Tidak Lengkap'),
-              content: const Text(
-                'Data plan tidak lengkap untuk aktivitas ini. Anda dapat memilih anak secara langsung untuk menambahkan aktivitas ke checklist mereka.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    // Tampilkan dialog pemilihan anak langsung
-                    final planningProvider = Provider.of<PlanningProvider>(
-                      context,
-                      listen: false,
-                    );
-                    final checklistProvider = Provider.of<ChecklistProvider>(
-                      context,
-                      listen: false,
-                    );
-                    _showChildSelectionDialog(
-                      context,
-                      plannedActivity.activityId,
-                      planningProvider,
-                      checklistProvider,
-                      activity,
-                    );
-                  },
-                  child: const Text('Pilih Anak'),
-                ),
-              ],
-            ),
-      );
-      return;
-    }
+  //     // Tampilkan dialog untuk meminta pengguna mencoba lagi atau memilih anak langsung
+  //     showDialog(
+  //       context: context,
+  //       builder:
+  //           (context) => AlertDialog(
+  //             title: const Text('Informasi Aktivitas Tidak Lengkap'),
+  //             content: const Text(
+  //               'Data plan tidak lengkap untuk aktivitas ini. Anda dapat memilih anak secara langsung untuk menambahkan aktivitas ke checklist mereka.',
+  //             ),
+  //             actions: [
+  //               TextButton(
+  //                 onPressed: () => Navigator.pop(context),
+  //                 child: const Text('Batal'),
+  //               ),
+  //               TextButton(
+  //                 onPressed: () {
+  //                   Navigator.pop(context);
+  //                   // Tampilkan dialog pemilihan anak langsung
+  //                   final planningProvider = Provider.of<PlanningProvider>(
+  //                     context,
+  //                     listen: false,
+  //                   );
+  //                   final checklistProvider = Provider.of<ChecklistProvider>(
+  //                     context,
+  //                     listen: false,
+  //                   );
+  //                   _showChildSelectionDialog(
+  //                     context,
+  //                     plannedActivity.activityId,
+  //                     planningProvider,
+  //                     checklistProvider,
+  //                     activity,
+  //                   );
+  //                 },
+  //                 child: const Text('Pilih Anak'),
+  //               ),
+  //             ],
+  //           ),
+  //     );
+  //     return;
+  //   }
 
-    final planningProvider = Provider.of<PlanningProvider>(
-      context,
-      listen: false,
-    );
-    final checklistProvider = Provider.of<ChecklistProvider>(
-      context,
-      listen: false,
-    );
-    final planData = planningProvider.getPlanById(planId);
+  //   final planningProvider = Provider.of<PlanningProvider>(
+  //     context,
+  //     listen: false,
+  //   );
+  //   final checklistProvider = Provider.of<ChecklistProvider>(
+  //     context,
+  //     listen: false,
+  //   );
+  //   final planData = planningProvider.getPlanById(planId);
 
-    if (planData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tidak dapat menemukan data perencanaan'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
-      return;
-    }
+  //   if (planData == null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Tidak dapat menemukan data perencanaan'),
+  //         backgroundColor: AppTheme.error,
+  //       ),
+  //     );
+  //     return;
+  //   }
 
-    // Jika plan untuk semua anak, tampilkan dialog untuk memilih anak
-    if (planData.childId == null) {
-      await _showChildSelectionDialog(
-        context,
-        plannedActivity.activityId,
-        planningProvider,
-        checklistProvider,
-        activity,
-      );
-    } else {
-      // Tampilkan dialog konfirmasi
-      final childProvider = Provider.of<ChildProvider>(context, listen: false);
-      final child = childProvider.getChildById(planData.childId!);
-      final childName = child?.name ?? 'Anak';
+  //   // Jika plan untuk semua anak, tampilkan dialog untuk memilih anak
+  //   if (planData.childId == null) {
+  //     await _showChildSelectionDialog(
+  //       context,
+  //       plannedActivity.activityId,
+  //       planningProvider,
+  //       checklistProvider,
+  //       activity,
+  //     );
+  //   } else {
+  //     // Tampilkan dialog konfirmasi
+  //     final childProvider = Provider.of<ChildProvider>(context, listen: false);
+  //     final child = childProvider.getChildById(planData.childId!);
+  //     final childName = child?.name ?? 'Anak';
 
-      final shouldAdd = await showDialog<bool>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Tambahkan ke Checklist'),
-            content: Text(
-              'Tambahkan aktivitas "${activity.title}" ke checklist $childName?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('BATAL'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('TAMBAHKAN'),
-              ),
-            ],
-          );
-        },
-      );
+  //     final shouldAdd = await showDialog<bool>(
+  //       context: context,
+  //       builder: (context) {
+  //         return AlertDialog(
+  //           title: const Text('Tambahkan ke Checklist'),
+  //           content: Text(
+  //             'Tambahkan aktivitas "${activity.title}" ke checklist $childName?',
+  //           ),
+  //           actions: [
+  //             TextButton(
+  //               onPressed: () => Navigator.of(context).pop(false),
+  //               child: const Text('BATAL'),
+  //             ),
+  //             TextButton(
+  //               onPressed: () => Navigator.of(context).pop(true),
+  //               child: const Text('TAMBAHKAN'),
+  //             ),
+  //           ],
+  //         );
+  //       },
+  //     );
 
-      if (shouldAdd != true) return;
+  //     if (shouldAdd != true) return;
 
-      try {
-        // Dapatkan langkah-langkah kustom dari aktivitas
-        List<String> customStepsUsed = [];
-        if (activity.customSteps.isNotEmpty) {
-          customStepsUsed = activity.customSteps.first.steps;
-        }
+  //     try {
+  //       // Dapatkan langkah-langkah kustom dari aktivitas
+  //       List<String> customStepsUsed = [];
+  //       if (activity.customSteps.isNotEmpty) {
+  //         customStepsUsed = activity.customSteps.first.steps;
+  //       }
 
-        // Tambahkan ke checklist
-        await checklistProvider.assignActivity(
-          childId: planData.childId!,
-          activityId: plannedActivity.activityId,
-          customStepsUsed: customStepsUsed,
-          dueDate: plannedActivity.scheduledDate,
-        );
+  //       // Tambahkan ke checklist
+  //       await checklistProvider.assignActivity(
+  //         childId: planData.childId!,
+  //         activityId: plannedActivity.activityId,
+  //         customStepsUsed: customStepsUsed,
+  //         dueDate: plannedActivity.scheduledDate,
+  //       );
 
-        // Buat notifikasi untuk parent
-        await _createNotificationForParent(planData.childId!, activity.title);
+  //       // Buat notifikasi untuk parent
+  //       await _createNotificationForParent(planData.childId!, activity.title);
 
-        if (!mounted) return;
+  //       if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Berhasil ditambahkan ke checklist'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-        );
-      }
-    }
-  }
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //           content: Text('Berhasil ditambahkan ke checklist'),
+  //           backgroundColor: AppTheme.success,
+  //         ),
+  //       );
+  //     } catch (e) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+  //       );
+  //     }
+  //   }
+  // }
 
   Future<void> _createNotificationForParent(
     String childId,
@@ -1079,187 +1079,187 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
   }
 
   // Fungsi untuk menampilkan dialog siapa saja yang sudah menyelesaikan aktivitas
-  Future<void> _showCompletionUsers(
-    BuildContext context,
-    PlannedActivity plannedActivity,
-    ActivityModel activity,
-  ) async {
-    final planningProvider = Provider.of<PlanningProvider>(
-      context,
-      listen: false,
-    );
+  // Future<void> _showCompletionUsers(
+  //   BuildContext context,
+  //   PlannedActivity plannedActivity,
+  //   ActivityModel activity,
+  // ) async {
+  //   final planningProvider = Provider.of<PlanningProvider>(
+  //     context,
+  //     listen: false,
+  //   );
 
-    // Tampilkan loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                CircularProgressIndicator(),
-                SizedBox(height: 20),
-                Text("Memuat data..."),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  //   // Tampilkan loading dialog
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (BuildContext context) {
+  //       return Dialog(
+  //         child: Padding(
+  //           padding: const EdgeInsets.all(20.0),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: const [
+  //               CircularProgressIndicator(),
+  //               SizedBox(height: 20),
+  //               Text("Memuat data..."),
+  //             ],
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
 
-    try {
-      // Ambil data pengguna yang telah menyelesaikan aktivitas
-      final completionUsers = await planningProvider.getCompletionUsers(
-        plannedActivity.activityId,
-        plannedActivity.planId ?? '',
-        plannedActivity.scheduledDate,
-      );
+  //   try {
+  //     // Ambil data pengguna yang telah menyelesaikan aktivitas
+  //     final completionUsers = await planningProvider.getCompletionUsers(
+  //       plannedActivity.activityId,
+  //       plannedActivity.planId ?? '',
+  //       plannedActivity.scheduledDate,
+  //     );
 
-      // Tutup dialog loading
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
+  //     // Tutup dialog loading
+  //     if (context.mounted) {
+  //       Navigator.of(context).pop();
+  //     }
 
-      if (!context.mounted) return;
+  //     if (!context.mounted) return;
 
-      // Tampilkan dialog dengan informasi pengguna
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (context) {
-          return DraggableScrollableSheet(
-            initialChildSize: 0.5,
-            minChildSize: 0.3,
-            maxChildSize: 0.85,
-            expand: false,
-            builder: (context, scrollController) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Progress Aktivitas',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primary,
-                                ),
-                              ),
-                              Text(
-                                activity.title,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (completionUsers.isEmpty)
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            'Belum ada yang menyelesaikan aktivitas ini',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          itemCount: completionUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = completionUsers[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  child: Text(user['childName'][0]),
-                                  backgroundColor: AppTheme.primary,
-                                  foregroundColor: Colors.white,
-                                ),
-                                title: Text(
-                                  user['childName'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Orangtua: ${user['parentName']}'),
-                                    if (user['completedAt'] != null)
-                                      Text(
-                                        'Diselesaikan pada: ${DateFormat('dd/MM/yyyy HH:mm').format(user['completedAt'].toDate())}',
-                                      ),
-                                  ],
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (user['completedAtHome'])
-                                      Icon(
-                                        Icons.home,
-                                        color: AppTheme.success,
-                                        size: 20,
-                                      ),
-                                    if (user['completedAtSchool'])
-                                      Icon(
-                                        Icons.school,
-                                        color: AppTheme.tertiary,
-                                        size: 20,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      );
-    } catch (e) {
-      // Tutup dialog loading jika terjadi error
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
+  //     // Tampilkan dialog dengan informasi pengguna
+  //     showModalBottomSheet(
+  //       context: context,
+  //       isScrollControlled: true,
+  //       shape: const RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  //       ),
+  //       builder: (context) {
+  //         return DraggableScrollableSheet(
+  //           initialChildSize: 0.5,
+  //           minChildSize: 0.3,
+  //           maxChildSize: 0.85,
+  //           expand: false,
+  //           builder: (context, scrollController) {
+  //             return Container(
+  //               padding: const EdgeInsets.all(16),
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Row(
+  //                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       Expanded(
+  //                         child: Column(
+  //                           crossAxisAlignment: CrossAxisAlignment.start,
+  //                           children: [
+  //                             Text(
+  //                               'Progress Aktivitas',
+  //                               style: TextStyle(
+  //                                 fontSize: 18,
+  //                                 fontWeight: FontWeight.bold,
+  //                                 color: AppTheme.primary,
+  //                               ),
+  //                             ),
+  //                             Text(
+  //                               activity.title,
+  //                               style: const TextStyle(
+  //                                 fontSize: 16,
+  //                                 fontWeight: FontWeight.bold,
+  //                               ),
+  //                               overflow: TextOverflow.ellipsis,
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       ),
+  //                       IconButton(
+  //                         icon: const Icon(Icons.close),
+  //                         onPressed: () => Navigator.pop(context),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                   const SizedBox(height: 16),
+  //                   if (completionUsers.isEmpty)
+  //                     const Expanded(
+  //                       child: Center(
+  //                         child: Text(
+  //                           'Belum ada yang menyelesaikan aktivitas ini',
+  //                           style: TextStyle(
+  //                             fontSize: 16,
+  //                             fontStyle: FontStyle.italic,
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else
+  //                     Expanded(
+  //                       child: ListView.builder(
+  //                         controller: scrollController,
+  //                         itemCount: completionUsers.length,
+  //                         itemBuilder: (context, index) {
+  //                           final user = completionUsers[index];
+  //                           return Card(
+  //                             margin: const EdgeInsets.only(bottom: 8),
+  //                             child: ListTile(
+  //                               leading: CircleAvatar(
+  //                                 child: Text(user['childName'][0]),
+  //                                 backgroundColor: AppTheme.primary,
+  //                                 foregroundColor: Colors.white,
+  //                               ),
+  //                               title: Text(
+  //                                 user['childName'],
+  //                                 style: const TextStyle(
+  //                                   fontWeight: FontWeight.bold,
+  //                                 ),
+  //                               ),
+  //                               subtitle: Column(
+  //                                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                                 children: [
+  //                                   Text('Orangtua: ${user['parentName']}'),
+  //                                   if (user['completedAt'] != null)
+  //                                     Text(
+  //                                       'Diselesaikan pada: ${DateFormat('dd/MM/yyyy HH:mm').format(user['completedAt'].toDate())}',
+  //                                     ),
+  //                                 ],
+  //                               ),
+  //                               trailing: Column(
+  //                                 mainAxisAlignment: MainAxisAlignment.center,
+  //                                 children: [
+  //                                   if (user['completedAtHome'])
+  //                                     Icon(
+  //                                       Icons.home,
+  //                                       color: AppTheme.success,
+  //                                       size: 20,
+  //                                     ),
+  //                                   if (user['completedAtSchool'])
+  //                                     Icon(
+  //                                       Icons.school,
+  //                                       color: AppTheme.tertiary,
+  //                                       size: 20,
+  //                                     ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             );
+  //           },
+  //         );
+  //       },
+  //     );
+  //   } catch (e) {
+  //     // Tutup dialog loading jika terjadi error
+  //     if (context.mounted) {
+  //       Navigator.of(context).pop();
+  //     }
 
-      if (!context.mounted) return;
+  //     if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-      );
-    }
-  }
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+  //     );
+  //   }
+  // }
 }
