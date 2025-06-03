@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '/models/planning_model.dart';
 import '/models/user_model.dart';
 import '/providers/checklist_provider.dart';
+import '/providers/auth_provider.dart';
 
 class PlanningProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -23,10 +24,42 @@ class PlanningProvider with ChangeNotifier {
     if (user != null && user.isTeacher) {
       fetchPlans();
     } else if (user != null && !user.isTeacher) {
-      // Jika user adalah orangtua, ambil perencanaan untuk anaknya
-      fetchPlansForParent(user.id);
+      // Jika user adalah orangtua, pertama kita ambil childId
+      _getChildIdAndFetchPlans(user.id);
     } else {
       _plans = [];
+      notifyListeners();
+    }
+  }
+
+  // Fungsi pembantu untuk mendapatkan childId dan mengambil planning
+  Future<void> _getChildIdAndFetchPlans(String parentId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Mendapatkan childId dari parentId
+      final childrenSnapshot =
+          await _firestore
+              .collection('children')
+              .where('parentId', isEqualTo: parentId)
+              .limit(1)
+              .get();
+
+      if (childrenSnapshot.docs.isNotEmpty) {
+        final childId = childrenSnapshot.docs.first.id;
+        debugPrint('Found childId: $childId for parentId: $parentId');
+        await fetchPlansForParent(childId);
+      } else {
+        debugPrint('No child found for parent: $parentId');
+        _plans = [];
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error getting childId for parent: $e');
+      _plans = [];
+      _isLoading = false;
       notifyListeners();
     }
   }
@@ -228,6 +261,7 @@ class PlanningProvider with ChangeNotifier {
             'Guru telah membuat perencanaan baru untuk ${childName} dengan ${activitiesCount} aktivitas mulai ${_formatDate(startDate)}',
         'type': 'new_plan',
         'relatedId': planId,
+        'childId': childId,
         'isRead': false,
         'createdAt': Timestamp.now(),
       });
@@ -377,6 +411,9 @@ class PlanningProvider with ChangeNotifier {
       // Cari guru yang membuat perencanaan
       final teacherId = plan.teacherId;
 
+      // Ambil childId dari plan jika ada
+      final childId = plan.childId;
+
       // Buat notifikasi untuk guru
       await _firestore.collection('notifications').add({
         'userId': teacherId,
@@ -385,6 +422,7 @@ class PlanningProvider with ChangeNotifier {
             'Aktivitas "$activityTitle" telah diselesaikan oleh ${_user?.name ?? "Orangtua"}',
         'type': 'activity_completed',
         'relatedId': activityId,
+        'childId': childId,
         'isRead': false,
         'createdAt': Timestamp.now(),
       });

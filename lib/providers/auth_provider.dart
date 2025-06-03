@@ -252,4 +252,25 @@ class AuthProvider with ChangeNotifier {
       throw _handleAuthError(e);
     }
   }
+
+  Future<String?> getChildId() async {
+    if (_user == null || _user!.role != 'parent') return null;
+
+    try {
+      final snapshot =
+          await _firestore
+              .collection('children')
+              .where('parentId', isEqualTo: _user!.id)
+              .limit(1)
+              .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first.id;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting child id: $e');
+      return null;
+    }
+  }
 }

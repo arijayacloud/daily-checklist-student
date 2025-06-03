@@ -32,24 +32,42 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     // Inisialisasi locale data untuk format tanggal bahasa Indonesia
     initializeDateFormatting('id_ID', null);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final planningProvider = Provider.of<PlanningProvider>(
         context,
         listen: false,
       );
-      planningProvider.fetchPlans();
+
+      // Jika user adalah parent, pastikan kita mendapatkan childId terlebih dahulu
+      if (authProvider.user != null && !authProvider.user!.isTeacher) {
+        final childId = await authProvider.getChildId();
+        if (childId != null) {
+          await planningProvider.fetchPlansForParent(childId);
+
+          // Buat notifikasi pengingat aktivitas untuk hari ini dengan childId yang benar
+          planningProvider.createActivityReminderNotification(
+            childId: childId, // Gunakan childId yang benar, bukan userId
+            date: DateTime.now(),
+          );
+        } else {
+          // Jika tidak ada anak yang terkait dengan parent ini
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Tidak ada data anak yang terhubung dengan akun ini',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        // Untuk guru, ambil semua planning
+        planningProvider.fetchPlans();
+      }
 
       // Memuat data guru
       Provider.of<UserProvider>(context, listen: false).fetchTeachers();
-
-      // Buat notifikasi pengingat aktivitas untuk hari ini
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.user != null) {
-        planningProvider.createActivityReminderNotification(
-          childId: authProvider.user!.id,
-          date: DateTime.now(),
-        );
-      }
     });
   }
 
@@ -363,29 +381,52 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final userId =
-            Provider.of<AuthProvider>(context, listen: false).user?.id;
-        if (userId == null) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        if (authProvider.user == null) {
           return const Center(child: Text('Silakan login terlebih dahulu'));
         }
 
-        // Filter aktivitas untuk anak dari orangtua ini saja
-        final activitiesForDate =
-            planningProvider.getActivitiesForDate(_selectedDay).where((
-              activity,
-            ) {
-              final plan = planningProvider.getPlanById(activity.planId ?? '');
-              return plan?.childId == null || plan?.childId == userId;
-            }).toList();
-
-        if (activitiesForDate.isEmpty) {
-          return _buildEmptySchedule();
+        // Ambil childId terlebih dahulu (akan dibuat async)
+        Future<String?> getChildIdFuture() async {
+          return await authProvider.getChildId();
         }
 
-        return _buildScheduleList(
-          activitiesForDate,
-          activityProvider.activities,
-          planningProvider,
+        return FutureBuilder<String?>(
+          future: getChildIdFuture(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final childId = snapshot.data;
+
+            if (childId == null) {
+              return const Center(
+                child: Text('Tidak ada anak yang terhubung dengan akun ini'),
+              );
+            }
+
+            // Filter aktivitas untuk anak dari orangtua ini
+            final activitiesForDate =
+                planningProvider.getActivitiesForDate(_selectedDay).where((
+                  activity,
+                ) {
+                  final plan = planningProvider.getPlanById(
+                    activity.planId ?? '',
+                  );
+                  return plan?.childId == null || plan?.childId == childId;
+                }).toList();
+
+            if (activitiesForDate.isEmpty) {
+              return _buildEmptySchedule();
+            }
+
+            return _buildScheduleList(
+              activitiesForDate,
+              activityProvider.activities,
+              planningProvider,
+            );
+          },
         );
       },
     );

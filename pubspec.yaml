@@ -61,6 +61,7 @@ dependencies:
   timeago: ^3.6.1
   shared_preferences: ^2.5.3
   email_validator: ^3.0.0
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:

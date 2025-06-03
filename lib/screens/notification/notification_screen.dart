@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '/models/notification_model.dart';
 import '/providers/notification_provider.dart';
+import '/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -18,11 +19,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void initState() {
     super.initState();
     initializeDateFormatting('id_ID', null);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<NotificationProvider>(
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final notificationProvider = Provider.of<NotificationProvider>(
         context,
         listen: false,
-      ).fetchNotifications();
+      );
+
+      // Jika user adalah parent, dapatkan childId terlebih dahulu
+      if (authProvider.user != null && !authProvider.user!.isTeacher) {
+        final childId = await authProvider.getChildId();
+        if (childId != null) {
+          // Set childId ke NotificationProvider agar bisa memfilter notifikasi
+          notificationProvider.childId = childId;
+        }
+      } else {
+        // Untuk guru, langsung ambil notifikasi
+        notificationProvider.fetchNotifications();
+      }
     });
   }
 
