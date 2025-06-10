@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '/models/activity_model.dart';
-import '/models/child_model.dart';
-import '/models/planning_model.dart';
-import '/providers/activity_provider.dart';
-import '/providers/child_provider.dart';
-import '/providers/planning_provider.dart';
-import '/providers/checklist_provider.dart';
+import '/laravel_api/models/activity_model.dart';
+import '/laravel_api/models/child_model.dart';
+import '/laravel_api/models/planning_model.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/planning_provider.dart';
+import '/laravel_api/providers/checklist_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class AddPlanScreen extends StatefulWidget {
@@ -768,8 +767,9 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
         plannedActivities =
             _activities.map((data) {
               return PlannedActivity(
+                planId: 0, // This will be set by the server
                 activityId: data['activityId'],
-                scheduledDate: Timestamp.fromDate(_startDate),
+                scheduledDate: _startDate,
                 scheduledTime: data['scheduledTime'],
                 reminder: data['reminder'],
               );
@@ -789,8 +789,9 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
               );
 
               return PlannedActivity(
+                planId: 0, // This will be set by the server
                 activityId: data['activityId'],
-                scheduledDate: Timestamp.fromDate(activityDate),
+                scheduledDate: activityDate,
                 scheduledTime: data['scheduledTime'],
                 reminder: data['reminder'],
               );
@@ -798,19 +799,19 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       }
 
       // Simpan rencana
-      final String planId = await Provider.of<PlanningProvider>(
+      final Planning? plan = await Provider.of<PlanningProvider>(
         context,
         listen: false,
       ).createPlan(
         startDate: _startDate,
         childId: _selectedChildId,
         activities: plannedActivities,
-        planType: _planType,
+        type: _planType,
       );
 
       // Jika ada childId yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
-      if (_selectedChildId != null) {
-        await _confirmAddToChecklist(planId, plannedActivities);
+      if (_selectedChildId != null && plan != null) {
+        await _confirmAddToChecklist(plan.id.toString(), plannedActivities);
       }
 
       if (!mounted) return;
@@ -886,21 +887,20 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       // Tambahkan setiap aktivitas ke checklist
       for (final activity in activities) {
         final activityModel = activityProvider.getActivityById(
-          activity.activityId,
+          activity.activityId.toString(),
         );
         if (activityModel == null) continue;
 
-        // Dapatkan langkah-langkah kustom dari aktivitas
-        List<String> customStepsUsed = [];
-        if (activityModel.customSteps.isNotEmpty) {
-          customStepsUsed = activityModel.customSteps.first.steps;
+        // Use activitySteps instead of customSteps
+        List<String> steps = [];
+        if (activityModel.activitySteps.isNotEmpty) {
+          steps = activityModel.activitySteps.first.steps;
         }
 
         await checklistProvider.assignActivity(
           childId: _selectedChildId!,
-          activityId: activity.activityId,
-          customStepsUsed: customStepsUsed,
-          dueDate: activity.scheduledDate,
+          activityId: activity.activityId.toString(),
+          scheduledDate: activity.scheduledDate,
         );
       }
 
@@ -1095,7 +1095,7 @@ class _ActivitySelectorDialogState extends State<ActivitySelectorDialog> {
                           ),
                         ),
                         trailing: Text(
-                          '${activity.ageRange.min}-${activity.ageRange.max} thn',
+                          '${activity.minAge}-${activity.maxAge} thn',
                           style: TextStyle(color: AppTheme.onSurfaceVariant),
                         ),
                         onTap: () {

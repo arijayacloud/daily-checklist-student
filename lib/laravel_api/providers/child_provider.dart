@@ -1,51 +1,169 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:flutter/material.dart';
 import '../models/child_model.dart';
+import '../models/user_model.dart';
+import 'api_provider.dart';
 
-class ChildProvider {
-  final String baseUrl;
-  ChildProvider({required this.baseUrl});
+class ChildProvider with ChangeNotifier {
+  final ApiProvider _apiProvider;
+  UserModel? _user;
+  List<ChildModel> _children = [];
+  bool _isLoading = false;
+  String? _error;
 
-  Future<List<Child>> fetchChildren() async {
-    final response = await http.get(Uri.parse('$baseUrl/children'));
-    if (response.statusCode == 200) {
-      List data = json.decode(response.body);
-      return data.map((e) => Child.fromJson(e)).toList();
+  List<ChildModel> get children => _children;
+  bool get isLoading => _isLoading || _apiProvider.isLoading;
+  String? get error => _error ?? _apiProvider.error;
+
+  ChildProvider(this._apiProvider);
+
+  void update(UserModel? user) {
+    _user = user;
+    if (user != null) {
+      fetchChildren();
     } else {
-      throw Exception('Gagal memuat anak');
+      _children = [];
+      notifyListeners();
     }
   }
 
-  Future<Child> addChild(Child child) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/children'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(child.toJson()),
-    );
-    if (response.statusCode == 201) {
-      return Child.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Gagal menambah anak');
+  Future<void> fetchChildren() async {
+    if (_user == null) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.get('children');
+      
+      if (data != null) {
+        _children = (data as List).map((item) => ChildModel.fromJson(item)).toList();
+      } else {
+        _children = [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching children: $e');
+      _error = 'Failed to load children. Please try again.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  Future<Child> updateChild(Child child) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/children/${child.id}'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(child.toJson()),
-    );
-    if (response.statusCode == 200) {
-      return Child.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Gagal update anak');
+  Future<ChildModel?> addChild({
+    required String name,
+    required int age,
+    required String parentId,
+    String? avatarUrl,
+  }) async {
+    if (_user == null || !_user!.isTeacher) {
+      _error = 'Only teachers can add children';
+      notifyListeners();
+      return null;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.post('children', {
+        'name': name,
+        'age': age,
+        'parent_id': parentId,
+        'avatar_url': avatarUrl,
+      });
+      
+      if (data != null) {
+        final child = ChildModel.fromJson(data);
+        _children.add(child);
+        notifyListeners();
+        return child;
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('Error adding child: $e');
+      _error = 'Failed to add child. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return null;
     }
   }
 
-  Future<void> deleteChild(int id) async {
-    final response = await http.delete(Uri.parse('$baseUrl/children/$id'));
-    if (response.statusCode != 204) {
-      throw Exception('Gagal menghapus anak');
+  Future<bool> updateChild({
+    required String id,
+    required String name,
+    required int age,
+    String? avatarUrl,
+  }) async {
+    if (_user == null) return false;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.put('children/$id', {
+        'name': name,
+        'age': age,
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
+      });
+      
+      if (data != null) {
+        final index = _children.indexWhere((child) => child.id == id);
+        if (index != -1) {
+          _children[index] = ChildModel.fromJson(data);
+          notifyListeners();
+        }
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      debugPrint('Error updating child: $e');
+      _error = 'Failed to update child. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteChild(String id) async {
+    if (_user == null || !_user!.isTeacher) {
+      _error = 'Only teachers can delete children';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.delete('children/$id');
+      
+      if (data != null) {
+        _children.removeWhere((child) => child.id == id);
+        notifyListeners();
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting child: $e');
+      _error = 'Failed to delete child. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  ChildModel? getChildById(String id) {
+    try {
+      return _children.firstWhere((child) => child.id == id);
+    } catch (e) {
+      return null;
     }
   }
 }

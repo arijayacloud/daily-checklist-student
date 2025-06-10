@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '/models/child_model.dart';
-import '/providers/auth_provider.dart';
-import '/providers/child_provider.dart';
-import '/providers/checklist_provider.dart';
+import '/config.dart';
+
+// Import Laravel models and providers
+import '/laravel_api/models/child_model.dart';
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/user_provider.dart';
+
+// Screens and widgets
 import '/screens/checklist/parent_checklist_screen.dart';
 import '/lib/theme/app_theme.dart';
-import '/widgets/home/child_avatar.dart';
+import '/widgets/home/laravel_child_avatar.dart';
 
 class ParentChildrenScreen extends StatefulWidget {
   const ParentChildrenScreen({super.key});
@@ -192,14 +197,11 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                 _searchQuery = '';
               });
             },
+            child: const Text('Reset Pencarian'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
             ),
-            child: const Text('Hapus Pencarian'),
           ),
         ],
       ),
@@ -208,98 +210,93 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
 
   Widget _buildChildCard(BuildContext context, ChildModel child, int index) {
     return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: InkWell(
-            onTap: () {
-              // Load checklist items for this child
-              Provider.of<ChecklistProvider>(
-                context,
-                listen: false,
-              ).fetchChecklistItems(child.id);
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ParentChecklistScreen(child: child),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Hero(
-                    tag: 'child_avatar_${child.id}',
-                    child: ChildAvatar(child: child, size: 70),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    child.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${child.age} tahun',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.assignment,
-                          size: 14,
-                          color: AppTheme.onPrimaryContainer,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'Lihat Aktivitas',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ParentChecklistScreen(child: child),
             ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              LaravelChildAvatar(
+                child: child,
+                size: 90,
+              ).animate().scale(
+                curve: Curves.easeOutBack,
+                duration: Duration(milliseconds: 400 + (index * 100)),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                child.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ).animate().fadeIn(
+                curve: Curves.easeOut,
+                duration: Duration(milliseconds: 400 + (index * 100)),
+                delay: const Duration(milliseconds: 200),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${child.age} tahun',
+                style: TextStyle(
+                  color: AppTheme.onSurfaceVariant,
+                  fontSize: 14,
+                ),
+              ).animate().fadeIn(
+                curve: Curves.easeOut,
+                duration: Duration(milliseconds: 400 + (index * 100)),
+                delay: const Duration(milliseconds: 300),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ParentChecklistScreen(child: child),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.checklist, size: 16),
+                    SizedBox(width: 8),
+                    Text('Checklist'),
+                  ],
+                ),
+              ).animate().fadeIn(
+                curve: Curves.easeOut,
+                duration: Duration(milliseconds: 400 + (index * 100)),
+                delay: const Duration(milliseconds: 400),
+              ),
+            ],
           ),
-        )
-        .animate()
-        .fadeIn(
-          duration: const Duration(milliseconds: 500),
-          delay: Duration(milliseconds: 100 * index),
-        )
-        .slideY(begin: 0.2, end: 0);
+        ),
+      ),
+    );
   }
 }

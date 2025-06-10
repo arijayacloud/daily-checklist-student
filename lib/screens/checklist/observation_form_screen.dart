@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/models/activity_model.dart';
-import '/models/checklist_item_model.dart';
-import '/models/child_model.dart';
-import '/providers/checklist_provider.dart';
-import '/lib/theme/app_theme.dart';
-import '/widgets/home/child_avatar.dart';
+import 'package:daily_checklist_student/laravel_api/models/activity_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/checklist_item_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/child_model.dart';
+import 'package:daily_checklist_student/laravel_api/providers/checklist_provider.dart';
+import 'package:daily_checklist_student/lib/theme/app_theme.dart';
+import 'package:daily_checklist_student/widgets/home/laravel_child_avatar.dart';
 
 class ObservationFormScreen extends StatefulWidget {
   final ChildModel child;
@@ -125,7 +125,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       children: [
         Hero(
           tag: 'child_avatar_${widget.child.id}',
-          child: ChildAvatar(child: widget.child, size: 50),
+          child: LaravelChildAvatar(child: widget.child, size: 50),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -230,8 +230,8 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            ...widget.activity.customSteps.isNotEmpty
-                ? _buildStepsList(widget.activity.customSteps.first.steps)
+            ...widget.activity.activitySteps.isNotEmpty
+                ? _buildStepsList(widget.activity.activitySteps.first.steps)
                 : [
                   Text(
                     'Tidak ada langkah instruksi yang ditetapkan',

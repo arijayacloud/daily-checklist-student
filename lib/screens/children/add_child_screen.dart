@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/providers/auth_provider.dart';
-import '/providers/child_provider.dart';
+
+// Laravel API providers
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/user_provider.dart';
+import '/laravel_api/models/user_model.dart';
+import '/laravel_api/models/child_model.dart';
+
 import '/lib/theme/app_theme.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '/models/user_model.dart';
 
 class AddChildScreen extends StatefulWidget {
-  const AddChildScreen({super.key});
+  final ChildModel? childToEdit;
+  
+  const AddChildScreen({super.key, this.childToEdit});
 
   @override
   State<AddChildScreen> createState() => _AddChildScreenState();
@@ -20,7 +26,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   int _age = 4;
   bool _isSubmitting = false;
   bool _isLoadingParents = true;
-  List<UserModel> _parents = [];
+  List<dynamic> _parents = [];
   String? _selectedParentId;
 
   @override
@@ -36,26 +42,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      // Only fetch parents created by current teacher
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'parent')
-              .where('createdBy', isEqualTo: authProvider.userId)
-              .get();
-
-      final parents =
-          snapshot.docs.map((doc) {
-            final data = doc.data();
-            return UserModel.fromJson({'id': doc.id, ...data});
-          }).toList();
-
+      // Fetch parents from Laravel API
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.fetchParents();
       setState(() {
-        _parents = parents;
+        _parents = userProvider.parents;
         // Pre-select first parent if available
-        _selectedParentId = parents.isNotEmpty ? parents.first.id : null;
+        _selectedParentId = _parents.isNotEmpty ? _parents.first.id : null;
         _isLoadingParents = false;
       });
     } catch (e) {
@@ -93,7 +86,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       final seed = Uri.encodeComponent(name);
       final avatarUrl = 'https://api.dicebear.com/9.x/thumbs/png?seed=$seed';
 
-      // Add child
+      // Add child using Laravel API
       await Provider.of<ChildProvider>(context, listen: false).addChild(
         name: name,
         age: _age,
@@ -233,13 +226,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        items:
-                            _parents.map((parent) {
-                              return DropdownMenuItem(
-                                value: parent.id,
-                                child: Text('${parent.name} (${parent.email})'),
-                              );
-                            }).toList(),
+                        items: _parents.map((parent) {
+                          return DropdownMenuItem<String>(
+                            value: parent.id,
+                            child: Text('${parent.name} (${parent.email})'),
+                          );
+                        }).toList(),
                         onChanged: (String? newValue) {
                           setState(() {
                             _selectedParentId = newValue;

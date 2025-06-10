@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '/models/child_model.dart';
+import '/laravel_api/models/child_model.dart';
 import '/lib/theme/app_theme.dart';
 
 class ChildAvatar extends StatelessWidget {

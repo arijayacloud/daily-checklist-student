@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/providers/child_provider.dart';
-import '/screens/checklist/parent_checklist_screen.dart';
-import '/widgets/common/loading_indicator.dart';
+import 'package:daily_checklist_student/laravel_api/providers/child_provider.dart';
+import 'package:daily_checklist_student/screens/checklist/parent_checklist_screen.dart';
+import 'package:daily_checklist_student/widgets/common/loading_indicator.dart';
 
 class ChildChecklistScreen extends StatelessWidget {
   static const routeName = '/child-checklist';

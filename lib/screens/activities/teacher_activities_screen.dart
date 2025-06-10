@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '/models/activity_model.dart';
-import '/providers/activity_provider.dart';
+
+// Laravel API models and providers
+import '/laravel_api/models/activity_model.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
+
 import '/screens/activities/add_activity_screen.dart';
 import '/screens/activities/activity_detail_screen.dart';
 import '/lib/theme/app_theme.dart';
@@ -20,6 +24,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   String _difficultyFilter = 'Semua';
   int _minAgeFilter = 3;
   int _maxAgeFilter = 6;
+  bool _isInitialized = false;
 
   final _searchController = TextEditingController();
 
@@ -27,7 +32,7 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
+      _fetchActivities();
     });
   }
 
@@ -36,8 +41,35 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
     _searchController.dispose();
     super.dispose();
   }
+  
+  void _fetchActivities() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+    debugPrint('TeacherActivitiesScreen: Fetching activities');
+    
+    // Make sure we're initialized only once and user is authenticated
+    if (!_isInitialized && authProvider.isAuthenticated) {
+      debugPrint('TeacherActivitiesScreen: User authenticated, fetching activities');
+      await activityProvider.fetchActivities();
+      
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } else if (!authProvider.isAuthenticated) {
+      debugPrint('TeacherActivitiesScreen: User not authenticated yet');
+    }
+  }
 
   List<ActivityModel> _getFilteredActivities(List<ActivityModel> activities) {
+    debugPrint('TeacherActivitiesScreen: Filtering ${activities.length} activities');
+    
+    if (activities.isEmpty) {
+      debugPrint('TeacherActivitiesScreen: No activities to filter');
+      return [];
+    }
+    
     return activities.where((activity) {
       // Search filter
       if (_searchQuery.isNotEmpty) {
@@ -58,8 +90,8 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
       }
 
       // Age range filter
-      if (activity.ageRange.max < _minAgeFilter ||
-          activity.ageRange.min > _maxAgeFilter) {
+      // Laravel Model has direct minAge and maxAge properties
+      if (activity.maxAge < _minAgeFilter || activity.minAge > _maxAgeFilter) {
         return false;
       }
 
@@ -124,9 +156,13 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddActivityScreen()),
-          );
+          ).then((_) {
+            // Refresh activities after returning from add screen
+            Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
+          });
         },
-        child: const Icon(Icons.add),
+        backgroundColor: AppTheme.primary,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -217,18 +253,48 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   Widget _buildActivityList() {
     return Consumer<ActivityProvider>(
       builder: (context, activityProvider, child) {
+        debugPrint('TeacherActivitiesScreen: Building activity list, loading: ${activityProvider.isLoading}');
+        
         if (activityProvider.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
+
+        if (activityProvider.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error: ${activityProvider.error}',
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => activityProvider.fetchActivities(),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        debugPrint('TeacherActivitiesScreen: Activities count: ${activityProvider.activities.length}');
 
         if (activityProvider.activities.isEmpty) {
           return _buildEmptyState();
         }
 
-        final filteredActivities = _getFilteredActivities(
-          activityProvider.activities,
-        );
-
+        final filteredActivities = _getFilteredActivities(activityProvider.activities);
+        debugPrint('TeacherActivitiesScreen: Filtered activities count: ${filteredActivities.length}');
+        
         if (filteredActivities.isEmpty) {
           return _buildNoResultsState();
         }
@@ -239,8 +305,11 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
             padding: const EdgeInsets.all(16),
             itemCount: filteredActivities.length,
             itemBuilder: (context, index) {
-              final activity = filteredActivities[index];
-              return _buildActivityCard(context, activity, index);
+              return _buildActivityCard(
+                context,
+                filteredActivities[index],
+                index,
+              );
             },
           ),
         );
@@ -272,6 +341,23 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
             'Buat aktivitas pertama Anda dengan menekan tombol +',
             style: TextStyle(color: AppTheme.onSurfaceVariant),
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah Aktivitas Baru'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddActivityScreen()),
+              ).then((_) {
+                Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
+              });
+            },
           ),
         ],
       ),
@@ -334,142 +420,113 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
     int index,
   ) {
     return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => ActivityDetailScreen(activity: activity),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ActivityDetailScreen(activity: activity),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _getDifficultyColor(
-                            activity.difficulty,
-                          ).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _translateDifficultyToIndonesian(activity.difficulty),
-                          style: TextStyle(
-                            color: _getDifficultyColor(activity.difficulty),
+                  _buildActivityIcon(activity.environment),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activity.title,
+                          style: const TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _getEnvironmentColor(
-                            activity.environment,
-                          ).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 4),
+                        Text(
+                          _buildAgeAndDifficultyText(activity),
+                          style: TextStyle(color: AppTheme.onSurfaceVariant),
                         ),
-                        child: Text(
-                          _translateEnvironmentToIndonesian(
-                            activity.environment,
-                          ),
-                          style: TextStyle(
-                            color: _getEnvironmentColor(activity.environment),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          activity.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppTheme.onSurfaceVariant),
                         ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${activity.ageRange.min}-${activity.ageRange.max} thn',
-                          style: TextStyle(
-                            color: AppTheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    activity.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    activity.description,
-                    style: TextStyle(color: AppTheme.onSurfaceVariant),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        activity.customSteps.isNotEmpty
-                            ? '${activity.customSteps.first.steps.length} langkah'
-                            : 'Tidak ada langkah',
-                        style: TextStyle(
-                          color: AppTheme.onSurfaceVariant,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            'Lihat Detail',
-                            style: TextStyle(
-                              color: AppTheme.primary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward_ios,
-                            size: 14,
-                            color: AppTheme.primary,
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    '${activity.activitySteps.fold<int>(0, (sum, step) => sum + step.steps.length)} langkah',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildEnvironmentChip(activity.environment),
+                ],
+              ),
+            ],
           ),
-        )
-        .animate()
-        .fadeIn(
-          duration: const Duration(milliseconds: 500),
-          delay: Duration(milliseconds: 100 * index),
-        )
-        .slideY(begin: 0.2, end: 0);
+        ),
+      ),
+    ).animate().fadeIn(delay: 50.ms * index, duration: 200.ms);
+  }
+  
+  String _buildAgeAndDifficultyText(ActivityModel activity) {
+    String ageRangeText = '${activity.minAge}-${activity.maxAge} tahun';
+    return '$ageRangeText • ${_translateDifficultyToIndonesian(activity.difficulty)}';
+  }
+
+  Widget _buildActivityIcon(String environment) {
+    IconData iconData;
+    Color iconColor;
+
+    switch (environment) {
+      case 'Home':
+        iconData = Icons.home_rounded;
+        iconColor = Colors.green;
+        break;
+      case 'School':
+        iconData = Icons.school_rounded;
+        iconColor = Colors.blue;
+        break;
+      default: // Both
+        iconData = Icons.public_rounded;
+        iconColor = Colors.purple;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        iconData,
+        color: iconColor,
+        size: 24,
+      ),
+    );
   }
 
   void _showFilterDialog() {
@@ -684,5 +741,39 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
       default:
         return Colors.grey;
     }
+  }
+
+  Widget _buildEnvironmentChip(String environment) {
+    Color chipColor;
+    String chipLabel;
+
+    switch (environment) {
+      case 'Home':
+        chipColor = Colors.green;
+        chipLabel = 'Rumah';
+        break;
+      case 'School':
+        chipColor = Colors.blue;
+        chipLabel = 'Sekolah';
+        break;
+      case 'Both':
+        chipColor = Colors.teal;
+        chipLabel = 'Keduanya';
+        break;
+      default:
+        chipColor = Colors.grey;
+        chipLabel = 'Tidak diketahui';
+    }
+
+    return Chip(
+      label: Text(
+        chipLabel,
+        style: TextStyle(
+          color: chipColor,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      backgroundColor: chipColor.withOpacity(0.2),
+    );
   }
 }

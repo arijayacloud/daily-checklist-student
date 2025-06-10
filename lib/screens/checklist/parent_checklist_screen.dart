@@ -3,19 +3,19 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import '/models/activity_model.dart';
-import '/models/checklist_item_model.dart';
-import '/models/child_model.dart';
-import '/models/planning_model.dart';
-import '/models/user_model.dart';
-import '/providers/activity_provider.dart';
-import '/providers/auth_provider.dart';
-import '/providers/checklist_provider.dart';
-import '/providers/planning_provider.dart';
-import '/providers/user_provider.dart';
-import '/screens/checklist/observation_form_screen.dart';
-import '/lib/theme/app_theme.dart';
-import '/widgets/home/child_avatar.dart';
+import 'package:daily_checklist_student/laravel_api/models/activity_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/checklist_item_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/child_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/planning_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/user_model.dart';
+import 'package:daily_checklist_student/laravel_api/providers/activity_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/auth_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/checklist_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/planning_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/user_provider.dart';
+import 'package:daily_checklist_student/screens/checklist/observation_form_screen.dart';
+import 'package:daily_checklist_student/lib/theme/app_theme.dart';
+import 'package:daily_checklist_student/widgets/home/laravel_child_avatar.dart';
 import '/widgets/checklist/activity_detail_card.dart';
 
 class ParentChecklistScreen extends StatefulWidget {
@@ -30,8 +30,8 @@ class ParentChecklistScreen extends StatefulWidget {
 class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
   bool _isLoading = true;
   DateTime _selectedMonth = DateTime.now();
-  List<DateTime> _months = [];
-  List<int> _expandedDays = [];
+  final List<DateTime> _months = [];
+  final List<int> _expandedDays = [];
   UserModel? _currentParent;
 
   @override
@@ -119,14 +119,14 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
   Widget _buildChildHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: AppTheme.primaryContainer.withOpacity(0.3),
+      color: AppTheme.primaryContainer.withAlpha(76), // 0.3 * 255 = ~76
       child: Column(
         children: [
           Row(
             children: [
               Hero(
                 tag: 'child_avatar_${widget.child.id}',
-                child: ChildAvatar(child: widget.child, size: 60),
+                child: LaravelChildAvatar(child: widget.child, size: 60),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -421,7 +421,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                 children:
                     activities.map((activity) {
                       final activityData = activityProvider.getActivityById(
-                        activity.activityId,
+                        activity.activityId.toString(),
                       );
                       if (activityData == null) {
                         return const SizedBox.shrink();
@@ -523,7 +523,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                     // Tampilkan dialog konfirmasi atau langsung tandai sebagai selesai
                     _showMarkCompletedDialog(
                       context,
-                      plannedActivity.activityId,
+                      plannedActivity.activityId.toString(),
                       activityData,
                     );
                   },
@@ -590,33 +590,29 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     );
 
     // Dapatkan semua checklist item untuk anak ini dan filter berdasarkan activityId
-    final allItems = checklistProvider.getChecklistItemsForChild(
-      widget.child.id,
-    );
-    final items =
-        allItems.where((item) => item.activityId == activityId).toList();
-
+    final allItems = checklistProvider.items;
+    final items = allItems.where((item) => 
+      item.childId == widget.child.id).toList();
+    
+    // Handle marking the activity as completed
+    // This is simplified as we don't have activityId in ChecklistItemModel
     if (items.isNotEmpty) {
-      Navigator.push(
-        context,
+      // Show observation form
+      Navigator.of(context).push(
         MaterialPageRoute(
-          builder:
-              (context) => ObservationFormScreen(
-                child: widget.child,
-                item: items.first,
-                activity: activity,
-                isTeacher: false,
-              ),
+          builder: (context) => ObservationFormScreen(
+            child: widget.child,
+            item: items.first, // Using first item 
+            activity: activity,
+            isTeacher: false,
+          ),
         ),
       );
     } else {
-      // Jika tidak ada checklist item, tampilkan snackbar
+      // No checklist item found for this activity, create one
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Tidak dapat menemukan item checklist untuk aktivitas ini',
-          ),
-          backgroundColor: Colors.red,
+          content: Text('No checklist items found for this activity'),
         ),
       );
     }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '/providers/auth_provider.dart';
+
+// Laravel API providers
+import '/laravel_api/providers/auth_provider.dart';
+
 import '/screens/home/teacher_home_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/widgets/auth/custom_text_field.dart';
@@ -44,6 +47,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
     });
 
     try {
+      // Use Laravel Auth Provider
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await authProvider.createTeacherAccount(
         _emailController.text.trim(),

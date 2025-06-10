@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/providers/activity_provider.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:path/path.dart' as path;
+import '/config.dart';
+import 'dart:convert';
+
+// Laravel API providers
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/api_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
+
 import '/lib/theme/app_theme.dart';
 
 class AddActivityScreen extends StatefulWidget {
@@ -15,19 +27,127 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _durationController = TextEditingController();
   String _environment = 'Both';
   String _difficulty = 'Medium';
-  int _minAge = 3;
-  int _maxAge = 6;
+  double _minAge = 3.0;
+  double _maxAge = 6.0;
   final List<String> _steps = [''];
+  final List<File> _photos = [];
+  final ImagePicker _picker = ImagePicker();
 
   bool _isSubmitting = false;
+  bool _uploadingPhotos = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _durationController.dispose();
     super.dispose();
+  }
+  
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200, // Optimize image size
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    
+    if (image != null) {
+      setState(() {
+        _photos.add(File(image.path));
+      });
+    }
+  }
+
+  Future<void> _captureImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    
+    if (image != null) {
+      setState(() {
+        _photos.add(File(image.path));
+      });
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _photos.removeAt(index);
+    });
+  }
+
+  Future<List<String>> _uploadImages() async {
+    if (_photos.isEmpty) return [];
+    
+    final List<String> uploadedUrls = [];
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    setState(() {
+      _uploadingPhotos = true;
+    });
+    
+    try {
+      for (var photoFile in _photos) {
+        final fileName = path.basename(photoFile.path);
+        final mimeType = 'image/${path.extension(fileName).replaceFirst('.', '')}';
+        
+        // Create multipart request
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${AppConfig.apiBaseUrl}/upload-photo'),
+        );
+        
+        // Add authorization header
+        request.headers['Authorization'] = 'Bearer ${apiProvider.token}';
+        
+        // Add file to request
+        request.files.add(await http.MultipartFile.fromPath(
+          'photo',
+          photoFile.path,
+          contentType: MediaType.parse(mimeType),
+        ));
+        
+        // Add additional fields if needed
+        request.fields['type'] = 'activity';
+        
+        // Send request
+        var streamedResponse = await request.send();
+        var response = await http.Response.fromStream(streamedResponse);
+        
+        // Process response
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          try {
+            final responseData = json.decode(response.body);
+            if (responseData != null && responseData['url'] != null) {
+              uploadedUrls.add(responseData['url']);
+              debugPrint('Photo uploaded successfully: ${responseData['url']}');
+            } else {
+              debugPrint('Failed to parse upload response');
+            }
+          } catch (e) {
+            debugPrint('Error parsing response: $e');
+          }
+        } else {
+          debugPrint('Failed to upload image: ${response.statusCode} - ${response.body}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error uploading images: $e');
+    } finally {
+      setState(() {
+        _uploadingPhotos = false;
+      });
+    }
+    
+    return uploadedUrls;
   }
 
   Future<void> _saveActivity() async {
@@ -53,6 +173,15 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     });
 
     try {
+      // First upload images (if any)
+      final photoUrls = await _uploadImages();
+      
+      // Parse duration
+      int? duration;
+      if (_durationController.text.isNotEmpty) {
+        duration = int.tryParse(_durationController.text);
+      }
+      
       await Provider.of<ActivityProvider>(context, listen: false).addActivity(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -60,7 +189,9 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         difficulty: _difficulty,
         minAge: _minAge,
         maxAge: _maxAge,
+        duration: duration,
         steps: steps,
+        photos: photoUrls,
       );
 
       if (!mounted) return;
@@ -153,6 +284,13 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         return translatedDiff;
     }
   }
+  
+  String _formatAgeValue(double value) {
+    if (value == value.truncate()) {
+      return value.toInt().toString();
+    }
+    return value.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,307 +347,382 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Environment
-              Text(
-                'Lingkungan',
-                style: TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 16,
+              
+              // Duration
+              TextFormField(
+                controller: _durationController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Durasi (menit)',
+                  hintText: 'Masukkan durasi aktivitas dalam menit',
+                  filled: true,
+                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  suffixText: 'menit',
                 ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildEnvironmentOption('Rumah'),
-                  _buildEnvironmentOption('Sekolah'),
-                  _buildEnvironmentOption('Keduanya'),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Difficulty
-              Text(
-                'Tingkat Kesulitan',
-                style: TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildDifficultyOption('Mudah'),
-                  _buildDifficultyOption('Sedang'),
-                  _buildDifficultyOption('Sulit'),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Age Range
-              Text(
-                'Rentang Usia: $_minAge - $_maxAge tahun',
-                style: TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              RangeSlider(
-                values: RangeValues(_minAge.toDouble(), _maxAge.toDouble()),
-                min: 3,
-                max: 6,
-                divisions: 3,
-                labels: RangeLabels(_minAge.toString(), _maxAge.toString()),
-                onChanged: (values) {
-                  setState(() {
-                    _minAge = values.start.round();
-                    _maxAge = values.end.round();
-                  });
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    final duration = int.tryParse(value);
+                    if (duration == null || duration <= 0) {
+                      return 'Durasi harus berupa angka positif';
+                    }
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 16),
 
-              // Instruction Steps
+              // Environment selection
+              Text(
+                'Lingkungan:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                children: ['Home', 'School', 'Both'].map((env) {
+                  final label = _getTranslatedEnvironment(env);
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: _environment == env,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _environment = env;
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // Difficulty selection
+              Text(
+                'Tingkat Kesulitan:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                children: ['Easy', 'Medium', 'Hard'].map((diff) {
+                  final label = _getTranslatedDifficulty(diff);
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: _difficulty == diff,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _difficulty = diff;
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // Age range
+              Text(
+                'Rentang Usia:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Langkah-langkah Instruksi',
-                    style: TextStyle(
-                      color: AppTheme.onSurfaceVariant,
-                      fontSize: 16,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Usia Minimum: ${_formatAgeValue(_minAge)} tahun',
+                          style: TextStyle(color: AppTheme.onSurfaceVariant),
+                        ),
+                        Slider(
+                          value: _minAge,
+                          min: 0,
+                          max: 6,
+                          divisions: 12, // 0.5 increment steps
+                          label: _formatAgeValue(_minAge),
+                          onChanged: (value) {
+                            setState(() {
+                              _minAge = value;
+                              if (_maxAge < _minAge) {
+                                _maxAge = _minAge;
+                              }
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: _addStep,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Tambah Langkah'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryContainer,
-                      foregroundColor: AppTheme.onPrimaryContainer,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Usia Maksimum: ${_formatAgeValue(_maxAge)} tahun',
+                          style: TextStyle(color: AppTheme.onSurfaceVariant),
+                        ),
+                        Slider(
+                          value: _maxAge,
+                          min: 0,
+                          max: 6,
+                          divisions: 12, // 0.5 increment steps
+                          label: _formatAgeValue(_maxAge),
+                          onChanged: (value) {
+                            setState(() {
+                              _maxAge = value;
+                              if (_minAge > _maxAge) {
+                                _minAge = _maxAge;
+                              }
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              ..._steps.asMap().entries.map((entry) {
-                final index = entry.key;
-                final step = entry.value;
+              const SizedBox(height: 16),
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            color: AppTheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+              // Photo instructions
+              Text(
+                'Foto Instruksi:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                height: _photos.isEmpty ? 120 : 160,
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_photos.isNotEmpty)
                       Expanded(
-                        child: TextFormField(
-                          initialValue: step,
-                          decoration: InputDecoration(
-                            hintText: 'Masukkan langkah instruksi',
-                            filled: true,
-                            fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                          ),
-                          onChanged: (value) => _updateStep(index, value),
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _photos.length,
+                          padding: const EdgeInsets.all(8),
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Stack(
+                                alignment: AlignmentDirectional.topEnd,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.file(
+                                      _photos[index],
+                                      height: 120,
+                                      width: 120,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    margin: const EdgeInsets.all(4),
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.close,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 24,
+                                        minHeight: 24,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      onPressed: () => _removeImage(index),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        color: AppTheme.error,
-                        onPressed:
-                            _steps.length > 1 ? () => _removeStep(index) : null,
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.photo_library),
+                              label: const Text('Galeri'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _captureImage,
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text('Kamera'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.tertiary,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    ),
+                    if (_uploadingPhotos)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 16, 
+                              height: 16, 
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Mengunggah foto...',
+                              style: TextStyle(color: AppTheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
 
-              // Save button
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _saveActivity,
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: AppTheme.primary,
-                  disabledBackgroundColor: AppTheme.primary.withOpacity(0.6),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  minimumSize: const Size(double.infinity, 0),
+              // Steps
+              Text(
+                'Langkah-langkah Instruksi:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface,
                 ),
-                child:
-                    _isSubmitting
-                        ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                        : const Text(
-                          'Simpan Aktivitas',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+              ),
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _steps.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          radius: 16,
+                          child: Text('${index + 1}'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: _steps[index],
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan instruksi',
+                              filled: true,
+                              fillColor:
+                                  AppTheme.surfaceVariant.withOpacity(0.3),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (value) => _updateStep(index, value),
+                            validator: (value) {
+                              if (index == 0 &&
+                                  (value == null || value.trim().isEmpty)) {
+                                return 'Masukkan minimal satu langkah';
+                              }
+                              return null;
+                            },
                           ),
                         ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove_circle,
+                            color: index == 0 && _steps.length == 1
+                                ? Colors.grey
+                                : Colors.red,
+                          ),
+                          onPressed: index == 0 && _steps.length == 1
+                              ? null
+                              : () => _removeStep(index),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: _addStep,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah Langkah'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Save button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _saveActivity,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child:
+                      _isSubmitting
+                          ? const CircularProgressIndicator(
+                            color: Colors.white,
+                          )
+                          : const Text(
+                            'Simpan Aktivitas',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildEnvironmentOption(String option) {
-    final translatedOption = option;
-    final isSelected =
-        _getTranslatedEnvironment(_environment) == translatedOption;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _environment = _getEnvironmentValue(translatedOption);
-          });
-        },
-        child: Container(
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? _getEnvironmentColor(
-                      _getEnvironmentValue(translatedOption),
-                    ).withOpacity(0.2)
-                    : AppTheme.surfaceVariant.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-            border:
-                isSelected
-                    ? Border.all(
-                      color: _getEnvironmentColor(
-                        _getEnvironmentValue(translatedOption),
-                      ),
-                    )
-                    : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            translatedOption,
-            style: TextStyle(
-              color:
-                  isSelected
-                      ? _getEnvironmentColor(
-                        _getEnvironmentValue(translatedOption),
-                      )
-                      : AppTheme.onSurfaceVariant,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDifficultyOption(String option) {
-    final translatedOption = option;
-    final isSelected =
-        _getTranslatedDifficulty(_difficulty) == translatedOption;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _difficulty = _getDifficultyValue(translatedOption);
-          });
-        },
-        child: Container(
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? _getDifficultyColor(
-                      _getDifficultyValue(translatedOption),
-                    ).withOpacity(0.2)
-                    : AppTheme.surfaceVariant.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-            border:
-                isSelected
-                    ? Border.all(
-                      color: _getDifficultyColor(
-                        _getDifficultyValue(translatedOption),
-                      ),
-                    )
-                    : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            translatedOption,
-            style: TextStyle(
-              color:
-                  isSelected
-                      ? _getDifficultyColor(
-                        _getDifficultyValue(translatedOption),
-                      )
-                      : AppTheme.onSurfaceVariant,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getDifficultyColor(String difficulty) {
-    switch (difficulty) {
-      case 'Easy':
-        return Colors.green;
-      case 'Medium':
-        return Colors.orange;
-      case 'Hard':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
-
-  Color _getEnvironmentColor(String environment) {
-    switch (environment) {
-      case 'Home':
-        return Colors.purple;
-      case 'School':
-        return Colors.blue;
-      case 'Both':
-        return Colors.teal;
-      default:
-        return Colors.grey;
-    }
   }
 }

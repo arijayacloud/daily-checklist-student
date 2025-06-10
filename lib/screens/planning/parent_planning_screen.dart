@@ -3,15 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '/models/activity_model.dart';
-import '/models/planning_model.dart';
-import '/providers/activity_provider.dart';
-import '/providers/planning_provider.dart';
-import '/providers/auth_provider.dart';
-import '/providers/user_provider.dart';
+import '/config.dart';
+import '/laravel_api/models/activity_model.dart';
+import '/laravel_api/models/planning_model.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/planning_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/user_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
 import '/lib/theme/app_theme.dart';
-import '/screens/planning/planning_detail_screen.dart';
+import '/screens/planning/parent_planning_detail_screen.dart';
 
 class ParentPlanningScreen extends StatefulWidget {
   const ParentPlanningScreen({super.key});
@@ -35,138 +36,35 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final planningProvider = Provider.of<PlanningProvider>(
-        context,
-        listen: false,
+        context, 
+        listen: false
       );
-
-      // Jika user adalah parent, pastikan kita mendapatkan childId terlebih dahulu
-      if (authProvider.user != null && !authProvider.user!.isTeacher) {
-        final childId = await authProvider.getChildId();
-        if (childId != null) {
+      final childProvider = Provider.of<ChildProvider>(
+        context, 
+        listen: false
+      );
+      
+      if (authProvider.user != null && authProvider.user!.isParent) {
+        // Fetch children to find the parent's child
+        await childProvider.fetchChildren();
+        
+        if (childProvider.children.isNotEmpty) {
+          // Get the first child associated with this parent
+          final childId = childProvider.children.first.id;
           await planningProvider.fetchPlansForParent(childId);
-
-          // Buat notifikasi pengingat aktivitas untuk hari ini dengan childId yang benar
-          planningProvider.createActivityReminderNotification(
-            childId: childId, // Gunakan childId yang benar, bukan userId
-            date: DateTime.now(),
-          );
         } else {
-          // Jika tidak ada anak yang terkait dengan parent ini
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Tidak ada data anak yang terhubung dengan akun ini',
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          // Fallback to all plans if no children found
+          await planningProvider.fetchPlans();
         }
       } else {
-        // Untuk guru, ambil semua planning
-        planningProvider.fetchPlans();
+        // For teachers, fetch all plans
+        await planningProvider.fetchPlans();
       }
-
-      // Memuat data guru
+      
+      // Load teacher data
       Provider.of<UserProvider>(context, listen: false).fetchTeachers();
     });
   }
-
-  // // Fungsi untuk menandai aktivitas sebagai selesai
-  // Future<void> _markAsCompleted(
-  //   BuildContext context,
-  //   PlannedActivity plannedActivity,
-  //   PlanningProvider planningProvider,
-  // ) async {
-  //   // Tambahkan dialog konfirmasi untuk mencegah klik yang tidak disengaja
-  //   final bool confirm =
-  //       await showDialog(
-  //         context: context,
-  //         builder:
-  //             (context) => AlertDialog(
-  //               title: const Text('Konfirmasi'),
-  //               content: const Text(
-  //                 'Apakah Anda yakin akan menandai aktivitas ini sebagai selesai?',
-  //               ),
-  //               actions: [
-  //                 TextButton(
-  //                   onPressed: () => Navigator.of(context).pop(false),
-  //                   child: const Text('Batal'),
-  //                 ),
-  //                 ElevatedButton(
-  //                   onPressed: () => Navigator.of(context).pop(true),
-  //                   child: const Text('Ya, Selesaikan'),
-  //                   style: ElevatedButton.styleFrom(
-  //                     backgroundColor: AppTheme.primary,
-  //                     foregroundColor: Colors.white,
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //       ) ??
-  //       false;
-
-  //   if (!confirm) return;
-
-  //   try {
-  //     // Tampilkan loading indicator
-  //     showDialog(
-  //       context: context,
-  //       barrierDismissible: false,
-  //       builder: (BuildContext context) {
-  //         return const Dialog(
-  //           child: Padding(
-  //             padding: EdgeInsets.all(20.0),
-  //             child: Row(
-  //               mainAxisSize: MainAxisSize.min,
-  //               children: [
-  //                 CircularProgressIndicator(),
-  //                 SizedBox(width: 20),
-  //                 Text("Memproses..."),
-  //               ],
-  //             ),
-  //           ),
-  //         );
-  //       },
-  //     );
-
-  //     await planningProvider.markActivityAsCompleted(
-  //       planId: plannedActivity.planId ?? '',
-  //       activityId: plannedActivity.activityId,
-  //       scheduledDate: plannedActivity.scheduledDate,
-  //     );
-
-  //     // Tutup dialog loading
-  //     if (context.mounted) {
-  //       Navigator.of(context).pop();
-  //     }
-
-  //     if (!mounted) return;
-
-  //     // Force refresh UI
-  //     setState(() {});
-
-  //     // Paksa reload data dari server
-  //     await planningProvider.fetchPlans();
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(
-  //         content: Text('Aktivitas berhasil ditandai selesai'),
-  //         backgroundColor: AppTheme.success,
-  //       ),
-  //     );
-  //   } catch (e) {
-  //     // Tutup dialog loading jika terjadi error
-  //     if (context.mounted) {
-  //       Navigator.of(context).pop();
-  //     }
-
-  //     if (!mounted) return;
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-  //     );
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +96,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         padding: const EdgeInsets.all(8),
         child: Consumer<PlanningProvider>(
           builder: (context, planningProvider, child) {
-            // Dapatkan tanggal-tanggal yang memiliki aktivitas
+            // Get dates that have activities
             final eventDates = _getEventDates(planningProvider);
 
             return TableCalendar(
@@ -248,7 +146,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
               ),
               calendarBuilders: CalendarBuilders(
                 markerBuilder: (context, date, events) {
-                  // Tampilkan marker jika ada aktivitas pada tanggal tersebut
+                  // Show marker if there are activities on this date
                   if (eventDates[_dateToKey(date)] == true) {
                     return Positioned(
                       bottom: 1,
@@ -272,197 +170,38 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     );
   }
 
-  // Mengkonversi DateTime menjadi string key untuk map
+  // Convert DateTime to string key for map
   String _dateToKey(DateTime date) {
     return '${date.year}-${date.month}-${date.day}';
   }
 
-  // Mendapatkan tanggal-tanggal yang memiliki aktivitas
+  // Get dates that have activities
   Map<String, bool> _getEventDates(PlanningProvider provider) {
     final Map<String, bool> eventDates = {};
-    final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
-
-    if (userId == null) return eventDates;
-
+    
     for (final plan in provider.plans) {
-      if (plan.childId == null || plan.childId == userId) {
-        for (final activity in plan.activities) {
-          final date = activity.scheduledDate.toDate();
-          final key = _dateToKey(date);
-          eventDates[key] = true;
-        }
+      for (final activity in plan.activities) {
+        final key = _dateToKey(activity.scheduledDate);
+        eventDates[key] = true;
       }
     }
-
+    
     return eventDates;
   }
 
-  Widget _buildStatItem(String value, String label, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 14, color: AppTheme.onSurfaceVariant),
-        ),
-      ],
-    );
-  }
-
-  void _showHelpDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Bantuan Jadwal Aktivitas'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHelpItem(
-                  'Melihat Aktivitas',
-                  'Pilih tanggal pada kalender untuk melihat aktivitas yang dijadwalkan.',
-                ),
-                const SizedBox(height: 12),
-                _buildHelpItem(
-                  'Detail Aktivitas',
-                  'Tekan tombol "Detail" untuk melihat informasi lengkap dan langkah-langkah aktivitas.',
-                ),
-                const SizedBox(height: 12),
-                _buildHelpItem(
-                  'Menyelesaikan Aktivitas',
-                  'Tekan tombol "Selesaikan" setelah aktivitas dilakukan di rumah.',
-                ),
-                const SizedBox(height: 12),
-                _buildHelpItem(
-                  'Statistik',
-                  'Lihat ringkasan aktivitas hari ini di bagian atas layar.',
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Tutup'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Widget _buildHelpItem(String title, String description) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(description),
-      ],
-    );
-  }
-
-  Widget _buildDailySchedule() {
-    return Consumer2<PlanningProvider, ActivityProvider>(
-      builder: (context, planningProvider, activityProvider, child) {
-        if (planningProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+  // Get activities scheduled for the selected day
+  List<PlannedActivity> _getActivitiesForSelectedDay(PlanningProvider provider) {
+    final activities = <PlannedActivity>[];
+    
+    for (final plan in provider.plans) {
+      for (final activity in plan.activities) {
+        if (isSameDay(activity.scheduledDate, _selectedDay)) {
+          activities.add(activity);
         }
-
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        if (authProvider.user == null) {
-          return const Center(child: Text('Silakan login terlebih dahulu'));
-        }
-
-        // Ambil childId terlebih dahulu (akan dibuat async)
-        Future<String?> getChildIdFuture() async {
-          return await authProvider.getChildId();
-        }
-
-        return FutureBuilder<String?>(
-          future: getChildIdFuture(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            final childId = snapshot.data;
-
-            if (childId == null) {
-              return const Center(
-                child: Text('Tidak ada anak yang terhubung dengan akun ini'),
-              );
-            }
-
-            // Filter aktivitas untuk anak dari orangtua ini
-            final activitiesForDate =
-                planningProvider.getActivitiesForDate(_selectedDay).where((
-                  activity,
-                ) {
-                  final plan = planningProvider.getPlanById(
-                    activity.planId ?? '',
-                  );
-                  return plan?.childId == null || plan?.childId == childId;
-                }).toList();
-
-            if (activitiesForDate.isEmpty) {
-              return _buildEmptySchedule();
-            }
-
-            return _buildScheduleList(
-              activitiesForDate,
-              activityProvider.activities,
-              planningProvider,
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildEmptySchedule() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.calendar_today,
-            size: 80,
-            color: AppTheme.primary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Tidak ada aktivitas terjadwal untuk ${DateFormat('d MMMM yyyy', 'id_ID').format(_selectedDay)}',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.onSurface.withOpacity(0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScheduleList(
-    List<PlannedActivity> activities,
-    List<ActivityModel> allActivities,
-    PlanningProvider planningProvider,
-  ) {
-    // Sort activities by time if available
+      }
+    }
+    
+    // Sort activities by time
     activities.sort((a, b) {
       if (a.scheduledTime == null && b.scheduledTime == null) {
         return 0;
@@ -475,68 +214,144 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       }
       return a.scheduledTime!.compareTo(b.scheduledTime!);
     });
+    
+    return activities;
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_selectedDay),
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: activities.length,
-            itemBuilder: (context, index) {
-              final plannedActivity = activities[index];
-              final activity = allActivities.firstWhere(
-                (a) => a.id == plannedActivity.activityId,
-                orElse:
-                    () => ActivityModel(
-                      id: '',
-                      title: 'Aktivitas Tidak Dikenal',
-                      description: '',
-                      environment: 'Both',
-                      difficulty: 'Medium',
-                      ageRange: AgeRange(min: 3, max: 6),
-                      customSteps: [],
-                      createdAt: Timestamp.now(),
-                      createdBy: '',
-                    ),
-              );
+  Widget _buildDailySchedule() {
+    return Consumer2<PlanningProvider, ActivityProvider>(
+      builder: (context, planningProvider, activityProvider, child) {
+        if (planningProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-              return _buildScheduleItem(
-                activity,
-                plannedActivity,
-                planningProvider,
-              );
-            },
-          ),
-        ),
-      ],
+        if (planningProvider.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Error: ${planningProvider.error}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => planningProvider.fetchPlans(),
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final activities = _getActivitiesForSelectedDay(planningProvider);
+
+        if (activities.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_selectedDay),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: activities.length,
+                itemBuilder: (context, index) {
+                  return _buildActivityItem(
+                    context, 
+                    activities[index], 
+                    planningProvider, 
+                    activityProvider
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildScheduleItem(
-    ActivityModel activity,
-    PlannedActivity plannedActivity,
+  Widget _buildEmptyState() {
+    // Check if the day is today, future or past
+    final now = DateTime.now();
+    final isToday = isSameDay(_selectedDay, now);
+    final isFuture = _selectedDay.isAfter(
+      DateTime(now.year, now.month, now.day),
+    );
+
+    String message;
+    IconData icon;
+
+    if (isToday) {
+      message = 'Tidak ada aktivitas yang dijadwalkan untuk hari ini';
+      icon = Icons.event_note;
+    } else if (isFuture) {
+      message = 'Tidak ada aktivitas yang dijadwalkan untuk tanggal ini';
+      icon = Icons.event_available;
+    } else {
+      message = 'Tidak ada aktivitas yang dijadwalkan pada tanggal ini';
+      icon = Icons.event_busy;
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 80, color: Colors.grey.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityItem(
+    BuildContext context,
+    PlannedActivity activity,
     PlanningProvider planningProvider,
+    ActivityProvider activityProvider,
   ) {
+    final activityDetails = activityProvider.getActivityById(activity.activityId.toString());
+    final formattedTime = activity.scheduledTime ?? 'Tidak diatur';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (plannedActivity.scheduledTime != null)
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          // Navigate to detail view
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ParentPlanningDetailScreen(
+                planId: activity.planId.toString(),
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -547,226 +362,173 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      plannedActivity.scheduledTime!,
+                      formattedTime,
                       style: TextStyle(
                         color: AppTheme.onPrimaryContainer,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                const Spacer(),
+                  const Spacer(),
+                  if (activity.completed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Selesai',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Belum Selesai',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                activityDetails?.title ?? 'Aktivitas Tidak Ditemukan',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              if (activityDetails != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  activityDetails.description,
+                  style: TextStyle(color: AppTheme.onSurfaceVariant),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.help_outline, color: AppTheme.primary),
+            const SizedBox(width: 8),
+            const Text('Bantuan'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Jadwal Aktivitas Anak',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Fitur ini menunjukkan jadwal aktivitas anak Anda yang telah direncanakan oleh guru.',
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppTheme.tertiary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('Titik pada kalender menunjukkan ada aktivitas'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 8,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _getDifficultyColor(
-                      activity.difficulty,
-                    ).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    _getTranslatedDifficulty(activity.difficulty),
+                  child: const Text(
+                    'Selesai',
                     style: TextStyle(
-                      color: _getDifficultyColor(activity.difficulty),
+                      color: Colors.green,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
+                const Text('Aktivitas sudah diselesaikan'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 8,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _getEnvironmentColor(
-                      activity.environment,
-                    ).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    _getTranslatedEnvironment(activity.environment),
+                  child: const Text(
+                    'Belum',
                     style: TextStyle(
-                      color: _getEnvironmentColor(activity.environment),
+                      color: Colors.orange,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              activity.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              activity.description,
-              style: TextStyle(color: AppTheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            if (activity.customSteps.isEmpty)
-              const Text('Tidak ada langkah khusus untuk aktivitas ini.')
-            else
-              ...activity.customSteps.map((customStep) {
-                // Menggunakan Consumer untuk mendapatkan data guru
-                return Consumer<UserProvider>(
-                  builder: (context, userProvider, _) {
-                    // Mendapatkan nama guru berdasarkan ID
-                    final teacherName =
-                        userProvider.getTeacherNameById(customStep.teacherId) ??
-                        'Guru';
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Langkah-langkah dari $teacherName:',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...customStep.steps.map((stepText) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8, left: 8),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('• '),
-                                Expanded(child: Text(stepText)),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        const SizedBox(height: 8),
-                      ],
-                    );
-                  },
-                );
-              }).toList(),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => PlanningDetailScreen(
-                                planId: plannedActivity.planId ?? '',
-                                activityId: plannedActivity.activityId,
-                                scheduledDate: plannedActivity.scheduledDate,
-                              ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.info_outline),
-                    label: const Text('Detail'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      side: BorderSide(color: AppTheme.primary),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                // const SizedBox(width: 8),
-                // Expanded(
-                //   child: ElevatedButton.icon(
-                //     onPressed:
-                //         plannedActivity.completed
-                //             ? null
-                //             : () => _markAsCompleted(
-                //               context,
-                //               plannedActivity,
-                //               planningProvider,
-                //             ),
-                //     icon: Icon(
-                //       plannedActivity.completed
-                //           ? Icons.check
-                //           : Icons.assignment_turned_in,
-                //     ),
-                //     label: Text(
-                //       plannedActivity.completed ? 'Selesai' : 'Selesaikan',
-                //     ),
-                //     style: ElevatedButton.styleFrom(
-                //       foregroundColor: Colors.white,
-                //       backgroundColor: AppTheme.primary,
-                //       disabledBackgroundColor: AppTheme.success.withOpacity(
-                //         0.6,
-                //       ),
-                //       disabledForegroundColor: Colors.white,
-                //       shape: RoundedRectangleBorder(
-                //         borderRadius: BorderRadius.circular(12),
-                //       ),
-                //     ),
-                //   ),
-                // ),
+                const SizedBox(width: 8),
+                const Text('Aktivitas belum diselesaikan'),
               ],
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Tutup', style: TextStyle(color: AppTheme.primary)),
+          ),
+        ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
       ),
     );
-  }
-
-  String _getTranslatedDifficulty(String difficulty) {
-    switch (difficulty) {
-      case 'Easy':
-        return 'Mudah';
-      case 'Medium':
-        return 'Sedang';
-      case 'Hard':
-        return 'Sulit';
-      default:
-        return difficulty;
-    }
-  }
-
-  String _getTranslatedEnvironment(String environment) {
-    switch (environment) {
-      case 'Home':
-        return 'Rumah';
-      case 'School':
-        return 'Sekolah';
-      case 'Both':
-        return 'Keduanya';
-      default:
-        return environment;
-    }
-  }
-
-  Color _getDifficultyColor(String difficulty) {
-    switch (difficulty) {
-      case 'Easy':
-        return Colors.green;
-      case 'Medium':
-        return Colors.orange;
-      case 'Hard':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
-
-  Color _getEnvironmentColor(String environment) {
-    switch (environment) {
-      case 'Home':
-        return Colors.purple;
-      case 'School':
-        return Colors.blue;
-      case 'Both':
-        return Colors.teal;
-      default:
-        return Colors.grey;
-    }
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/models/activity_model.dart';
-import '/providers/child_provider.dart';
-import '/providers/checklist_provider.dart';
+
+// Laravel API models and providers
+import '/laravel_api/models/activity_model.dart';
+import '/laravel_api/providers/auth_provider.dart';
+import '/config.dart';  // Fixed import path
 import '/lib/theme/app_theme.dart';
 
 class ActivityDetailScreen extends StatefulWidget {
@@ -15,9 +17,6 @@ class ActivityDetailScreen extends StatefulWidget {
 }
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
-  final List<String> _selectedChildIds = [];
-  bool _isAssigning = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,6 +27,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeaderSection(),
+            const SizedBox(height: 24),
+            _buildPhotoSection(),
             const SizedBox(height: 24),
             _buildInfoSection(),
             const SizedBox(height: 24),
@@ -65,15 +66,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getDifficultyColor(
-                      widget.activity.difficulty,
-                    ).withOpacity(0.2),
+                    color: _getDifficultyColor(widget.activity.difficulty).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _translateDifficultyToIndonesian(
-                      widget.activity.difficulty,
-                    ),
+                    _translateDifficultyToIndonesian(widget.activity.difficulty),
                     style: TextStyle(
                       color: _getDifficultyColor(widget.activity.difficulty),
                       fontWeight: FontWeight.bold,
@@ -92,9 +89,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _translateEnvironmentToIndonesian(
-                    widget.activity.environment,
-                  ),
+                  _translateEnvironmentToIndonesian(widget.activity.environment),
                   style: TextStyle(
                     color: _getEnvironmentColor(widget.activity.environment),
                     fontWeight: FontWeight.bold,
@@ -108,7 +103,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Usia ${widget.activity.ageRange.min}-${widget.activity.ageRange.max} tahun',
+                  'Usia ${widget.activity.minAge}-${widget.activity.maxAge} tahun',
                   style: TextStyle(
                     color: AppTheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
@@ -120,6 +115,193 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             Text(
               widget.activity.description,
               style: TextStyle(fontSize: 16, color: AppTheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoSection() {
+    // Get photos for the current teacher
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final teacherId = authProvider.userId;
+    final photos = widget.activity.getPhotosForTeacher(teacherId);
+
+    if (photos.isEmpty) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.image_not_supported_outlined,
+                  size: 40,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Tidak ada foto tersedia untuk aktivitas ini',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Foto Aktivitas',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: photos.length,
+            itemBuilder: (context, index) {
+              // Format photo URL properly
+              String photoUrl = _formatPhotoUrl(photos[index]);
+              debugPrint('Loading photo from URL: $photoUrl');
+              
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: () {
+                        _showFullScreenImage(context, photoUrl);
+                      },
+                      child: Image.network(
+                        photoUrl,
+                        width: 160,
+                        height: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Error loading image: $error');
+                          return Container(
+                            width: 160,
+                            height: 200,
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                                size: 36,
+                              ),
+                            ),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) {
+                            return child;
+                          }
+                          return Container(
+                            width: 160,
+                            height: 200,
+                            color: Colors.grey[100],
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper method to format photo URLs correctly with Laravel storage path
+  String _formatPhotoUrl(String photoPath) {
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      return photoPath;
+    }
+    
+    // If photoPath starts with 'storage/', ensure we have the full API URL
+    if (photoPath.startsWith('storage/')) {
+      return '${AppConfig.apiBaseUrl}/$photoPath';
+    }
+    
+    // If it doesn't have a path prefix, assume it's in storage
+    if (!photoPath.startsWith('/')) {
+      return '${AppConfig.apiBaseUrl}/storage/$photoPath';
+    }
+    
+    // Otherwise, prepend the API base URL
+    return '${AppConfig.apiBaseUrl}$photoPath';
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('Error loading full-screen image: $error');
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.broken_image, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text('Gagal memuat gambar: $error', 
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withOpacity(0.7),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
             ),
           ],
         ),
@@ -153,15 +335,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                 const Divider(),
                 _buildInfoRow(
                   'Lingkungan',
-                  _translateEnvironmentToIndonesian(
-                    widget.activity.environment,
-                  ),
+                  _translateEnvironmentToIndonesian(widget.activity.environment),
                   _getEnvironmentColor(widget.activity.environment),
                 ),
                 const Divider(),
                 _buildInfoRow(
                   'Rentang Usia',
-                  '${widget.activity.ageRange.min}-${widget.activity.ageRange.max} tahun',
+                  '${widget.activity.minAge}-${widget.activity.maxAge} tahun',
                   AppTheme.primary,
                 ),
                 if (widget.activity.nextActivityId != null) ...[
@@ -177,6 +357,95 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStepsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Langkah-Langkah',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _buildStepsList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  List<Widget> _buildStepsList() {
+    // Laravel API
+    if (widget.activity.activitySteps.isEmpty) {
+      return [
+        const Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              'Belum ada langkah-langkah untuk aktivitas ini',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+        )
+      ];
+    } else {
+      final authProvider = Provider.of<AuthProvider>(
+        context, 
+        listen: false
+      );
+      final teacherId = authProvider.userId;
+      final steps = widget.activity.getStepsForTeacher(teacherId);
+      
+      return steps.asMap().entries.map((entry) {
+        return _buildStepItem(entry.key + 1, entry.value);
+      }).toList();
+    }
+  }
+
+  Widget _buildStepItem(int stepNumber, String step) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                '$stepNumber',
+                style: TextStyle(
+                  color: AppTheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              step,
+              style: const TextStyle(fontSize: 16, height: 1.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -200,100 +469,6 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildStepsSection() {
-    final steps =
-        widget.activity.customSteps.isNotEmpty
-            ? widget.activity.customSteps.first.steps
-            : <String>[];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Langkah-langkah Aktivitas',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child:
-                steps.isEmpty
-                    ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text(
-                          'Tidak ada langkah yang ditentukan untuk aktivitas ini',
-                          style: TextStyle(
-                            fontStyle: FontStyle.italic,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    )
-                    : Column(
-                      children:
-                          steps.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final step = entry.value;
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryContainer,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: TextStyle(
-                                          color: AppTheme.onPrimaryContainer,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      step,
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                    ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  IconData _getEnvironmentIcon(String environment) {
-    switch (environment) {
-      case 'Home':
-        return Icons.home;
-      case 'School':
-        return Icons.school;
-      case 'Both':
-        return Icons.sync;
-      default:
-        return Icons.location_on;
-    }
   }
 
   String _translateDifficultyToIndonesian(String difficulty) {
@@ -322,6 +497,28 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     }
   }
 
+  IconData _getEnvironmentIcon(String environment) {
+    switch (environment) {
+      case 'Home':
+        return Icons.home_rounded;
+      case 'School':
+        return Icons.school_rounded;
+      default: // Both
+        return Icons.public_rounded;
+    }
+  }
+
+  Color _getEnvironmentColor(String environment) {
+    switch (environment) {
+      case 'Home':
+        return Colors.green;
+      case 'School':
+        return Colors.blue;
+      default: // Both
+        return Colors.purple;
+    }
+  }
+
   Color _getDifficultyColor(String difficulty) {
     switch (difficulty) {
       case 'Easy':
@@ -331,70 +528,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       case 'Hard':
         return Colors.red;
       default:
-        return Colors.blue;
-    }
-  }
-
-  Color _getEnvironmentColor(String environment) {
-    switch (environment) {
-      case 'Home':
-        return Colors.purple;
-      case 'School':
-        return Colors.blue;
-      case 'Both':
-        return Colors.teal;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Future<void> _assignToChildren() async {
-    if (_selectedChildIds.isEmpty) {
-      return;
-    }
-
-    setState(() {
-      _isAssigning = true;
-    });
-
-    try {
-      final checklistProvider = Provider.of<ChecklistProvider>(
-        context,
-        listen: false,
-      );
-
-      // Get the teacher ID for custom steps
-      final customStepsUsed =
-          widget.activity.customSteps.isNotEmpty
-              ? [widget.activity.customSteps.first.teacherId]
-              : <String>[];
-
-      await checklistProvider.bulkAssignActivity(
-        childIds: _selectedChildIds,
-        activityId: widget.activity.id,
-        customStepsUsed: customStepsUsed,
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aktivitas berhasil ditetapkan'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
-
-      setState(() {
-        _selectedChildIds.clear();
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-      );
-    } finally {
-      setState(() {
-        _isAssigning = false;
-      });
+        return AppTheme.primary;
     }
   }
 }

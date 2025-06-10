@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '/providers/auth_provider.dart';
-import '/models/user_model.dart';
-import '/screens/parents/add_parent_screen.dart';
-import '/lib/theme/app_theme.dart';
+import 'package:daily_checklist_student/laravel_api/providers/auth_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/user_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/api_provider.dart';
+import 'package:daily_checklist_student/laravel_api/models/user_model.dart';
+import 'package:daily_checklist_student/lib/theme/app_theme.dart';
+import 'package:daily_checklist_student/screens/parents/add_parent_screen.dart';
 
 enum ParentSortOption { nameAsc, nameDesc, emailAsc, emailDesc, newest, oldest }
 
@@ -30,16 +31,33 @@ class _ParentsScreenState extends State<ParentsScreen> {
   String? _selectedParentId;
   final TextEditingController _newPasswordController = TextEditingController();
 
+  // Edit Parent
+  final TextEditingController _editNameController = TextEditingController();
+  final TextEditingController _editEmailController = TextEditingController();
+  final TextEditingController _editPasswordController = TextEditingController();
+  final TextEditingController _editPhoneController = TextEditingController();
+  final TextEditingController _editAddressController = TextEditingController();
+  bool _showEditPassword = false;
+  bool _isEditing = false;
+
   @override
   void initState() {
     super.initState();
-    _fetchParents();
+    // Use a post-frame callback to prevent calling setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchParents();
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _newPasswordController.dispose();
+    _editNameController.dispose();
+    _editEmailController.dispose();
+    _editPasswordController.dispose();
+    _editPhoneController.dispose();
+    _editAddressController.dispose();
     super.dispose();
   }
 
@@ -49,24 +67,14 @@ class _ParentsScreenState extends State<ParentsScreen> {
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      // Only fetch parents created by current teacher
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'parent')
-              .where('createdBy', isEqualTo: authProvider.userId)
-              .get();
-
-      final parents =
-          snapshot.docs.map((doc) {
-            final data = doc.data();
-            return UserModel.fromJson({'id': doc.id, ...data});
-          }).toList();
-
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      
+      // Use server-side filtering for created_by instead of client-side filtering
+      await userProvider.fetchParents(filterByCreatedBy: true);
+      
       setState(() {
-        _parents = parents;
+        // Use all parents from provider since they're already filtered by created_by
+        _parents = userProvider.parents;
         _applyFilters();
         _isLoading = false;
       });
@@ -193,25 +201,29 @@ class _ParentsScreenState extends State<ParentsScreen> {
                   }
 
                   try {
-                    // Implementasi reset password
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(_selectedParentId)
-                        .update({
-                          'isTempPassword': true,
-                          'updatedAt': FieldValue.serverTimestamp(),
-                        });
-
-                    // Disini implementasi reset password di Firebase Auth
-                    // ...
+                    final userProvider = Provider.of<UserProvider>(context, listen: false);
+                    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+                    
+                    // Use direct change-password endpoint instead of reset-password
+                    final result = await apiProvider.put(
+                      'users/$_selectedParentId/change-password',
+                      {
+                        'new_password': _newPasswordController.text,
+                        'is_temp_password': true
+                      }
+                    );
 
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Password berhasil direset'),
-                        backgroundColor: AppTheme.success,
-                      ),
-                    );
+                    if (result != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Password berhasil direset'),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      );
+                    } else {
+                      throw Exception('Failed to reset password');
+                    }
                   } catch (e) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -257,23 +269,22 @@ class _ParentsScreenState extends State<ParentsScreen> {
                 onPressed: () async {
                   Navigator.pop(context);
                   try {
-                    // Implement hapus orang tua (ini hanya contoh)
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(parent.id)
-                        .update({
-                          'status': 'deleted',
-                          'deletedAt': FieldValue.serverTimestamp(),
-                        });
+                    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+                    
+                    // Use Laravel API to soft delete the user
+                    final result = await apiProvider.delete('users/${parent.id}');
 
-                    _fetchParents();
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Akun orang tua berhasil dihapus'),
-                        backgroundColor: AppTheme.success,
-                      ),
-                    );
+                    if (result != null) {
+                      _fetchParents();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Akun orang tua berhasil dihapus'),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      );
+                    } else {
+                      throw Exception('Failed to delete user');
+                    }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -292,6 +303,233 @@ class _ParentsScreenState extends State<ParentsScreen> {
             ],
           ),
     );
+  }
+
+  Future<void> _editParent(UserModel parent) async {
+    // Set the initial values in the controllers
+    _editNameController.text = parent.name;
+    _editEmailController.text = parent.email;
+    _editPasswordController.clear();
+    _editPhoneController.text = parent.phoneNumber ?? '';
+    _editAddressController.text = parent.address ?? '';
+
+    setState(() {
+      _isEditing = true;
+      _showEditPassword = false; // Reset password visibility
+    });
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Edit Data Orang Tua'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Name field
+                  TextFormField(
+                    controller: _editNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Nama',
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.person_outline),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Nama tidak boleh kosong';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Email field (disabled/read-only)
+                  TextFormField(
+                    controller: _editEmailController,
+                    enabled: true, // Enable email editing
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Email tidak boleh kosong';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Phone field
+                  TextFormField(
+                    controller: _editPhoneController,
+                    decoration: InputDecoration(
+                      labelText: 'Nomor Telepon',
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Address field
+                  TextFormField(
+                    controller: _editAddressController,
+                    decoration: InputDecoration(
+                      labelText: 'Alamat',
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.home_outlined),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(false);
+                },
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  // Validate inputs
+                  if (_editNameController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Nama tidak boleh kosong'),
+                        backgroundColor: AppTheme.error,
+                      ),
+                    );
+                    return;
+                  }
+                  
+                  if (_editEmailController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Email tidak boleh kosong'),
+                        backgroundColor: AppTheme.error,
+                      ),
+                    );
+                    return;
+                  }
+                  
+                  if (_editPasswordController.text.isNotEmpty && _editPasswordController.text.length < 6) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Password minimal 6 karakter'),
+                        backgroundColor: AppTheme.error,
+                      ),
+                    );
+                    return;
+                  }
+                  
+                  Navigator.of(context).pop(true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Simpan'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+
+    if (result == true) {
+      try {
+        setState(() {
+          _isLoading = true;
+        });
+
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        
+        // Prepare update data (only name, phone, address)
+        Map<String, dynamic> updateData = {
+          'name': _editNameController.text.trim(),
+          'email': _editEmailController.text.trim(),
+          'phone_number': _editPhoneController.text.trim(),
+          'address': _editAddressController.text.trim(),
+        };
+        
+        // Call update API - only send name, phone_number, and address
+        final success = await userProvider.updateUserProfile(
+          id: parent.id,
+          name: updateData['name'],
+          email: updateData['email'],
+          phoneNumber: updateData['phone_number'],
+          address: updateData['address'],
+        );
+
+        // Handle password update separately if needed
+        if (_editPasswordController.text.isNotEmpty) {
+          final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+          await apiProvider.put(
+            'users/${parent.id}/reset-password',
+            {
+              'password': _editPasswordController.text,
+              'is_temp_password': true
+            }
+          );
+        }
+
+        if (success) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Data orang tua berhasil diperbarui'),
+                backgroundColor: AppTheme.success,
+              ),
+            );
+          }
+          _fetchParents(); // Refresh data
+        } else {
+          throw Exception('Failed to update parent');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal memperbarui data: $e'),
+              backgroundColor: AppTheme.error,
+            ),
+          );
+        }
+      } finally {
+        setState(() {
+          _isLoading = false;
+          _isEditing = false;
+        });
+      }
+    } else {
+      setState(() {
+        _isEditing = false;
+      });
+    }
   }
 
   @override
@@ -323,7 +561,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
                             )
                             : null,
                     filled: true,
-                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                    fillColor: AppTheme.surfaceVariant.withAlpha(76),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -456,9 +694,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
                                           icon: Icons.edit,
                                           label: 'Edit',
                                           color: AppTheme.primary,
-                                          onTap: () {
-                                            // TODO: Navigasi ke halaman edit
-                                          },
+                                          onTap: () => _editParent(parent),
                                         ),
                                         _buildActionButton(
                                           icon: Icons.delete,
@@ -510,8 +746,8 @@ class _ParentsScreenState extends State<ParentsScreen> {
         });
         _applyFilters();
       },
-      backgroundColor: AppTheme.surfaceVariant.withOpacity(0.3),
-      selectedColor: AppTheme.primary.withOpacity(0.2),
+      backgroundColor: AppTheme.surfaceVariant.withAlpha(76),
+      selectedColor: AppTheme.primary.withAlpha(51),
       checkmarkColor: AppTheme.primary,
       labelStyle: TextStyle(
         color: isSelected ? AppTheme.primary : null,

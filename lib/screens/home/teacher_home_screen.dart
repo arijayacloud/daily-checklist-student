@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '/providers/auth_provider.dart';
-import '/providers/child_provider.dart';
-import '/providers/activity_provider.dart';
-import '/providers/notification_provider.dart';
+
+// Laravel API providers
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/notification_provider.dart';
+
+// Screens
 import '/screens/activities/teacher_activities_screen.dart';
 import '/screens/activities/add_activity_screen.dart';
 import '/screens/children/teacher_children_screen.dart';
@@ -50,17 +54,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     });
 
     // Fetch initial data
-    final childProvider = Provider.of<ChildProvider>(context, listen: false);
-    final activityProvider = Provider.of<ActivityProvider>(
-      context,
-      listen: false,
-    );
-    final notificationProvider = Provider.of<NotificationProvider>(
-      context,
-      listen: false,
-    );
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Laravel API providers
+      final childProvider = Provider.of<ChildProvider>(context, listen: false);
+      final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+      final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+      
       childProvider.fetchChildren();
       activityProvider.fetchActivities();
       notificationProvider.fetchNotifications();

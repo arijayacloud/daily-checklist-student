@@ -15,6 +15,9 @@
 migrate_working_dir/
 readmeconcept.md
 readmebuild.md
+FIREBASE_TO_LARAVEL_MIGRATION.md
+MIGRATION_SUMMARY.md
+READMEOthers.md
 
 # Firebase
 lib/firebase_options.dart

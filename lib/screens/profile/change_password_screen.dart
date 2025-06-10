@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/providers/auth_provider.dart';
+import '/config.dart';
+import '/laravel_api/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
 import '/screens/home/parent_home_screen.dart';
 import '/screens/home/teacher_home_screen.dart';
@@ -16,19 +17,16 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _showCurrentPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -46,13 +44,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      await authProvider.changePassword(
-        currentPassword: _currentPasswordController.text,
+      final success = await authProvider.changePassword(
+        currentPassword: "", // Empty string as current password is not required
         newPassword: _newPasswordController.text,
       );
 
-      if (mounted) {
+      if (mounted && success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Kata sandi berhasil diubah'),
@@ -61,13 +58,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         );
 
         if (widget.isForced) {
+          // Get user role
+          final userRole = authProvider.userRole;
+            
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder:
-                  (context) =>
-                      authProvider.userRole == 'teacher'
-                          ? const TeacherHomeScreen()
-                          : const ParentHomeScreen(),
+              builder: (context) => userRole == 'teacher'
+                  ? const TeacherHomeScreen()
+                  : const ParentHomeScreen(),
             ),
           );
         } else {
@@ -121,7 +119,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Masukkan kata sandi lama dan kata sandi baru Anda',
+                    'Masukkan kata sandi baru Anda',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
@@ -142,25 +140,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         style: TextStyle(color: Colors.red[800]),
                       ),
                     ),
-
-                  // Current password field
-                  _buildPasswordField(
-                    controller: _currentPasswordController,
-                    label: 'Kata Sandi Saat Ini',
-                    showPassword: _showCurrentPassword,
-                    togglePassword: () {
-                      setState(() {
-                        _showCurrentPassword = !_showCurrentPassword;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Masukkan kata sandi saat ini';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
 
                   // New password field
                   _buildPasswordField(
@@ -229,30 +208,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                               ),
                             )
                             : const Text(
-                              'SIMPAN PERUBAHAN',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              'Ubah Kata Sandi',
+                              style: TextStyle(fontSize: 16),
                             ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Cancel button
-                  TextButton(
-                    onPressed:
-                        widget.isForced
-                            ? null
-                            : () => Navigator.of(context).pop(),
-                    child: Text(
-                      'BATAL',
-                      style: TextStyle(
-                        color:
-                            widget.isForced
-                                ? Colors.grey.withOpacity(0.5)
-                                : null,
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -273,10 +231,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return TextFormField(
       controller: controller,
       obscureText: !showPassword,
-      validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         suffixIcon: IconButton(
           icon: Icon(
             showPassword ? Icons.visibility_off : Icons.visibility,
@@ -284,12 +243,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           ),
           onPressed: togglePassword,
         ),
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 20,
-        ),
       ),
+      validator: validator,
     );
   }
 }

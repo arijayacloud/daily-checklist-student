@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '/models/activity_model.dart';
-import '/models/checklist_item_model.dart';
-import '/lib/theme/app_theme.dart';
+import 'package:daily_checklist_student/laravel_api/models/activity_model.dart';
+import 'package:daily_checklist_student/laravel_api/models/checklist_item_model.dart';
+import 'package:daily_checklist_student/lib/theme/app_theme.dart';
 
 class ActivityDetailCard extends StatelessWidget {
   final ActivityModel activity;
@@ -15,9 +15,8 @@ class ActivityDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final homeObservation = item.homeObservation;
-    final schoolObservation = item.schoolObservation;
-
+    // Since the Laravel API model doesn't have observation fields directly,
+    // we'll just show the general checklist item information
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
@@ -59,62 +58,16 @@ class ActivityDetailCard extends StatelessWidget {
           _buildDetailRow('Environment:', activity.environment),
           _buildDetailRow(
             'Age Range:',
-            '${activity.ageRange.min}-${activity.ageRange.max} years',
+            '${activity.minAge}-${activity.maxAge} years',
           ),
           const SizedBox(height: 16),
-
-          // Home observation
-          if (homeObservation.completed) ...[
-            _buildSectionHeader('Home Observation'),
-            if (homeObservation.completedAt != null)
-              _buildDetailRow(
-                'Completed on:',
-                _formatDate(homeObservation.completedAt!.toDate()),
-              ),
-            if (homeObservation.duration != null)
-              _buildDetailRow(
-                'Duration:',
-                '${homeObservation.duration} minutes',
-              ),
-            if (homeObservation.engagement != null)
-              _buildDetailRow(
-                'Engagement:',
-                _getStarRating(homeObservation.engagement!),
-              ),
-            if (homeObservation.notes != null &&
-                homeObservation.notes!.isNotEmpty)
-              _buildDetailRow('Notes:', homeObservation.notes!),
-            const SizedBox(height: 16),
-          ],
-
-          // School observation
-          if (schoolObservation.completed) ...[
-            _buildSectionHeader('School Observation'),
-            if (schoolObservation.completedAt != null)
-              _buildDetailRow(
-                'Completed on:',
-                _formatDate(schoolObservation.completedAt!.toDate()),
-              ),
-            if (schoolObservation.duration != null)
-              _buildDetailRow(
-                'Duration:',
-                '${schoolObservation.duration} minutes',
-              ),
-            if (schoolObservation.engagement != null)
-              _buildDetailRow(
-                'Engagement:',
-                _getStarRating(schoolObservation.engagement!),
-              ),
-            if (schoolObservation.notes != null &&
-                schoolObservation.notes!.isNotEmpty)
-              _buildDetailRow('Notes:', schoolObservation.notes!),
-            if (schoolObservation.learningOutcomes != null &&
-                schoolObservation.learningOutcomes!.isNotEmpty)
-              _buildDetailRow(
-                'Learning Outcomes:',
-                schoolObservation.learningOutcomes!,
-              ),
-          ],
+          
+          // Checklist item details
+          _buildSectionHeader('Checklist Item'),
+          _buildDetailRow('Title:', item.title),
+          _buildDetailRow('Description:', item.description),
+          _buildDetailRow('Status:', item.completed ? 'Completed' : 'Not Completed'),
+          _buildDetailRow('Last Updated:', _formatDate(item.updatedAt)),
         ],
       ),
     );

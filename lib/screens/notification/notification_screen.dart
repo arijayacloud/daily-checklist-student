@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import '/models/notification_model.dart';
-import '/providers/notification_provider.dart';
-import '/providers/auth_provider.dart';
+import '/config.dart';
+import '/laravel_api/models/notification_model.dart';
+import '/laravel_api/providers/notification_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -21,21 +22,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
     initializeDateFormatting('id_ID', null);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Laravel API
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final notificationProvider = Provider.of<NotificationProvider>(
         context,
         listen: false,
       );
 
-      // Jika user adalah parent, dapatkan childId terlebih dahulu
+      // Untuk Laravel API, fetchNotifications sudah dilakukan saat update(user) di provider
       if (authProvider.user != null && !authProvider.user!.isTeacher) {
-        final childId = await authProvider.getChildId();
-        if (childId != null) {
-          // Set childId ke NotificationProvider agar bisa memfilter notifikasi
-          notificationProvider.childId = childId;
-        }
-      } else {
-        // Untuk guru, langsung ambil notifikasi
+        // Langsung fetch notifications saja karena childId sudah diambil di API
         notificationProvider.fetchNotifications();
       }
     });
@@ -66,77 +62,85 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ],
       ),
-      body: Consumer<NotificationProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: _buildNotifications(),
+    );
+  }
 
-          if (provider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(provider.error!, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchNotifications(),
-                    child: const Text('Coba Lagi'),
-                  ),
-                ],
-              ),
-            );
-          }
+  Widget _buildNotifications() {
+    return Consumer<NotificationProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (provider.notifications.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.notifications_off_outlined,
-                    size: 80,
-                    color: AppTheme.onSurfaceVariant.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Tidak ada notifikasi',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Notifikasi baru akan muncul di sini',
-                    style: TextStyle(color: AppTheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddTestNotificationDialog(context),
-                    icon: const Icon(Icons.add_alert),
-                    label: const Text('Tambah Notifikasi Uji Coba'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: provider.notifications.length,
-            itemBuilder: (context, index) {
-              final notification = provider.notifications[index];
-              return _buildNotificationItem(context, notification, provider);
-            },
+        if (provider.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(provider.error!, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => provider.fetchNotifications(),
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
           );
-        },
+        }
+
+        if (provider.notifications.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return ListView.builder(
+          itemCount: provider.notifications.length,
+          itemBuilder: (context, index) {
+            final notification = provider.notifications[index];
+            return _buildNotificationItem(context, notification, provider);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.notifications_off_outlined,
+            size: 80,
+            color: AppTheme.onSurfaceVariant.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Tidak ada notifikasi',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Notifikasi baru akan muncul di sini',
+            style: TextStyle(color: AppTheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _showAddTestNotificationDialog(context),
+            icon: const Icon(Icons.add_alert),
+            label: const Text('Tambah Notifikasi Uji Coba'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -149,10 +153,44 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final formattedDate = DateFormat(
       'dd MMM yyyy HH:mm',
       'id_ID',
-    ).format(notification.createdAt.toDate());
+    ).format(notification.createdAt);
 
+    return _buildNotificationItemLayout(
+      context: context,
+      id: notification.id,
+      title: notification.title,
+      message: notification.message,
+      formattedDate: formattedDate,
+      type: notification.type,
+      isRead: notification.isRead,
+      onTap: () {
+        if (!notification.isRead) {
+          provider.markAsRead(notification.id);
+        }
+        _handleNotificationTap(context, notification);
+      },
+      onDismissed: (_) {
+        provider.deleteNotification(notification.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notifikasi telah dihapus')),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationItemLayout({
+    required BuildContext context,
+    required String id,
+    required String title,
+    required String message,
+    required String formattedDate,
+    required String type,
+    required bool isRead,
+    required Function() onTap,
+    required Function(DismissDirection) onDismissed,
+  }) {
     return Dismissible(
-      key: Key(notification.id),
+      key: Key(id),
       background: Container(
         color: Colors.red,
         alignment: Alignment.centerRight,
@@ -160,27 +198,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) {
-        provider.deleteNotification(notification.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notifikasi telah dihapus')),
-        );
-      },
+      onDismissed: onDismissed,
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: notification.isRead ? 1 : 3,
+        elevation: isRead ? 1 : 3,
         color:
-            notification.isRead
+            isRead
                 ? null
                 : AppTheme.primaryContainer.withOpacity(0.3),
         child: InkWell(
-          onTap: () {
-            if (!notification.isRead) {
-              provider.markAsRead(notification.id);
-            }
-            _handleNotificationTap(context, notification);
-          },
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -193,14 +221,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: _getNotificationColor(
-                          notification.type,
+                          type,
                         ).withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        _getNotificationIcon(notification.type),
+                        _getNotificationIcon(type),
                         size: 24,
-                        color: _getNotificationColor(notification.type),
+                        color: _getNotificationColor(type),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -209,10 +237,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            notification.title,
+                            title,
                             style: TextStyle(
                               fontWeight:
-                                  notification.isRead
+                                  isRead
                                       ? FontWeight.normal
                                       : FontWeight.bold,
                               fontSize: 16,
@@ -229,7 +257,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ],
                       ),
                     ),
-                    if (!notification.isRead)
+                    if (!isRead)
                       Container(
                         width: 10,
                         height: 10,
@@ -242,10 +270,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  notification.message,
+                  message,
                   style: TextStyle(
                     color:
-                        notification.isRead
+                        isRead
                             ? AppTheme.onSurfaceVariant
                             : AppTheme.onSurface,
                   ),
@@ -305,9 +333,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'activity_completed':
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Navigasi ke aktivitas ID: ${notification.relatedId}',
-            ),
+            content: Text('Navigasi ke aktivitas ID: ${notification.relatedId}'),
           ),
         );
         break;
@@ -414,14 +440,21 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     return;
                   }
 
-                  Provider.of<NotificationProvider>(
-                    context,
+                  final authProvider = Provider.of<AuthProvider>(
+                    context, 
                     listen: false,
-                  ).addTestNotification(
-                    title: title,
-                    message: message,
-                    type: selectedType,
                   );
+                  if (authProvider.user != null) {
+                    Provider.of<NotificationProvider>(
+                      context,
+                      listen: false,
+                    ).createNotification(
+                      userId: authProvider.user!.id,
+                      title: title,
+                      message: message,
+                      type: selectedType,
+                    );
+                  }
 
                   Navigator.pop(context);
                 },

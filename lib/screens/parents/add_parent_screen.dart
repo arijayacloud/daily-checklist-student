@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/providers/auth_provider.dart';
-import '/lib/theme/app_theme.dart';
+import 'package:daily_checklist_student/laravel_api/providers/auth_provider.dart';
+import 'package:daily_checklist_student/lib/theme/app_theme.dart';
 
 class AddParentScreen extends StatefulWidget {
   const AddParentScreen({super.key});
@@ -24,6 +24,36 @@ class _AddParentScreenState extends State<AddParentScreen> {
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   bool _addMoreDetails = false;
+  bool _nameManuallyEdited = false; // Track if user has manually edited the name field
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Listen to email changes to suggest name, but only if user hasn't edited name yet
+    _emailController.addListener(() {
+      if (!_nameManuallyEdited && _nameController.text.isEmpty && _emailController.text.contains('@')) {
+        // Extract username part of email (before @) as a name suggestion
+        final username = _emailController.text.split('@').first;
+        // Capitalize first letter of each word
+        final formattedName = username
+            .split(RegExp(r'[._-]')) // Split by common email separators
+            .map((word) => word.isNotEmpty 
+                ? word[0].toUpperCase() + word.substring(1) 
+                : '')
+            .join(' ');
+            
+        _nameController.text = formattedName;
+      }
+    });
+    
+    // Listen to name changes to track manual edits
+    _nameController.addListener(() {
+      if (_nameController.text.isNotEmpty) {
+        _nameManuallyEdited = true;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -152,7 +182,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                   labelText: 'Email Orang Tua',
                   hintText: 'Masukkan email orang tua',
                   filled: true,
-                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                  fillColor: AppTheme.surfaceVariant.withAlpha(76),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -180,7 +210,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                   labelText: 'Nama Orang Tua',
                   hintText: 'Masukkan nama orang tua',
                   filled: true,
-                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                  fillColor: AppTheme.surfaceVariant.withAlpha(76),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -207,7 +237,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                   labelText: 'Password Sementara',
                   hintText: 'Buat password sementara',
                   filled: true,
-                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                  fillColor: AppTheme.surfaceVariant.withAlpha(76),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -245,7 +275,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                   labelText: 'Konfirmasi Password',
                   hintText: 'Masukkan password kembali',
                   filled: true,
-                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                  fillColor: AppTheme.surfaceVariant.withAlpha(76),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -312,7 +342,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                     labelText: 'Nomor Telepon',
                     hintText: 'Masukkan nomor telepon',
                     filled: true,
-                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                    fillColor: AppTheme.surfaceVariant.withAlpha(76),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -330,7 +360,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                     labelText: 'Alamat',
                     hintText: 'Masukkan alamat lengkap',
                     filled: true,
-                    fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
+                    fillColor: AppTheme.surfaceVariant.withAlpha(76),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -349,7 +379,7 @@ class _AddParentScreenState extends State<AddParentScreen> {
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: AppTheme.primary,
-                  disabledBackgroundColor: AppTheme.primary.withOpacity(0.6),
+                  disabledBackgroundColor: AppTheme.primary.withAlpha(153),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

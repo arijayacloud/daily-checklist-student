@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '/models/planning_model.dart';
-import '/models/activity_model.dart';
-import '/models/user_model.dart';
-import '/providers/activity_provider.dart';
-import '/providers/planning_provider.dart';
+import '/laravel_api/models/planning_model.dart';
+import '/laravel_api/models/user_model.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/planning_provider.dart';
+import '/laravel_api/providers/user_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class ParentPlanningDetailScreen extends StatefulWidget {
@@ -42,22 +41,36 @@ class _ParentPlanningDetailScreenState
         context,
         listen: false,
       );
-      final plan = planningProvider.getPlanById(widget.planId);
+      final userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
+      
+      // Find the plan by ID
+      final plan = planningProvider.plans.firstWhere(
+        (p) => p.id.toString() == widget.planId,
+        orElse: () => Planning(
+          id: 0,
+          type: 'daily',
+          teacherId: '0',
+          childId: null,
+          startDate: DateTime.now(),
+          activities: [],
+        ),
+      );
 
-      if (plan != null) {
-        final teacherId = plan.teacherId;
-        final teacherSnapshot =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(teacherId)
-                .get();
-
-        if (teacherSnapshot.exists) {
+      if (plan.id != 0) {
+        // Get teacher data
+        await userProvider.fetchTeachers();
+        final teacherName = userProvider.getTeacherNameById(plan.teacherId);
+        if (teacherName != null) {
           setState(() {
-            _teacher = UserModel.fromJson({
-              'id': teacherSnapshot.id,
-              ...teacherSnapshot.data() as Map<String, dynamic>,
-            });
+            _teacher = UserModel(
+              id: plan.teacherId,
+              name: teacherName,
+              email: '',
+              role: 'teacher'
+            );
           });
         }
       }
@@ -76,9 +89,20 @@ class _ParentPlanningDetailScreenState
       appBar: AppBar(title: const Text('Detail Perencanaan'), elevation: 0),
       body: Consumer2<PlanningProvider, ActivityProvider>(
         builder: (context, planningProvider, activityProvider, _) {
-          final plan = planningProvider.getPlanById(widget.planId);
+          // Find the plan by ID
+          final plan = planningProvider.plans.firstWhere(
+            (p) => p.id.toString() == widget.planId,
+            orElse: () => Planning(
+              id: 0,
+              type: 'daily',
+              teacherId: '0',
+              childId: null,
+              startDate: DateTime.now(),
+              activities: [],
+            ),
+          );
 
-          if (plan == null) {
+          if (plan.id == 0) {
             return const Center(
               child: Text('Data perencanaan tidak ditemukan'),
             );
@@ -141,11 +165,11 @@ class _ParentPlanningDetailScreenState
     );
   }
 
-  Widget _buildPlanningHeader(PlanningModel plan) {
+  Widget _buildPlanningHeader(Planning plan) {
     final dateFormat = DateFormat('dd MMMM yyyy', 'id_ID');
-    final startDate = plan.startDate.toDate();
+    final startDate = plan.startDate;
 
-    // Hitung tanggal akhir (7 hari setelah startDate untuk weekly plan)
+    // Calculate end date (7 days after startDate for weekly plan)
     final endDate = DateTime(
       startDate.year,
       startDate.month,
@@ -225,273 +249,130 @@ class _ParentPlanningDetailScreenState
     );
   }
 
-  Widget _buildActivityList(
-    PlanningModel plan,
-    ActivityProvider activityProvider,
-  ) {
-    final dateFormat = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
-    final timeFormat = DateFormat('HH:mm', 'id_ID');
-
-    // Kelompokkan aktivitas berdasarkan tanggal
-    final Map<String, List<PlannedActivity>> groupedActivities = {};
-
-    for (final activity in plan.activities) {
-      final date = dateFormat.format(activity.scheduledDate.toDate());
-      if (!groupedActivities.containsKey(date)) {
-        groupedActivities[date] = [];
-      }
-      groupedActivities[date]!.add(activity);
+  Widget _buildActivityList(Planning plan, ActivityProvider activityProvider) {
+    if (plan.activities.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            'Tidak ada aktivitas dalam perencanaan ini',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
     }
 
-    // Urutkan tanggal
-    final sortedDates =
-        groupedActivities.keys.toList()..sort((a, b) {
-          final dateA = DateFormat('EEEE, dd MMM yyyy', 'id_ID').parse(a);
-          final dateB = DateFormat('EEEE, dd MMM yyyy', 'id_ID').parse(b);
-          return dateA.compareTo(dateB);
-        });
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
             'Daftar Aktivitas',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
-          ...sortedDates.map((date) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    date,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...groupedActivities[date]!.map((plannedActivity) {
-                  final activity = activityProvider.getActivityById(
-                    plannedActivity.activityId,
-                  );
-
-                  if (activity == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  activity.title,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        plannedActivity.completed
-                                            ? AppTheme.success
-                                            : AppTheme.onSurface,
-                                    decoration:
-                                        plannedActivity.completed
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      plannedActivity.completed
-                                          ? AppTheme.success.withOpacity(0.2)
-                                          : AppTheme.primary.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  plannedActivity.completed
-                                      ? 'Selesai'
-                                      : 'Belum Selesai',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        plannedActivity.completed
-                                            ? AppTheme.success
-                                            : AppTheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (plannedActivity.scheduledTime != null &&
-                              plannedActivity.scheduledTime!.isNotEmpty)
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 16,
-                                  color: AppTheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  plannedActivity.scheduledTime!,
-                                  style: TextStyle(
-                                    color: AppTheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          const SizedBox(height: 8),
-                          Text(
-                            activity.description,
-                            style: TextStyle(color: AppTheme.onSurfaceVariant),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Icon(
-                                _getEnvironmentIcon(activity.environment),
-                                size: 16,
-                                color: _getEnvironmentColor(
-                                  activity.environment,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _translateEnvironmentToIndonesian(
-                                  activity.environment,
-                                ),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _getEnvironmentColor(
-                                    activity.environment,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Icon(
-                                Icons.bar_chart,
-                                size: 16,
-                                color: _getDifficultyColor(activity.difficulty),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _translateDifficultyToIndonesian(
-                                  activity.difficulty,
-                                ),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _getDifficultyColor(
-                                    activity.difficulty,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-                const SizedBox(height: 16),
-              ],
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: plan.activities.length,
+          itemBuilder: (context, index) {
+            final activity = plan.activities[index];
+            final activityDetails = activityProvider.getActivityById(
+              activity.activityId.toString()
             );
-          }).toList(),
-        ],
-      ),
+            
+            return _buildActivityItem(activity, activityDetails?.title ?? 'Aktivitas Tidak Ditemukan');
+          },
+        ),
+      ],
     );
   }
 
-  IconData _getEnvironmentIcon(String environment) {
-    switch (environment) {
-      case 'home':
-        return Icons.home;
-      case 'school':
-        return Icons.school;
-      case 'both':
-        return Icons.home_work;
-      default:
-        return Icons.location_on;
-    }
-  }
+  Widget _buildActivityItem(PlannedActivity activity, String title) {
+    final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
+    final formattedDate = dateFormat.format(activity.scheduledDate);
+    final formattedTime = activity.scheduledTime ?? 'Tidak diatur';
 
-  Color _getEnvironmentColor(String environment) {
-    switch (environment) {
-      case 'home':
-        return Colors.green;
-      case 'school':
-        return Colors.blue;
-      case 'both':
-        return Colors.purple;
-      default:
-        return AppTheme.onSurfaceVariant;
-    }
-  }
-
-  String _translateEnvironmentToIndonesian(String environment) {
-    switch (environment) {
-      case 'home':
-        return 'Rumah';
-      case 'school':
-        return 'Sekolah';
-      case 'both':
-        return 'Keduanya';
-      default:
-        return 'Tidak Diketahui';
-    }
-  }
-
-  Color _getDifficultyColor(String difficulty) {
-    switch (difficulty) {
-      case 'easy':
-        return Colors.green;
-      case 'medium':
-        return Colors.orange;
-      case 'hard':
-        return Colors.red;
-      default:
-        return AppTheme.onSurfaceVariant;
-    }
-  }
-
-  String _translateDifficultyToIndonesian(String difficulty) {
-    switch (difficulty) {
-      case 'easy':
-        return 'Mudah';
-      case 'medium':
-        return 'Sedang';
-      case 'hard':
-        return 'Sulit';
-      default:
-        return 'Tidak Diketahui';
-    }
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: activity.completed
+                        ? Colors.green.withOpacity(0.2)
+                        : Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    activity.completed ? 'Selesai' : 'Belum Selesai',
+                    style: TextStyle(
+                      color: activity.completed ? Colors.green : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: 16, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Text(formattedDate),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 16, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Text(formattedTime),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  activity.reminder ? Icons.notifications_active : Icons.notifications_off,
+                  size: 16,
+                  color: activity.reminder ? AppTheme.primary : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  activity.reminder ? 'Pengingat aktif' : 'Pengingat tidak aktif',
+                  style: TextStyle(
+                    color: activity.reminder ? AppTheme.onSurface : Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

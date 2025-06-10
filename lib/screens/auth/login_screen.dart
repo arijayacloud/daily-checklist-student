@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '/providers/auth_provider.dart';
+import '/config.dart';
+
+// Laravel auth provider
+import '/laravel_api/providers/auth_provider.dart';
+
 import '/screens/home/parent_home_screen.dart';
 import '/screens/home/teacher_home_screen.dart';
 import '/lib/theme/app_theme.dart';
@@ -43,17 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.signIn(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-
-      if (!mounted) return;
-
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const PasswordCheckScreen()),
-      );
+      await _loginWithLaravel();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -64,6 +58,26 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+  
+  Future<void> _loginWithLaravel() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.signIn(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const PasswordCheckScreen()),
+      );
+    } else {
+      setState(() {
+        _errorMessage = 'Login gagal. Periksa email dan password Anda.';
+      });
     }
   }
 

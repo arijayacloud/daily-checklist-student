@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'firebase_options.dart';
-import '/providers/auth_provider.dart';
-import '/providers/activity_provider.dart';
-import '/providers/checklist_provider.dart';
-import '/providers/child_provider.dart';
-import '/providers/planning_provider.dart';
-import '/providers/notification_provider.dart';
-import '/providers/user_provider.dart';
+import 'config.dart';
+
+// Laravel API providers
+import '/laravel_api/providers/api_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/planning_provider.dart';
+import '/laravel_api/providers/notification_provider.dart';
+import '/laravel_api/providers/user_provider.dart';
+import '/laravel_api/providers/checklist_provider.dart';
+
+// Screens
 import '/screens/auth/login_screen.dart';
 import '/screens/auth/teacher_register_screen.dart';
 import '/screens/parents/add_parent_screen.dart';
@@ -20,8 +24,7 @@ import '/lib/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await initializeDateFormatting('id_ID', null);
+  await initializeDateFormatting(AppConfig.defaultLocale, null);
   runApp(const MyApp());
 }
 
@@ -32,46 +35,81 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProxyProvider<AuthProvider, ChildProvider>(
-          create: (_) => ChildProvider(),
-          update: (_, auth, previous) => previous!..update(auth.user),
+        // Base API provider
+        ChangeNotifierProvider(create: (_) => ApiProvider()),
+        
+        // Auth provider using the API provider
+        ChangeNotifierProxyProvider<ApiProvider, AuthProvider>(
+          create: (context) => AuthProvider(Provider.of<ApiProvider>(context, listen: false)),
+          update: (context, api, previous) => previous ?? AuthProvider(api),
         ),
-        ChangeNotifierProxyProvider<AuthProvider, ActivityProvider>(
-          create: (_) => ActivityProvider(),
-          update: (_, auth, previous) => previous!..update(auth.user),
+        
+        // User provider
+        ChangeNotifierProxyProvider2<ApiProvider, AuthProvider, UserProvider>(
+          create: (context) => UserProvider(
+            Provider.of<ApiProvider>(context, listen: false),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, api, auth, previous) => 
+            previous ?? UserProvider(api, auth),
         ),
-        ChangeNotifierProxyProvider<AuthProvider, ChecklistProvider>(
-          create: (_) => ChecklistProvider(),
-          update: (_, auth, previous) => previous!..update(auth.user),
+        
+        // Child provider
+        ChangeNotifierProxyProvider<ApiProvider, ChildProvider>(
+          create: (context) => ChildProvider(Provider.of<ApiProvider>(context, listen: false)),
+          update: (context, api, previous) => previous ?? ChildProvider(api),
         ),
-        ChangeNotifierProxyProvider<AuthProvider, PlanningProvider>(
-          create: (_) => PlanningProvider(),
-          update: (_, auth, previous) => previous!..update(auth.user),
+        
+        // Activity provider
+        ChangeNotifierProxyProvider2<ApiProvider, AuthProvider, ActivityProvider>(
+          create: (context) => ActivityProvider(
+            Provider.of<ApiProvider>(context, listen: false),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, api, auth, previous) => 
+            previous ?? ActivityProvider(api, auth),
         ),
-        ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
-          create: (_) => NotificationProvider(),
-          update: (_, auth, previous) => previous!..update(auth.user),
+        
+        // Planning provider
+        ChangeNotifierProxyProvider<ApiProvider, PlanningProvider>(
+          create: (context) => PlanningProvider(apiProvider: Provider.of<ApiProvider>(context, listen: false)),
+          update: (context, api, previous) => previous ?? PlanningProvider(apiProvider: api),
         ),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
+        
+        // Notification provider
+        ChangeNotifierProxyProvider<ApiProvider, NotificationProvider>(
+          create: (context) => NotificationProvider(Provider.of<ApiProvider>(context, listen: false)),
+          update: (context, api, previous) => previous ?? NotificationProvider(api),
+        ),
+        
+        // Checklist provider
+        ChangeNotifierProxyProvider<ApiProvider, ChecklistProvider>(
+          create: (context) => ChecklistProvider(Provider.of<ApiProvider>(context, listen: false)),
+          update: (context, api, previous) => previous ?? ChecklistProvider(api),
+        ),
       ],
-      child: MaterialApp(
-        title: 'TK Activity Checklist',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        debugShowCheckedModeBanner: false,
-        home: const SplashScreen(),
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/add-parent': (context) => const AddParentScreen(),
-          TeacherRegisterScreen.routeName:
-              (context) => const TeacherRegisterScreen(),
-          ProgressDashboard.routeName: (context) => const ProgressDashboard(),
-          ChildChecklistScreen.routeName:
-              (context) => const ChildChecklistScreen(),
-        },
-      ),
+      child: _buildMaterialApp(),
+    );
+  }
+  
+  // Common Material App configuration
+  Widget _buildMaterialApp() {
+    return MaterialApp(
+      title: 'TK Activity Checklist',
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
+      debugShowCheckedModeBanner: false,
+      home: const SplashScreen(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/add-parent': (context) => const AddParentScreen(),
+        TeacherRegisterScreen.routeName:
+            (context) => const TeacherRegisterScreen(),
+        // ProgressDashboard.routeName: (context) => const ProgressDashboard(),
+        ChildChecklistScreen.routeName:
+            (context) => const ChildChecklistScreen(),
+      },
     );
   }
 }

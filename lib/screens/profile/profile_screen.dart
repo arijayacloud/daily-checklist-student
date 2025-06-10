@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/providers/auth_provider.dart';
+import '/config.dart';
+import '/laravel_api/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
 import 'change_password_screen.dart';
 
@@ -17,6 +18,24 @@ class ProfileScreen extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    return _buildProfileUI(
+      context: context,
+      colorScheme: colorScheme,
+      name: user.name,
+      email: user.email,
+      isTeacher: user.isTeacher,
+      onLogout: () => _showLogoutConfirmationDialog(context, authProvider),
+    );
+  }
+
+  Widget _buildProfileUI({
+    required BuildContext context,
+    required ColorScheme colorScheme,
+    required String name,
+    required String email,
+    required bool isTeacher,
+    required VoidCallback onLogout,
+  }) {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -43,8 +62,8 @@ class ProfileScreen extends StatelessWidget {
                             radius: 50,
                             backgroundColor: Colors.white,
                             child: Text(
-                              user.name.isNotEmpty
-                                  ? user.name[0].toUpperCase()
+                              name.isNotEmpty
+                                  ? name[0].toUpperCase()
                                   : 'U',
                               style: TextStyle(
                                 fontSize: 36,
@@ -56,7 +75,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          user.name,
+                          name,
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -93,11 +112,11 @@ class ProfileScreen extends StatelessWidget {
                     context,
                     title: 'Informasi Pengguna',
                     items: [
-                      _buildInfoItem(Icons.email_outlined, 'Email', user.email),
+                      _buildInfoItem(Icons.email_outlined, 'Email', email),
                       _buildInfoItem(
                         Icons.badge_outlined,
                         'Peran',
-                        user.isTeacher ? 'Guru' : 'Orang Tua',
+                        isTeacher ? 'Guru' : 'Orang Tua',
                       ),
                     ],
                   ),
@@ -132,7 +151,7 @@ class ProfileScreen extends StatelessWidget {
                           );
                         },
                       ),
-                      if (user.isTeacher)
+                      if (isTeacher)
                         _buildMenuItem(
                           context,
                           icon: Icons.notifications_outlined,
@@ -183,18 +202,18 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 32),
-                  _buildLogoutButton(context, authProvider),
+                  _buildLogoutButton(context, onLogout),
                   const SizedBox(height: 24),
                   Center(
                     child: Text(
-                      'Aplikasi Daftar Kegiatan TK v1.0.0',
+                      'Aplikasi Daftar Kegiatan TK v${AppConfig.appVersion}',
                       style: TextStyle(
                         fontSize: 14,
                         color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -206,13 +225,12 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
@@ -225,23 +243,22 @@ class ProfileScreen extends StatelessWidget {
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            const Divider(height: 24),
             ...items,
           ],
         ),
@@ -251,31 +268,51 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildInfoItem(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey[600]),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              Text(value, style: const TextStyle(fontSize: 16)),
-            ],
+          Icon(icon, size: 20, color: AppTheme.primary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, {required List<Widget> items}) {
+  Widget _buildMenuCard(
+    BuildContext context, {
+    required List<Widget> items,
+  }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(children: items),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(children: items),
+      ),
     );
   }
 
@@ -284,104 +321,66 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
-    return InkWell(
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? AppTheme.primary),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: Theme.of(context).colorScheme.primary,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-          ],
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context, VoidCallback onLogout) {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.logout),
+      label: const Text('Keluar'),
+      onPressed: onLogout,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        minimumSize: const Size(double.infinity, 50),
       ),
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context, AuthProvider authProvider) {
-    return Center(
-      child: ElevatedButton.icon(
-        onPressed: () => _showLogoutConfirmationDialog(context, authProvider),
-        icon: const Icon(Icons.logout),
-        label: const Text('Keluar'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red[400],
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showLogoutConfirmationDialog(
-    BuildContext context,
-    AuthProvider authProvider,
-  ) async {
-    final result = await showDialog<bool>(
+  void _showLogoutConfirmationDialog(BuildContext context, AuthProvider authProvider) {
+    showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Konfirmasi Logout'),
-            content: const Text(
-              'Apakah Anda yakin ingin keluar dari aplikasi?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Batal'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Ya, Keluar'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Keluar'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              
+              // Navigate to login screen immediately before API call
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/login',
+                (route) => false,
+              );
+              
+              // Execute logout in background
+              authProvider.signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
     );
-
-    if (result == true) {
-      try {
-        await authProvider.signOut();
-        // Arahkan ke halaman login setelah logout
-        if (context.mounted) {
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/login', (route) => false);
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal logout: ${e.toString()}')),
-          );
-        }
-      }
-    }
   }
 }

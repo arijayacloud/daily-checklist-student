@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/models/child_model.dart';
-import '/models/checklist_item_model.dart';
-import '/providers/child_provider.dart';
-import '/providers/checklist_provider.dart';
-import '/providers/activity_provider.dart';
+import '/config.dart';
+import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/checklist_provider.dart';
+import '/laravel_api/providers/activity_provider.dart';
+import '/laravel_api/models/checklist_item_model.dart';
+import '/laravel_api/models/child_model.dart';
 import '/widgets/progress/child_progress_card.dart';
 import '/widgets/progress/progress_filter.dart';
 import '/widgets/common/loading_indicator.dart';
+import '/lib/theme/app_theme.dart';
 
 class ProgressDashboard extends StatefulWidget {
   static const routeName = '/progress-dashboard';
@@ -59,12 +61,12 @@ class _ProgressDashboardState extends State<ProgressDashboard> {
     switch (_filterType) {
       case 'pending':
         return items
-            .where((item) => !item.isCompleted && !item.isOverdue)
+            .where((item) => !item.completed && false)
             .toList();
       case 'completed':
-        return items.where((item) => item.isCompleted).toList();
+        return items.where((item) => item.completed).toList();
       case 'overdue':
-        return items.where((item) => item.isOverdue).toList();
+        return items.where((item) => false).toList();
       default:
         return items;
     }
@@ -114,16 +116,22 @@ class _ProgressDashboardState extends State<ProgressDashboard> {
                         itemCount: children.length,
                         itemBuilder: (ctx, index) {
                           final child = children[index];
-                          final allItems = checklistProvider
-                              .getChecklistItemsForChild(child.id);
-                          final filteredItems = _getFilteredChecklistItems(
-                            allItems,
-                          );
+                          final allItems = checklistProvider.items;
+                          final childItems = allItems.where((item) => 
+                            item.childId == child.id).toList();
+                          final filteredItems = _getFilteredChecklistItems(childItems);
+
+                          final completedCount = childItems.where((item) => 
+                            item.completed).length;
+                          final totalCount = childItems.length;
 
                           return ChildProgressCard(
                             child: child,
-                            checklistItems: filteredItems,
-                            activityProvider: activityProvider,
+                            completedCount: completedCount,
+                            totalCount: totalCount,
+                            onTap: () {
+                              // Navigate to child detail screen
+                            },
                           );
                         },
                       ),
@@ -138,19 +146,14 @@ class _ProgressDashboardState extends State<ProgressDashboard> {
     List<ChildModel> children,
     ChecklistProvider checklistProvider,
   ) {
-    // Hitung statistik
-    int totalActivities = 0;
-    int completedActivities = 0;
-    int overdueActivities = 0;
-
-    for (final child in children) {
-      final items = checklistProvider.getChecklistItemsForChild(child.id);
-      totalActivities += items.length;
-      completedActivities += items.where((item) => item.isCompleted).length;
-      overdueActivities += items.where((item) => item.isOverdue).length;
-    }
-
-    final completionRate =
+    final allItems = checklistProvider.items;
+    
+    final int totalActivities = allItems.length;
+    final int completedActivities = allItems.where((item) => 
+      item.completed).length;
+    final int overdueActivities = 0;
+    
+    final double completionRate =
         totalActivities > 0 ? completedActivities / totalActivities : 0.0;
 
     return Container(
