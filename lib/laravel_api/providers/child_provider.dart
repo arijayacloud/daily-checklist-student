@@ -2,24 +2,59 @@ import 'package:flutter/material.dart';
 import '../models/child_model.dart';
 import '../models/user_model.dart';
 import 'api_provider.dart';
+import 'auth_provider.dart';
 
 class ChildProvider with ChangeNotifier {
   final ApiProvider _apiProvider;
+  final AuthProvider _authProvider;
   UserModel? _user;
   List<ChildModel> _children = [];
   bool _isLoading = false;
   String? _error;
+  bool _initialized = false;
 
   List<ChildModel> get children => _children;
   bool get isLoading => _isLoading || _apiProvider.isLoading;
   String? get error => _error ?? _apiProvider.error;
 
-  ChildProvider(this._apiProvider);
+  ChildProvider(this._apiProvider, this._authProvider) {
+    // Initialize with current auth state
+    _user = _authProvider.user;
+    
+    // Listen to auth changes
+    _authProvider.addListener(_onAuthChanged);
+    
+    // Instead of fetching immediately, we'll use a post-frame callback
+    // to ensure this doesn't happen during build
+    if (_user != null && !_initialized) {
+      _initialized = true;
+      // Use a microtask to schedule this after the current build frame
+      Future.microtask(() {
+        fetchChildren();
+      });
+    }
+  }
+  
+  void _onAuthChanged() {
+    final newUser = _authProvider.user;
+    if (newUser != _user) {
+      update(newUser);
+    }
+  }
+  
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
   void update(UserModel? user) {
     _user = user;
     if (user != null) {
-      fetchChildren();
+      // Use a microtask to ensure this doesn't run during build
+      Future.microtask(() {
+        fetchChildren();
+      });
     } else {
       _children = [];
       notifyListeners();

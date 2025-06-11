@@ -241,22 +241,28 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
   // Helper method to format photo URLs correctly with Laravel storage path
   String _formatPhotoUrl(String photoPath) {
+    debugPrint('Original photo path: $photoPath');
+    
+    // If it's already a complete URL, return it as is
     if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
       return photoPath;
     }
     
-    // If photoPath starts with 'storage/', ensure we have the full API URL
+    // If it's a path starting with /storage, append it to the base URL without /api
+    // This is because storage URLs are served directly from the public directory
+    if (photoPath.startsWith('/storage/')) {
+      final baseUrlWithoutApi = AppConfig.apiBaseUrl.replaceFirst('/api', '');
+      return '$baseUrlWithoutApi$photoPath';
+    }
+    
+    // If photoPath starts with 'storage/', add a leading slash
     if (photoPath.startsWith('storage/')) {
-      return '${AppConfig.apiBaseUrl}/$photoPath';
+      final baseUrlWithoutApi = AppConfig.apiBaseUrl.replaceFirst('/api', '');
+      return '$baseUrlWithoutApi/$photoPath';
     }
     
-    // If it doesn't have a path prefix, assume it's in storage
-    if (!photoPath.startsWith('/')) {
-      return '${AppConfig.apiBaseUrl}/storage/$photoPath';
-    }
-    
-    // Otherwise, prepend the API base URL
-    return '${AppConfig.apiBaseUrl}$photoPath';
+    // Otherwise, assume it's a relative path to the API
+    return '${AppConfig.apiBaseUrl}/$photoPath';
   }
 
   void _showFullScreenImage(BuildContext context, String imageUrl) {

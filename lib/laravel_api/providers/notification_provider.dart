@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../models/user_model.dart';
 import 'api_provider.dart';
+import 'auth_provider.dart';
 
 class NotificationProvider with ChangeNotifier {
   final ApiProvider _apiProvider;
+  final AuthProvider _authProvider;
   UserModel? _user;
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
   String? _error;
+  bool _initialized = false;
 
   List<NotificationModel> get notifications => _notifications;
   List<NotificationModel> get unreadNotifications => _notifications.where((n) => !n.isRead).toList();
@@ -16,12 +19,44 @@ class NotificationProvider with ChangeNotifier {
   String? get error => _error ?? _apiProvider.error;
   int get unreadCount => unreadNotifications.length;
 
-  NotificationProvider(this._apiProvider);
+  NotificationProvider(this._apiProvider, this._authProvider) {
+    // Initialize with current auth state
+    _user = _authProvider.user;
+    
+    // Listen to auth changes
+    _authProvider.addListener(_onAuthChanged);
+    
+    // Instead of fetching immediately, we'll use a post-frame callback
+    // to ensure this doesn't happen during build
+    if (_user != null && !_initialized) {
+      _initialized = true;
+      // Use a microtask to schedule this after the current build frame
+      Future.microtask(() {
+        fetchNotifications();
+      });
+    }
+  }
+  
+  void _onAuthChanged() {
+    final newUser = _authProvider.user;
+    if (newUser != _user) {
+      update(newUser);
+    }
+  }
+  
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
   void update(UserModel? user) {
     _user = user;
     if (user != null) {
-      fetchNotifications();
+      // Use a microtask to ensure this doesn't run during build
+      Future.microtask(() {
+        fetchNotifications();
+      });
     } else {
       _notifications = [];
       notifyListeners();

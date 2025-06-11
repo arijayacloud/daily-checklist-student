@@ -267,31 +267,57 @@ class _ParentsScreenState extends State<ParentsScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
+                  // Get the scaffold messenger and context before closing the dialog
+                  // to avoid accessing a deactivated widget
+                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                  final navigatorContext = context;
+                  
+                  // Close the dialog first
                   Navigator.pop(context);
+                  
                   try {
-                    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+                    setState(() {
+                      _isLoading = true;
+                    });
                     
-                    // Use Laravel API to soft delete the user
+                    final userProvider = Provider.of<UserProvider>(navigatorContext, listen: false);
+                    final apiProvider = Provider.of<ApiProvider>(navigatorContext, listen: false);
+                    
+                    // Use Laravel API to delete the user
                     final result = await apiProvider.delete('users/${parent.id}');
 
                     if (result != null) {
-                      _fetchParents();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Akun orang tua berhasil dihapus'),
-                          backgroundColor: AppTheme.success,
-                        ),
-                      );
+                      // Refresh the parent list after successful deletion
+                      await _fetchParents();
+                      
+                      // Only show a message if the widget is still mounted
+                      if (mounted) {
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Akun orang tua berhasil dihapus'),
+                            backgroundColor: AppTheme.success,
+                          ),
+                        );
+                      }
                     } else {
                       throw Exception('Failed to delete user');
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal menghapus akun: $e'),
-                        backgroundColor: AppTheme.error,
-                      ),
-                    );
+                    // Only show error if the widget is still mounted
+                    if (mounted) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Gagal menghapus akun: $e'),
+                          backgroundColor: AppTheme.error,
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

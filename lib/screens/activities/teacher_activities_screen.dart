@@ -6,9 +6,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '/laravel_api/models/activity_model.dart';
 import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/api_provider.dart';
 
 import '/screens/activities/add_activity_screen.dart';
 import '/screens/activities/activity_detail_screen.dart';
+import '/screens/activities/edit_activity_screen.dart';
 import '/lib/theme/app_theme.dart';
 
 class TeacherActivitiesScreen extends StatefulWidget {
@@ -484,6 +486,24 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                   _buildEnvironmentChip(activity.environment),
                 ],
               ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildActionButton(
+                    icon: Icons.edit,
+                    label: 'Edit',
+                    color: AppTheme.primary,
+                    onTap: () => _editActivity(activity),
+                  ),
+                  _buildActionButton(
+                    icon: Icons.delete,
+                    label: 'Hapus',
+                    color: Colors.red,
+                    onTap: () => _deleteActivity(activity),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -774,6 +794,119 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
         ),
       ),
       backgroundColor: chipColor.withOpacity(0.2),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(color: color, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editActivity(ActivityModel activity) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditActivityScreen(activity: activity),
+      ),
+    ).then((_) {
+      // Refresh activities after returning from edit screen
+      Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
+    });
+  }
+
+  void _deleteActivity(ActivityModel activity) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Aktivitas'),
+        content: Text(
+          'Anda yakin ingin menghapus aktivitas "${activity.title}"? Tindakan ini tidak dapat dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Get the scaffold messenger and context before closing the dialog
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              final navigatorContext = context;
+              
+              // Close the dialog first
+              Navigator.pop(context);
+              
+              try {
+                setState(() {
+                  _isInitialized = false;
+                });
+                
+                final apiProvider = Provider.of<ApiProvider>(navigatorContext, listen: false);
+                final activityProvider = Provider.of<ActivityProvider>(navigatorContext, listen: false);
+                
+                // Use Laravel API to delete the activity
+                final result = await apiProvider.delete('activities/${activity.id}');
+
+                if (result != null) {
+                  // Refresh the activities list
+                  await activityProvider.fetchActivities();
+                  
+                  // Only show a message if the widget is still mounted
+                  if (mounted) {
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Aktivitas berhasil dihapus'),
+                        backgroundColor: AppTheme.success,
+                      ),
+                    );
+                  }
+                } else {
+                  throw Exception('Failed to delete activity');
+                }
+              } catch (e) {
+                // Only show error if the widget is still mounted
+                if (mounted) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal menghapus aktivitas: $e'),
+                      backgroundColor: AppTheme.error,
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isInitialized = true;
+                  });
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
     );
   }
 }

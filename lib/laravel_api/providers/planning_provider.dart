@@ -1,20 +1,61 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../models/planning_model.dart';
 import '../providers/api_provider.dart';
+import '../providers/auth_provider.dart';
+import '../models/user_model.dart';
 
 class PlanningProvider with ChangeNotifier {
-  final ApiProvider apiProvider;
+  final ApiProvider _apiProvider;
+  final AuthProvider _authProvider;
+  UserModel? _user;
   String? _error;
   bool _isLoading = false;
   List<Planning> _plans = [];
+  bool _initialized = false;
 
-  PlanningProvider({required this.apiProvider});
+  PlanningProvider(this._apiProvider, this._authProvider) {
+    // Initialize with current auth state
+    _user = _authProvider.user;
+    
+    // Listen to auth changes
+    _authProvider.addListener(_onAuthChanged);
+    
+    // Instead of fetching immediately, we'll use a post-frame callback
+    // to ensure this doesn't happen during build
+    if (_user != null && !_initialized) {
+      _initialized = true;
+      // Use a microtask to schedule this after the current build frame
+      Future.microtask(() {
+        fetchPlans();
+      });
+    }
+  }
+  
+  void _onAuthChanged() {
+    final newUser = _authProvider.user;
+    if (newUser != _user) {
+      _user = newUser;
+      if (newUser != null) {
+        // Use a microtask to ensure this doesn't run during build
+        Future.microtask(() {
+          fetchPlans();
+        });
+      } else {
+        _plans = [];
+        notifyListeners();
+      }
+    }
+  }
+  
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
   List<Planning> get plans => _plans;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
+  bool get isLoading => _isLoading || _apiProvider.isLoading;
+  String? get error => _error ?? _apiProvider.error;
 
   // Fetch all plans (for teachers or parents)
   Future<void> fetchPlans() async {
@@ -23,7 +64,7 @@ class PlanningProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await apiProvider.get('plans');
+      final data = await _apiProvider.get('plans');
       
       if (data != null) {
         // Check if data is a map with a 'data' property or directly a list
@@ -55,7 +96,7 @@ class PlanningProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await apiProvider.get('plans?child_id=$childId');
+      final data = await _apiProvider.get('plans?child_id=$childId');
       
       if (data != null) {
         // Check if data is a map with a 'data' property or directly a list
@@ -109,7 +150,7 @@ class PlanningProvider with ChangeNotifier {
         'activities': activitiesData,
       };
 
-      final data = await apiProvider.post('plans', planData);
+      final data = await _apiProvider.post('plans', planData);
       
       if (data != null) {
         final newPlan = Planning.fromJson(data);
@@ -165,7 +206,7 @@ class PlanningProvider with ChangeNotifier {
         }).toList();
       }
 
-      final data = await apiProvider.put('plans/$planId', updateData);
+      final data = await _apiProvider.put('plans/$planId', updateData);
       
       if (data != null) {
         final updatedPlan = Planning.fromJson(data);
@@ -198,7 +239,7 @@ class PlanningProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await apiProvider.put(
+      final data = await _apiProvider.put(
         'planned-activities/$activityId/status',
         {'completed': completed},
       );
@@ -259,7 +300,7 @@ class PlanningProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await apiProvider.delete('/plans/$planId');
+      final data = await _apiProvider.delete('/plans/$planId');
       
       if (data != null) {
         _plans.removeWhere((plan) => plan.id == planId);

@@ -8,21 +8,24 @@ import 'package:path/path.dart' as path;
 import '/config.dart';
 import 'dart:convert';
 
-// Laravel API providers
+// Laravel API models and providers
+import '/laravel_api/models/activity_model.dart';
 import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/api_provider.dart';
 import '/laravel_api/providers/auth_provider.dart';
 
 import '/lib/theme/app_theme.dart';
 
-class AddActivityScreen extends StatefulWidget {
-  const AddActivityScreen({super.key});
+class EditActivityScreen extends StatefulWidget {
+  final ActivityModel activity;
+  
+  const EditActivityScreen({super.key, required this.activity});
 
   @override
-  State<AddActivityScreen> createState() => _AddActivityScreenState();
+  State<EditActivityScreen> createState() => _EditActivityScreenState();
 }
 
-class _AddActivityScreenState extends State<AddActivityScreen> {
+class _EditActivityScreenState extends State<EditActivityScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _titleController = TextEditingController();
@@ -32,12 +35,36 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   String _difficulty = 'Medium';
   double _minAge = 3.0;
   double _maxAge = 6.0;
-  final List<String> _steps = [''];
+  List<String> _steps = [''];
   final List<File> _photos = [];
+  List<String> _existingPhotos = [];
   final ImagePicker _picker = ImagePicker();
 
   bool _isSubmitting = false;
   bool _uploadingPhotos = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize form with existing activity data
+    _titleController.text = widget.activity.title;
+    _descriptionController.text = widget.activity.description;
+    _durationController.text = widget.activity.duration?.toString() ?? '';
+    _environment = widget.activity.environment;
+    _difficulty = widget.activity.difficulty;
+    _minAge = widget.activity.minAge;
+    _maxAge = widget.activity.maxAge;
+    
+    // Get existing steps from the activity
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final steps = widget.activity.getStepsForTeacher(authProvider.userId);
+    _steps = steps.isEmpty ? [''] : List<String>.from(steps);
+    
+    // Get existing photos
+    _existingPhotos = List<String>.from(
+      widget.activity.getPhotosForTeacher(authProvider.userId)
+    );
+  }
 
   @override
   void dispose() {
@@ -80,6 +107,12 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   void _removeImage(int index) {
     setState(() {
       _photos.removeAt(index);
+    });
+  }
+
+  void _removeExistingPhoto(int index) {
+    setState(() {
+      _existingPhotos.removeAt(index);
     });
   }
 
@@ -155,7 +188,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     return uploadedUrls;
   }
 
-  Future<void> _saveActivity() async {
+  Future<void> _updateActivity() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -178,8 +211,11 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     });
 
     try {
-      // First upload images (if any)
-      final photoUrls = await _uploadImages();
+      // First upload new images (if any)
+      final newPhotoUrls = await _uploadImages();
+      
+      // Combine existing and new photos
+      final allPhotos = [..._existingPhotos, ...newPhotoUrls];
       
       // Parse duration
       int? duration;
@@ -187,7 +223,9 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         duration = int.tryParse(_durationController.text);
       }
       
-      await Provider.of<ActivityProvider>(context, listen: false).addActivity(
+      // First update the activity details
+      final success = await Provider.of<ActivityProvider>(context, listen: false).updateActivity(
+        id: widget.activity.id,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         environment: _environment,
@@ -195,15 +233,22 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         minAge: _minAge,
         maxAge: _maxAge,
         duration: duration,
-        steps: steps,
-        photos: photoUrls,
       );
+      
+      if (success) {
+        // Then update the steps and photos
+        await Provider.of<ActivityProvider>(context, listen: false).addCustomSteps(
+          activityId: widget.activity.id,
+          steps: steps,
+          photos: allPhotos,
+        );
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Aktivitas berhasil dibuat'),
+          content: Text('Aktivitas berhasil diperbarui'),
           backgroundColor: AppTheme.success,
         ),
       );
@@ -300,7 +345,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tambah Aktivitas')),
+      appBar: AppBar(title: const Text('Edit Aktivitas')),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -700,28 +745,85 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Save button
+              // Existing Photos Section
+              if (_existingPhotos.isNotEmpty) ...[
+                const Text('Foto yang Ada', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _existingPhotos.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                image: DecorationImage(
+                                  image: NetworkImage(_formatPhotoUrl(_existingPhotos[index])),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () => _removeExistingPhoto(index),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, size: 16, color: Colors.red),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Submit Button
               SizedBox(
                 width: double.infinity,
+                height: 50,
                 child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _saveActivity,
+                  onPressed: _isSubmitting ? null : _updateActivity,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child:
-                      _isSubmitting
-                          ? const CircularProgressIndicator(
-                            color: Colors.white,
-                          )
-                          : const Text(
-                            'Simpan Aktivitas',
-                            style: TextStyle(fontSize: 16),
-                          ),
+                  child: _isSubmitting
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(_uploadingPhotos ? 'Mengupload Foto...' : 'Menyimpan...'),
+                          ],
+                        )
+                      : const Text('Simpan Perubahan'),
                 ),
               ),
             ],
@@ -729,5 +831,29 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         ),
       ),
     );
+  }
+
+  // Helper method to format photo URLs correctly
+  String _formatPhotoUrl(String photoPath) {
+    // If it's already a complete URL, return it as is
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      return photoPath;
+    }
+    
+    // If it's a path starting with /storage, append it to the base URL without /api
+    // This is because storage URLs are served directly from the public directory
+    if (photoPath.startsWith('/storage/')) {
+      final baseUrlWithoutApi = AppConfig.apiBaseUrl.replaceFirst('/api', '');
+      return '$baseUrlWithoutApi$photoPath';
+    }
+    
+    // If photoPath starts with 'storage/', add a leading slash
+    if (photoPath.startsWith('storage/')) {
+      final baseUrlWithoutApi = AppConfig.apiBaseUrl.replaceFirst('/api', '');
+      return '$baseUrlWithoutApi/$photoPath';
+    }
+    
+    // Otherwise, assume it's a relative path to the API
+    return '${AppConfig.apiBaseUrl}/$photoPath';
   }
 }

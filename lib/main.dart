@@ -18,7 +18,6 @@ import '/screens/auth/login_screen.dart';
 import '/screens/auth/teacher_register_screen.dart';
 import '/screens/parents/add_parent_screen.dart';
 import '/screens/splash_screen.dart';
-import '/screens/progress/progress_dashboard.dart';
 import '/screens/progress/child_checklist_screen.dart';
 import '/lib/theme/app_theme.dart';
 
@@ -55,9 +54,13 @@ class MyApp extends StatelessWidget {
         ),
         
         // Child provider
-        ChangeNotifierProxyProvider<ApiProvider, ChildProvider>(
-          create: (context) => ChildProvider(Provider.of<ApiProvider>(context, listen: false)),
-          update: (context, api, previous) => previous ?? ChildProvider(api),
+        ChangeNotifierProxyProvider2<ApiProvider, AuthProvider, ChildProvider>(
+          create: (context) => ChildProvider(
+            Provider.of<ApiProvider>(context, listen: false),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, api, auth, previous) => 
+            previous ?? ChildProvider(api, auth),
         ),
         
         // Activity provider
@@ -71,15 +74,23 @@ class MyApp extends StatelessWidget {
         ),
         
         // Planning provider
-        ChangeNotifierProxyProvider<ApiProvider, PlanningProvider>(
-          create: (context) => PlanningProvider(apiProvider: Provider.of<ApiProvider>(context, listen: false)),
-          update: (context, api, previous) => previous ?? PlanningProvider(apiProvider: api),
+        ChangeNotifierProxyProvider2<ApiProvider, AuthProvider, PlanningProvider>(
+          create: (context) => PlanningProvider(
+            Provider.of<ApiProvider>(context, listen: false),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, api, auth, previous) => 
+            previous ?? PlanningProvider(api, auth),
         ),
         
         // Notification provider
-        ChangeNotifierProxyProvider<ApiProvider, NotificationProvider>(
-          create: (context) => NotificationProvider(Provider.of<ApiProvider>(context, listen: false)),
-          update: (context, api, previous) => previous ?? NotificationProvider(api),
+        ChangeNotifierProxyProvider2<ApiProvider, AuthProvider, NotificationProvider>(
+          create: (context) => NotificationProvider(
+            Provider.of<ApiProvider>(context, listen: false),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, api, auth, previous) => 
+            previous ?? NotificationProvider(api, auth),
         ),
         
         // Checklist provider
@@ -106,7 +117,6 @@ class MyApp extends StatelessWidget {
         '/add-parent': (context) => const AddParentScreen(),
         TeacherRegisterScreen.routeName:
             (context) => const TeacherRegisterScreen(),
-        // ProgressDashboard.routeName: (context) => const ProgressDashboard(),
         ChildChecklistScreen.routeName:
             (context) => const ChildChecklistScreen(),
       },
