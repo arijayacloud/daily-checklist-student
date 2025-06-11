@@ -32,7 +32,6 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
   DateTime _selectedMonth = DateTime.now();
   final List<DateTime> _months = [];
   final List<int> _expandedDays = [];
-  UserModel? _currentParent;
 
   @override
   void initState() {
@@ -51,14 +50,6 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     // setelah proses build selesai
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
-
-      // Dapatkan informasi orang tua dari AuthProvider
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.user != null) {
-        setState(() {
-          _currentParent = authProvider.user;
-        });
-      }
 
       // Muat data pengguna untuk mendapatkan informasi guru dan orang tua
       Provider.of<UserProvider>(context, listen: false).fetchParents();
@@ -153,32 +144,30 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
               ),
             ],
           ),
-          if (_currentParent != null) ...[
-            const SizedBox(height: 12),
-            Consumer<UserProvider>(
-              builder: (context, userProvider, _) {
-                // Dapatkan nama orang tua yang sebenarnya
-                final parentName =
-                    userProvider.getParentNameById(_currentParent!.id) ??
-                    _currentParent!.name;
+          const SizedBox(height: 12),
+          Consumer<UserProvider>(
+            builder: (context, userProvider, _) {
+              // Dapatkan nama orang tua berdasarkan parentId dari child, bukan dari user login
+              final parentName =
+                  userProvider.getParentNameById(widget.child.parentId) ??
+                  'Orang tua';
 
-                return Row(
-                  children: [
-                    Icon(Icons.person, size: 16, color: AppTheme.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Orang tua: $parentName',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
+              return Row(
+                children: [
+                  Icon(Icons.person, size: 16, color: AppTheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Orang tua: $parentName',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
-                );
-              },
-            ),
-          ],
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

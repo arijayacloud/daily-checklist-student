@@ -4,6 +4,7 @@ class Planning {
   final String type;
   final String teacherId;
   final String? childId;
+  final List<String> childIds;
   final DateTime startDate;
   final List<PlannedActivity> activities;
 
@@ -12,16 +13,25 @@ class Planning {
     required this.type,
     required this.teacherId,
     this.childId,
+    List<String>? childIds,
     required this.startDate,
     required this.activities,
-  });
+  }) : childIds = childIds ?? [];
 
   factory Planning.fromJson(Map<String, dynamic> json) {
+    List<String> childIds = [];
+    if (json['children'] != null) {
+      childIds = List<String>.from(
+        (json['children'] as List).map((child) => child['id'].toString())
+      );
+    }
+    
     return Planning(
       id: json['id'] != null ? int.parse(json['id'].toString()) : 0,
       type: json['type'] ?? 'weekly',
       teacherId: json['teacher_id']?.toString() ?? '',
       childId: json['child_id']?.toString(),
+      childIds: childIds,
       startDate: DateTime.parse(json['start_date']),
       activities: json['planned_activities'] != null
           ? List<PlannedActivity>.from(
@@ -36,6 +46,7 @@ class Planning {
       'type': type,
       'teacher_id': teacherId,
       'child_id': childId,
+      'child_ids': childIds,
       'start_date': startDate.toIso8601String().split('T')[0],
       'activities': activities.map((x) => x.toJson()).toList(),
     };

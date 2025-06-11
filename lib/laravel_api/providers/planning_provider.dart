@@ -125,6 +125,7 @@ class PlanningProvider with ChangeNotifier {
   Future<Planning?> createPlan({
     required DateTime startDate,
     String? childId,
+    List<String>? childIds,
     required List<PlannedActivity> activities,
     required String type,
   }) async {
@@ -146,9 +147,15 @@ class PlanningProvider with ChangeNotifier {
       final Map<String, dynamic> planData = {
         'type': type,
         'start_date': startDate.toIso8601String().split('T')[0],
-        'child_id': childId,
-        'activities': activitiesData,
+        'activities': activitiesData, // Add activities to the request
       };
+      
+      // Handle child selection
+      if (childIds != null && childIds.isNotEmpty) {
+        planData['child_ids'] = childIds;
+      } else if (childId != null) {
+        planData['child_id'] = childId;
+      }
 
       final data = await _apiProvider.post('plans', planData);
       
@@ -176,6 +183,7 @@ class PlanningProvider with ChangeNotifier {
     String? type,
     DateTime? startDate,
     String? childId,
+    List<String>? childIds,
     List<PlannedActivity>? activities,
   }) async {
     _isLoading = true;
@@ -187,7 +195,13 @@ class PlanningProvider with ChangeNotifier {
       
       if (type != null) updateData['type'] = type;
       if (startDate != null) updateData['start_date'] = startDate.toIso8601String().split('T')[0];
-      if (childId != null) updateData['child_id'] = childId;
+      
+      // Handle child selection updates
+      if (childIds != null) {
+        updateData['child_ids'] = childIds;
+      } else if (childId != null) {
+        updateData['child_id'] = childId;
+      }
       
       if (activities != null) {
         updateData['activities'] = activities.map((activity) {

@@ -22,7 +22,7 @@ class AddPlanScreen extends StatefulWidget {
 
 class _AddPlanScreenState extends State<AddPlanScreen> {
   final List<Map<String, dynamic>> _activities = [];
-  String? _selectedChildId;
+  List<String> _selectedChildIds = [];
   bool _isSubmitting = false;
   String _planType = 'daily'; // 'daily' or 'weekly'
   DateTime _startDate = DateTime.now();
@@ -275,41 +275,146 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedChildId,
-                decoration: InputDecoration(
-                  hintText: 'Semua Anak',
-                  filled: true,
-                  fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
-                  border: OutlineInputBorder(
+              GestureDetector(
+                onTap: () {
+                  _showMultiSelectDialog(context, children);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceVariant.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    border: Border.all(
+                      color: AppTheme.outlineVariant,
+                      width: 1.0,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedChildIds.isEmpty
+                              ? 'Semua Anak'
+                              : _selectedChildIds.length == 1
+                                  ? '${_getChildName(_selectedChildIds.first, children)}'
+                                  : '${_selectedChildIds.length} anak dipilih',
+                          style: TextStyle(
+                            color: _selectedChildIds.isEmpty
+                                ? AppTheme.outlineVariant
+                                : AppTheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
                   ),
                 ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('Semua Anak'),
-                  ),
-                  ...children.map((child) {
-                    return DropdownMenuItem<String>(
-                      value: child.id,
-                      child: Text('${child.name} (${child.age} tahun)'),
+              ),
+              if (_selectedChildIds.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _selectedChildIds.map((id) {
+                    return Chip(
+                      label: Text(_getChildName(id, children)),
+                      deleteIcon: const Icon(Icons.close, size: 18),
+                      onDeleted: () {
+                        setState(() {
+                          _selectedChildIds.remove(id);
+                        });
+                      },
+                      backgroundColor: AppTheme.primaryContainer,
+                      labelStyle: TextStyle(color: AppTheme.onPrimaryContainer),
                     );
                   }).toList(),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedChildId = value;
-                  });
-                },
-              ),
+                ),
+              ],
             ],
           ),
+        );
+      },
+    );
+  }
+
+  // Helper method to get child name from id
+  String _getChildName(String id, List<ChildModel> children) {
+    final child = children.firstWhere(
+      (child) => child.id == id,
+      orElse: () => ChildModel(
+        id: id,
+        name: 'Unknown',
+        age: 0,
+        parentId: '0',
+        teacherId: '0',
+      ),
+    );
+    return '${child.name} (${child.age} tahun)';
+  }
+
+  // Show multi-select dialog
+  void _showMultiSelectDialog(BuildContext context, List<ChildModel> children) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Pilih Anak'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: ListView(
+                  children: [
+                    // All children option
+                    CheckboxListTile(
+                      title: const Text('Semua Anak'),
+                      value: _selectedChildIds.isEmpty,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            _selectedChildIds.clear();
+                          }
+                        });
+                      },
+                    ),
+                    const Divider(),
+                    // Individual children
+                    ...children.map((childItem) {
+                      return CheckboxListTile(
+                        title: Text('${childItem.name} (${childItem.age} tahun)'),
+                        value: _selectedChildIds.contains(childItem.id),
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              _selectedChildIds.add(childItem.id);
+                            } else {
+                              _selectedChildIds.remove(childItem.id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('BATAL'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: const Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    this.setState(() {}); // Update parent state
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -328,31 +433,39 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.calendar_today,
-            size: 80,
-            color: AppTheme.primary.withOpacity(0.5),
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: 40),
+              Icon(
+                Icons.calendar_today,
+                size: 60,
+                color: AppTheme.primary.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Belum ada aktivitas yang direncanakan',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tekan tombol + untuk menambahkan aktivitas ke rencana ini',
+                style: TextStyle(color: AppTheme.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 40),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Belum ada aktivitas yang direncanakan',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tekan tombol + untuk menambahkan aktivitas ke rencana ini',
-            style: TextStyle(color: AppTheme.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -907,7 +1020,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
         listen: false,
       ).createPlan(
         startDate: _startDate,
-        childId: _selectedChildId,
+        childIds: _selectedChildIds.isNotEmpty ? _selectedChildIds : null,
         activities: plannedActivities,
         type: _planType,
       );
@@ -920,8 +1033,8 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       // Exit if widget was unmounted during the API call
       if (!mounted) return;
 
-      // Jika ada childId yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
-      if (_selectedChildId != null && plan != null) {
+      // Jika ada childIds yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
+      if (_selectedChildIds.isNotEmpty && plan != null) {
         await _confirmAddToChecklist(plan.id.toString(), plannedActivities);
       }
 
@@ -995,7 +1108,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
   Future<void> _addActivitiesToChecklist(
     List<PlannedActivity> activities,
   ) async {
-    if (_selectedChildId == null || !mounted) return;
+    if (_selectedChildIds.isEmpty || !mounted) return;
 
     final checklistProvider = Provider.of<ChecklistProvider>(
       context,
@@ -1008,24 +1121,27 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
     );
 
     try {
-      // Tambahkan setiap aktivitas ke checklist
-      for (final activity in activities) {
-        final activityModel = activityProvider.getActivityById(
-          activity.activityId.toString(),
-        );
-        if (activityModel == null) continue;
+      // For each selected child
+      for (final childId in _selectedChildIds) {
+        // Tambahkan setiap aktivitas ke checklist
+        for (final activity in activities) {
+          final activityModel = activityProvider.getActivityById(
+            activity.activityId.toString(),
+          );
+          if (activityModel == null) continue;
 
-        // Use activitySteps instead of customSteps
-        List<String> steps = [];
-        if (activityModel.activitySteps.isNotEmpty) {
-          steps = activityModel.activitySteps.first.steps;
+          // Use activitySteps instead of customSteps
+          List<String> steps = [];
+          if (activityModel.activitySteps.isNotEmpty) {
+            steps = activityModel.activitySteps.first.steps;
+          }
+
+          await checklistProvider.assignActivity(
+            childId: childId,
+            activityId: activity.activityId.toString(),
+            scheduledDate: activity.scheduledDate,
+          );
         }
-
-        await checklistProvider.assignActivity(
-          childId: _selectedChildId!,
-          activityId: activity.activityId.toString(),
-          scheduledDate: activity.scheduledDate,
-        );
       }
 
       if (mounted) {
@@ -1306,57 +1422,64 @@ class _DayPickerDialogState extends State<DayPickerDialog> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ...List.generate(7, (index) {
-              final day = index;
-              final date = _getDateForDay(day);
-              final isSelected = _selectedDay == day;
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: List.generate(7, (index) {
+                    final day = index;
+                    final date = _getDateForDay(day);
+                    final isSelected = _selectedDay == day;
 
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedDay = day;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color:
-                        isSelected
-                            ? AppTheme.primaryContainer
-                            : AppTheme.surfaceVariant.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        _getDayName(day),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedDay = day;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
                           color:
                               isSelected
-                                  ? AppTheme.onPrimaryContainer
-                                  : AppTheme.onSurfaceVariant,
+                                  ? AppTheme.primaryContainer
+                                  : AppTheme.surfaceVariant.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              _getDayName(day),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    isSelected
+                                        ? AppTheme.onPrimaryContainer
+                                        : AppTheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              DateFormat('d MMM', 'id_ID').format(date),
+                              style: TextStyle(
+                                color:
+                                    isSelected
+                                        ? AppTheme.onPrimaryContainer
+                                        : AppTheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        DateFormat('d MMM', 'id_ID').format(date),
-                        style: TextStyle(
-                          color:
-                              isSelected
-                                  ? AppTheme.onPrimaryContainer
-                                  : AppTheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  }),
                 ),
-              );
-            }),
+              ),
+            ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
