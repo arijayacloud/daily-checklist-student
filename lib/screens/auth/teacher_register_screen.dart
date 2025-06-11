@@ -24,8 +24,13 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _showAdvancedFields = false;
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
 
   @override
   void dispose() {
@@ -33,6 +38,8 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -49,21 +56,40 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
     try {
       // Use Laravel Auth Provider
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.createTeacherAccount(
+      final success = await authProvider.createTeacherAccount(
         _emailController.text.trim(),
         _nameController.text.trim(),
         _passwordController.text,
+        phoneNumber: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
       );
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const TeacherHomeScreen()),
-      );
+      // Check if registration was successful
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pendaftaran berhasil! Selamat datang!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const TeacherHomeScreen()),
+        );
+      } else {
+        // Handle case where registration returns false
+        setState(() {
+          _errorMessage = authProvider.error ?? 'Gagal membuat akun. Silakan coba lagi.';
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -258,6 +284,48 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
                         delay: const Duration(milliseconds: 700),
                       )
                       .slideY(begin: 0.2, end: 0),
+                  const SizedBox(height: 24),
+
+                  // Advanced fields toggle
+                  SwitchListTile(
+                    title: const Text('Tambahkan informasi tambahan'),
+                    value: _showAdvancedFields,
+                    onChanged: (value) {
+                      setState(() {
+                        _showAdvancedFields = value;
+                      });
+                    },
+                    activeColor: AppTheme.primary,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                
+                  // Advanced fields (conditionally shown)
+                  if (_showAdvancedFields) ...[
+                    const SizedBox(height: 16),
+                    
+                    // Phone field
+                    CustomTextField(
+                      controller: _phoneController,
+                      hintText: 'Nomor Telepon',
+                      prefixIcon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                    ).animate().fadeIn(
+                      duration: const Duration(milliseconds: 300),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Address field
+                    CustomTextField(
+                      controller: _addressController,
+                      hintText: 'Alamat',
+                      prefixIcon: Icons.home_outlined,
+                      maxLines: 3,
+                    ).animate().fadeIn(
+                      duration: const Duration(milliseconds: 300),
+                    ),
+                  ],
+                  
                   const SizedBox(height: 32),
 
                   // Register button

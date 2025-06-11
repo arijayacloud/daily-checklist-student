@@ -8,6 +8,8 @@ class CustomTextField extends StatefulWidget {
   final bool obscureText;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
+  final Widget? suffixIcon;
+  final int? maxLines;
 
   const CustomTextField({
     super.key,
@@ -17,6 +19,8 @@ class CustomTextField extends StatefulWidget {
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
     this.validator,
+    this.suffixIcon,
+    this.maxLines = 1,
   });
 
   @override
@@ -39,13 +43,15 @@ class _CustomTextFieldState extends State<CustomTextField> {
       obscureText: _obscureText,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
+      maxLines: widget.obscureText ? 1 : widget.maxLines,
       style: const TextStyle(fontSize: 16, color: AppTheme.onSurface),
       decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: TextStyle(color: AppTheme.onSurfaceVariant.withOpacity(0.7)),
         prefixIcon: Icon(widget.prefixIcon, color: AppTheme.primary, size: 22),
         suffixIcon:
-            widget.obscureText
+            widget.suffixIcon ??
+            (widget.obscureText
                 ? IconButton(
                   icon: Icon(
                     _obscureText ? Icons.visibility_off : Icons.visibility,
@@ -58,7 +64,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     });
                   },
                 )
-                : null,
+                : null),
         filled: true,
         fillColor: AppTheme.surfaceVariant.withOpacity(0.3),
         contentPadding: const EdgeInsets.symmetric(

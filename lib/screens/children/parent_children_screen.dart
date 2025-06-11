@@ -124,7 +124,7 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.8,
+              childAspectRatio: 0.75,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
@@ -233,25 +233,27 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
             children: [
               LaravelChildAvatar(
                 child: child,
-                size: 90,
+                size: 80, // Slightly reduced size
               ).animate().scale(
                 curve: Curves.easeOutBack,
                 duration: Duration(milliseconds: 400 + (index * 100)),
               ),
-              const SizedBox(height: 16),
-              Text(
-                child.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(height: 12), // Changed from 16 to 12
+              Flexible(  // Wrapped in Flexible to handle overflow better
+                child: Text(
+                  child.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ).animate().fadeIn(
+                  curve: Curves.easeOut,
+                  duration: Duration(milliseconds: 400 + (index * 100)),
+                  delay: const Duration(milliseconds: 200),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ).animate().fadeIn(
-                curve: Curves.easeOut,
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                delay: const Duration(milliseconds: 200),
               ),
               const SizedBox(height: 4),
               Text(
@@ -270,7 +272,7 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
               const SizedBox(height: 16),
               _buildActionButton(
                 icon: Icons.checklist,
-                label: 'Checklist',
+                label: 'Rapor',
                 onTap: () {
                   Navigator.push(
                     context,
