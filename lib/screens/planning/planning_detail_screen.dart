@@ -28,7 +28,34 @@ class PlanningDetailScreen extends StatelessWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Aktivitas')),
+      appBar: AppBar(
+        title: const Text('Detail Aktivitas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: () {
+              // Refresh planning data
+              final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+              planningProvider.fetchPlans();
+              
+              // Refresh activities data
+              final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+              if (activityProvider.activities.isEmpty) {
+                activityProvider.fetchActivities();
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Memuat ulang data...'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Consumer2<PlanningProvider, ActivityProvider>(
         builder: (context, planningProvider, activityProvider, _) {
           // Ambil detail plan

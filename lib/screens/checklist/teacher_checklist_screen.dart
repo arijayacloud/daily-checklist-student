@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/laravel_api/models/child_model.dart';
 import '/laravel_api/providers/checklist_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
 import '/laravel_api/providers/api_provider.dart';
 import '/lib/theme/app_theme.dart';
+import '/widgets/home/laravel_child_avatar.dart';
 
 class TeacherChecklistScreen extends StatefulWidget {
   final ChildModel child;
@@ -22,8 +24,13 @@ class _TeacherChecklistScreenState extends State<TeacherChecklistScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Load checklist items for this child
       Provider.of<ChecklistProvider>(context, listen: false)
           .fetchChecklistItems(widget.child.id);
+          
+      // Refresh child data to ensure we have the most current information
+      Provider.of<ChildProvider>(context, listen: false)
+          .fetchChildById(widget.child.id);
     });
   }
 
@@ -39,17 +46,63 @@ class _TeacherChecklistScreenState extends State<TeacherChecklistScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.items.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return _buildChecklist(provider);
+          return Column(
+            children: [
+              _buildChildHeader(),
+              Expanded(
+                child: provider.items.isEmpty
+                    ? _buildEmptyState()
+                    : _buildChecklist(provider),
+              ),
+            ],
+          );
         },
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_checklist_item',
         onPressed: () => _addChecklistItemDialog(context),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildChildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: AppTheme.primaryContainer.withAlpha(76),
+      child: Row(
+        children: [
+          Hero(
+            tag: 'child_avatar_${widget.child.id}',
+            child: LaravelChildAvatar(
+              child: widget.child, 
+              size: 60,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.child.name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.child.age} tahun',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

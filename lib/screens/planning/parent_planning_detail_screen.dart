@@ -46,6 +46,9 @@ class _ParentPlanningDetailScreenState
         listen: false,
       );
       
+      // Ensure teachers are loaded first
+      await userProvider.fetchTeachers();
+      
       // Find the plan by ID
       final plan = planningProvider.plans.firstWhere(
         (p) => p.id.toString() == widget.planId,
@@ -61,7 +64,6 @@ class _ParentPlanningDetailScreenState
 
       if (plan.id != 0) {
         // Get teacher data
-        await userProvider.fetchTeachers();
         final teacherName = userProvider.getTeacherNameById(plan.teacherId);
         if (teacherName != null) {
           setState(() {
@@ -72,21 +74,71 @@ class _ParentPlanningDetailScreenState
               role: 'teacher'
             );
           });
+        } else {
+          // Try to get the teacher data again if not found
+          await userProvider.getUserById(plan.teacherId).then((user) {
+            if (user != null) {
+              setState(() {
+                _teacher = user;
+              });
+            }
+          });
         }
+      } else {
+        // If plan not found, try to fetch it
+        await planningProvider.fetchPlans();
       }
     } catch (e) {
       debugPrint('Error loading teacher data: $e');
+      
+      // Show error as a snackbar if mounted
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat data guru: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoadingTeacher = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingTeacher = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Perencanaan'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Detail Perencanaan'), 
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: () {
+              // Refresh plan data and teacher data
+              _loadTeacherData(); 
+              
+              // Refresh planning provider
+              final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+              planningProvider.fetchPlans();
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Memuat ulang data...'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Consumer2<PlanningProvider, ActivityProvider>(
         builder: (context, planningProvider, activityProvider, _) {
           // Find the plan by ID
@@ -101,10 +153,25 @@ class _ParentPlanningDetailScreenState
               activities: [],
             ),
           );
-
+          
+          // Refresh plan data if it's not found or empty
           if (plan.id == 0) {
-            return const Center(
-              child: Text('Data perencanaan tidak ditemukan'),
+            planningProvider.fetchPlans();
+            
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('Memuat data perencanaan...'),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Kembali'),
+                  ),
+                ],
+              ),
             );
           }
 

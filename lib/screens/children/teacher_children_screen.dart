@@ -1,3 +1,4 @@
+import 'package:daily_checklist_student/screens/checklist/parent_checklist_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -66,7 +67,9 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Fetch all necessary data
       Provider.of<ChildProvider>(context, listen: false).fetchChildren();
+      Provider.of<UserProvider>(context, listen: false).fetchParents();
     });
   }
 
@@ -388,19 +391,11 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TeacherChecklistScreen(child: child),
-            ),
-          );
-        },
         onLongPress: () {
           _showChildOptions(context, child);
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(6),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -411,7 +406,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                 curve: Curves.easeOutBack,
                 duration: Duration(milliseconds: 400 + (index * 100)),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 6),
               Text(
                 child.name,
                 style: const TextStyle(
@@ -438,18 +433,18 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                 duration: Duration(milliseconds: 400 + (index * 100)),
                 delay: const Duration(milliseconds: 300),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildActionButton(
-                    icon: Icons.checklist,
-                    label: 'Lihat',
+                    icon: Icons.visibility,
+                    label: 'Rapor',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => TeacherChecklistScreen(child: child),
+                          builder: (context) => ParentChecklistScreen(child: child),
                         ),
                       );
                     },
@@ -540,13 +535,13 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.checklist),
-                title: const Text('Lihat Checklist'),
+                title: const Text('Lihat Rapor'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => TeacherChecklistScreen(child: child),
+                      builder: (context) => ParentChecklistScreen(child: child),
                     ),
                   );
                 },

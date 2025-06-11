@@ -359,7 +359,24 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
 
   Widget _buildActivityItem(int index) {
     final activityData = _activities[index];
-    final activityId = activityData['activityId'] as String;
+    
+    // Safely get the activityId
+    String activityId;
+    try {
+      activityId = activityData['activityId'].toString();
+    } catch (e) {
+      // If there's an error, return an error widget instead of crashing
+      return Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        color: AppTheme.error.withOpacity(0.1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("Error loading activity: Invalid activity ID"),
+        ),
+      );
+    }
+    
     final scheduledTime = activityData['scheduledTime'] as String?;
     final reminder = activityData['reminder'] as bool;
     final scheduledDay =
@@ -370,7 +387,15 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
         final activity = activityProvider.getActivityById(activityId);
 
         if (activity == null) {
-          return const SizedBox.shrink();
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            color: AppTheme.error.withOpacity(0.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text("Activity with ID $activityId not found"),
+            ),
+          );
         }
 
         return Card(
@@ -592,41 +617,56 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 5,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: ElevatedButton(
-        onPressed: _activities.isEmpty || _isSubmitting ? null : _savePlan,
+        onPressed: _isSubmitting ? null : () {
+          // Use try-catch to handle any potential errors during save
+          try {
+            _savePlan();
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error: ${e.toString()}'),
+                  backgroundColor: AppTheme.error,
+                ),
+              );
+            }
+          }
+        },
         style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
           backgroundColor: AppTheme.primary,
-          disabledBackgroundColor: AppTheme.primary.withOpacity(0.6),
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          elevation: 0,
           minimumSize: const Size(double.infinity, 0),
         ),
-        child:
-            _isSubmitting
-                ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                : const Text(
-                  'Simpan Rencana',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        child: _isSubmitting
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
                 ),
+              )
+            : const Text(
+                'Simpan Rencana',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -702,6 +742,8 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
   }
 
   void _editActivity(int index) async {
+    if (!mounted) return;
+    
     final activityData = _activities[index];
     final scheduledTime = activityData['scheduledTime'] as String?;
     final scheduledDay = activityData['scheduledDay'] as int?;
@@ -717,13 +759,15 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             ),
       );
 
-      if (newDay != null) {
+      if (newDay != null && mounted) {
         setState(() {
           _activities[index]['scheduledDay'] = newDay;
         });
       }
     }
 
+    if (!mounted) return;
+    
     // Edit waktu untuk semua tipe plan
     final timeOfDay = await showTimePicker(
       context: context,
@@ -742,7 +786,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       },
     );
 
-    if (timeOfDay != null) {
+    if (timeOfDay != null && mounted) {
       setState(() {
         _activities[index]['scheduledTime'] =
             '${timeOfDay.hour.toString().padLeft(2, '0')}:${timeOfDay.minute.toString().padLeft(2, '0')}';
@@ -752,12 +796,23 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
 
   Future<void> _savePlan() async {
     if (_activities.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap tambahkan setidaknya satu aktivitas'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
+    // Set loading state only if component is still mounted
+    if (mounted) {
+      setState(() {
+        _isSubmitting = true;
+      });
+    } else {
+      return; // Exit if widget is already unmounted
+    }
 
     try {
       List<PlannedActivity> plannedActivities = [];
@@ -768,7 +823,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             _activities.map((data) {
               return PlannedActivity(
                 planId: 0, // This will be set by the server
-                activityId: data['activityId'],
+                activityId: int.parse(data['activityId'].toString()), // Convert to int
                 scheduledDate: _startDate,
                 scheduledTime: data['scheduledTime'],
                 reminder: data['reminder'],
@@ -790,7 +845,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
 
               return PlannedActivity(
                 planId: 0, // This will be set by the server
-                activityId: data['activityId'],
+                activityId: int.parse(data['activityId'].toString()), // Convert to int
                 scheduledDate: activityDate,
                 scheduledTime: data['scheduledTime'],
                 reminder: data['reminder'],
@@ -798,6 +853,54 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             }).toList();
       }
 
+      // Validate that we're not creating activities in the past
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      bool hasPastActivities = plannedActivities.any((activity) {
+        return activity.scheduledDate.isBefore(today);
+      });
+      
+      if (hasPastActivities) {
+        // Exit early if not mounted before showing dialog
+        if (!mounted) return;
+        
+        // Ask for confirmation if planning activities in the past
+        final confirmPast = await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Peringatan'),
+              content: const Text(
+                'Beberapa aktivitas direncanakan untuk tanggal yang telah lewat. Tetap lanjutkan?'
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('BATAL'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('LANJUTKAN'),
+                ),
+              ],
+            );
+          },
+        );
+        
+        if (confirmPast != true) {
+          // Check mounted state before setting state
+          if (!mounted) return;
+          setState(() {
+            _isSubmitting = false;
+          });
+          return;
+        }
+      }
+
+      // Exit early if not mounted
+      if (!mounted) return;
+      
       // Simpan rencana
       final Planning? plan = await Provider.of<PlanningProvider>(
         context,
@@ -808,6 +911,14 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
         activities: plannedActivities,
         type: _planType,
       );
+
+      // Check if plan creation succeeded
+      if (plan == null) {
+        throw Exception('Gagal membuat rencana aktivitas. Silakan coba lagi.');
+      }
+
+      // Exit if widget was unmounted during the API call
+      if (!mounted) return;
 
       // Jika ada childId yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
       if (_selectedChildId != null && plan != null) {
@@ -825,12 +936,25 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
 
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isSubmitting = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: AppTheme.error,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'COBA LAGI',
+            onPressed: () {
+              if (mounted) _savePlan(); // Only call if still mounted
+            },
+            textColor: Colors.white,
+          ),
+        ),
       );
     }
   }
@@ -871,7 +995,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
   Future<void> _addActivitiesToChecklist(
     List<PlannedActivity> activities,
   ) async {
-    if (_selectedChildId == null) return;
+    if (_selectedChildId == null || !mounted) return;
 
     final checklistProvider = Provider.of<ChecklistProvider>(
       context,

@@ -18,10 +18,10 @@ class Planning {
 
   factory Planning.fromJson(Map<String, dynamic> json) {
     return Planning(
-      id: json['id'],
+      id: json['id'] != null ? int.parse(json['id'].toString()) : 0,
       type: json['type'] ?? 'weekly',
-      teacherId: json['teacher_id'] ?? '',
-      childId: json['child_id'],
+      teacherId: json['teacher_id']?.toString() ?? '',
+      childId: json['child_id']?.toString(),
       startDate: DateTime.parse(json['start_date']),
       activities: json['planned_activities'] != null
           ? List<PlannedActivity>.from(
@@ -32,7 +32,7 @@ class Planning {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': id.toString(),
       'type': type,
       'teacher_id': teacherId,
       'child_id': childId,
@@ -63,13 +63,13 @@ class PlannedActivity {
 
   factory PlannedActivity.fromJson(Map<String, dynamic> json) {
     return PlannedActivity(
-      id: json['id'],
-      planId: json['plan_id'],
-      activityId: json['activity_id'],
+      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
+      planId: json['plan_id'] != null ? int.parse(json['plan_id'].toString()) : 0,
+      activityId: json['activity_id'] != null ? int.parse(json['activity_id'].toString()) : 0,
       scheduledDate: DateTime.parse(json['scheduled_date']),
       scheduledTime: json['scheduled_time'],
-      reminder: json['reminder'] ?? true,
-      completed: json['completed'] ?? false,
+      reminder: json['reminder'] == null ? true : json['reminder'] == 1 || json['reminder'] == true,
+      completed: json['completed'] == null ? false : json['completed'] == 1 || json['completed'] == true,
     );
   }
 

@@ -69,7 +69,18 @@ class ChildProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await _apiProvider.get('children');
+      // Use different endpoints based on user role
+      String endpoint = 'children';
+      
+      // For teachers, fetch children created by them
+      // For parents, fetch children connected to them
+      if (_user!.isTeacher) {
+        endpoint = 'children?teacher_id=${_user!.id}';
+      } else if (_user!.isParent) {
+        endpoint = 'children?parent_id=${_user!.id}';
+      }
+      
+      final data = await _apiProvider.get(endpoint);
       
       if (data != null) {
         _children = (data as List).map((item) => ChildModel.fromJson(item)).toList();
@@ -107,6 +118,7 @@ class ChildProvider with ChangeNotifier {
         'age': age,
         'parent_id': parentId,
         'avatar_url': avatarUrl,
+        'teacher_id': _user!.id, // Explicitly set teacher_id to current user
       });
       
       if (data != null) {
@@ -123,6 +135,9 @@ class ChildProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -131,6 +146,7 @@ class ChildProvider with ChangeNotifier {
     required String name,
     required int age,
     String? avatarUrl,
+    String? parentId,
   }) async {
     if (_user == null) return false;
 
@@ -143,6 +159,7 @@ class ChildProvider with ChangeNotifier {
         'name': name,
         'age': age,
         if (avatarUrl != null) 'avatar_url': avatarUrl,
+        if (parentId != null) 'parent_id': parentId,
       });
       
       if (data != null) {
@@ -161,6 +178,9 @@ class ChildProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -199,6 +219,42 @@ class ChildProvider with ChangeNotifier {
       return _children.firstWhere((child) => child.id == id);
     } catch (e) {
       return null;
+    }
+  }
+  
+  Future<ChildModel?> fetchChildById(String id) async {
+    if (_user == null) return null;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.get('children/$id');
+      
+      if (data != null) {
+        final child = ChildModel.fromJson(data);
+        
+        // Update the list if child already exists
+        final index = _children.indexWhere((c) => c.id == id);
+        if (index != -1) {
+          _children[index] = child;
+        } else {
+          _children.add(child);
+        }
+        
+        notifyListeners();
+        return child;
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching child by id: $e');
+      _error = 'Failed to load child data. Please try again.';
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

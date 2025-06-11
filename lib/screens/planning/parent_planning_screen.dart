@@ -34,36 +34,42 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     initializeDateFormatting('id_ID', null);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final planningProvider = Provider.of<PlanningProvider>(
-        context, 
-        listen: false
-      );
-      final childProvider = Provider.of<ChildProvider>(
-        context, 
-        listen: false
-      );
-      
-      if (authProvider.user != null && authProvider.user!.isParent) {
-        // Fetch children to find the parent's child
-        await childProvider.fetchChildren();
-        
-        if (childProvider.children.isNotEmpty) {
-          // Get the first child associated with this parent
-          final childId = childProvider.children.first.id;
-          await planningProvider.fetchPlansForParent(childId);
-        } else {
-          // Fallback to all plans if no children found
-          await planningProvider.fetchPlans();
-        }
-      } else {
-        // For teachers, fetch all plans
-        await planningProvider.fetchPlans();
-      }
-      
-      // Load teacher data
-      Provider.of<UserProvider>(context, listen: false).fetchTeachers();
+      _loadPlans();
     });
+  }
+
+  Future<void> _loadPlans() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+    final childProvider = Provider.of<ChildProvider>(context, listen: false);
+    
+    if (authProvider.user != null && authProvider.user!.isParent) {
+      // Fetch children to find the parent's child
+      await childProvider.fetchChildren();
+      
+      if (childProvider.children.isNotEmpty) {
+        // Get the first child associated with this parent
+        final childId = childProvider.children.first.id;
+        await planningProvider.fetchPlansForParent(childId);
+      } else {
+        // Fallback to all plans if no children found
+        await planningProvider.fetchPlans();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak ditemukan data anak untuk akun ini'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      // For teachers, fetch all plans
+      await planningProvider.fetchPlans();
+    }
+    
+    // Load teacher data
+    Provider.of<UserProvider>(context, listen: false).fetchTeachers();
   }
 
   @override
@@ -72,6 +78,20 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       appBar: AppBar(
         title: const Text('Jadwal Aktivitas'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: () {
+              _loadPlans();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Memuat ulang data...'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: 'Bantuan',

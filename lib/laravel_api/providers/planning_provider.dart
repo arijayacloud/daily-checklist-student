@@ -123,10 +123,10 @@ class PlanningProvider with ChangeNotifier {
 
   // Create a new plan
   Future<Planning?> createPlan({
-    required String type,
     required DateTime startDate,
     String? childId,
     required List<PlannedActivity> activities,
+    required String type,
   }) async {
     _isLoading = true;
     _error = null;
@@ -136,10 +136,10 @@ class PlanningProvider with ChangeNotifier {
       // Convert activities to the format expected by the API
       List<Map<String, dynamic>> activitiesData = activities.map((activity) {
         return {
-          'activity_id': activity.activityId,
+          'activity_id': activity.activityId.toString(), // Ensure activity_id is sent as string
           'scheduled_date': activity.scheduledDate.toIso8601String().split('T')[0],
           'scheduled_time': activity.scheduledTime,
-          'reminder': activity.reminder,
+          'reminder': activity.reminder ? 1 : 0, // Convert boolean to 1/0
         };
       }).toList();
 
@@ -300,7 +300,7 @@ class PlanningProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await _apiProvider.delete('/plans/$planId');
+      final data = await _apiProvider.delete('plans/$planId'); // Fixed path - removed leading slash
       
       if (data != null) {
         _plans.removeWhere((plan) => plan.id == planId);
@@ -341,6 +341,14 @@ class PlanningProvider with ChangeNotifier {
         }
       }
     }
+    
+    // Sort activities by scheduled time
+    result.sort((a, b) {
+      if (a.scheduledTime == null && b.scheduledTime == null) return 0;
+      if (a.scheduledTime == null) return 1; // null times go last
+      if (b.scheduledTime == null) return -1;
+      return a.scheduledTime!.compareTo(b.scheduledTime!);
+    });
     
     return result;
   }

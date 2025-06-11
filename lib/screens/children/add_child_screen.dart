@@ -28,11 +28,20 @@ class _AddChildScreenState extends State<AddChildScreen> {
   bool _isLoadingParents = true;
   List<dynamic> _parents = [];
   String? _selectedParentId;
+  bool _isEditMode = false;
 
   @override
   void initState() {
     super.initState();
     _fetchParents();
+    
+    // Initialize form with existing data if editing
+    if (widget.childToEdit != null) {
+      _isEditMode = true;
+      _nameController.text = widget.childToEdit!.name;
+      _age = widget.childToEdit!.age;
+      _selectedParentId = widget.childToEdit!.parentId;
+    }
   }
 
   // Fetch existing parents
@@ -86,22 +95,42 @@ class _AddChildScreenState extends State<AddChildScreen> {
       final seed = Uri.encodeComponent(name);
       final avatarUrl = 'https://api.dicebear.com/9.x/thumbs/png?seed=$seed';
 
-      // Add child using Laravel API
-      await Provider.of<ChildProvider>(context, listen: false).addChild(
-        name: name,
-        age: _age,
-        parentId: parentId,
-        avatarUrl: avatarUrl,
-      );
+      // If editing existing child
+      if (widget.childToEdit != null) {
+        // Update existing child
+        await Provider.of<ChildProvider>(context, listen: false).updateChild(
+          id: widget.childToEdit!.id,
+          name: name,
+          age: _age,
+          avatarUrl: avatarUrl,
+        );
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anak berhasil ditambahkan'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data anak berhasil diperbarui'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      } else {
+        // Add new child
+        await Provider.of<ChildProvider>(context, listen: false).addChild(
+          name: name,
+          age: _age,
+          parentId: parentId,
+          avatarUrl: avatarUrl,
+        );
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Anak berhasil ditambahkan'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
 
       Navigator.pop(context);
     } catch (e) {
@@ -118,7 +147,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tambah Murid')),
+      appBar: AppBar(
+        title: Text(widget.childToEdit != null ? 'Edit Data Murid' : 'Tambah Murid')
+      ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -286,9 +317,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                        : const Text(
-                          'Tambah Murid',
-                          style: TextStyle(
+                        : Text(
+                          widget.childToEdit != null ? 'Simpan Perubahan' : 'Tambah Murid',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),

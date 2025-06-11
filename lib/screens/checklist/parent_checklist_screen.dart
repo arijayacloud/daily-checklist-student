@@ -11,6 +11,7 @@ import 'package:daily_checklist_student/laravel_api/models/user_model.dart';
 import 'package:daily_checklist_student/laravel_api/providers/activity_provider.dart';
 import 'package:daily_checklist_student/laravel_api/providers/auth_provider.dart';
 import 'package:daily_checklist_student/laravel_api/providers/checklist_provider.dart';
+import 'package:daily_checklist_student/laravel_api/providers/child_provider.dart';
 import 'package:daily_checklist_student/laravel_api/providers/planning_provider.dart';
 import 'package:daily_checklist_student/laravel_api/providers/user_provider.dart';
 import 'package:daily_checklist_student/screens/checklist/observation_form_screen.dart';
@@ -51,6 +52,9 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     // setelah proses build selesai
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+
+      // Refresh child data to ensure we have the most current information
+      Provider.of<ChildProvider>(context, listen: false).fetchChildById(widget.child.id);
 
       // Dapatkan informasi orang tua dari AuthProvider
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

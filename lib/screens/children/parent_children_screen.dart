@@ -29,7 +29,11 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ChildProvider>(context, listen: false).fetchChildren();
+      // For parents, we only need to fetch their own children
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated && authProvider.user?.isParent == true) {
+        Provider.of<ChildProvider>(context, listen: false).fetchChildren();
+      }
     });
   }
 
@@ -262,8 +266,10 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                 delay: const Duration(milliseconds: 300),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
+              _buildActionButton(
+                icon: Icons.checklist,
+                label: 'Checklist',
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -271,23 +277,6 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.checklist, size: 16),
-                    SizedBox(width: 8),
-                    Text('Checklist'),
-                  ],
-                ),
               ).animate().fadeIn(
                 curve: Curves.easeOut,
                 duration: Duration(milliseconds: 400 + (index * 100)),
@@ -296,6 +285,33 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 8),
+          Text(label),
+        ],
       ),
     );
   }

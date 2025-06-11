@@ -55,6 +55,18 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         },
         child: const Icon(Icons.add),
       ),
+      appBar: AppBar(
+        title: const Text('Perencanaan Aktivitas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: () {
+              Provider.of<PlanningProvider>(context, listen: false).fetchPlans();
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -360,6 +372,10 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
             ),
           );
         },
+        onLongPress: () {
+          // Show options menu
+          _showActivityOptions(context, activity, planningProvider);
+        },
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -408,6 +424,126 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showActivityOptions(
+    BuildContext context,
+    PlannedActivity activity,
+    PlanningProvider planningProvider,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Opsi Aktivitas'),
+                subtitle: Text(
+                  'Dijadwalkan: ${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(activity.scheduledDate)}',
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline),
+                title: Text(
+                  activity.completed ? 'Tandai Belum Selesai' : 'Tandai Selesai',
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  planningProvider.markActivityAsCompleted(
+                    activity.id!,
+                    !activity.completed,
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.visibility),
+                title: const Text('Lihat Detail'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PlanningDetailScreen(
+                        planId: activity.planId,
+                        activities: planningProvider.plans
+                            .firstWhere((plan) => plan.id == activity.planId)
+                            .activities,
+                        selectedDate: _selectedDay,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete, color: Colors.red[700]),
+                title: Text('Hapus Rencana', style: TextStyle(color: Colors.red[700])),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeletePlan(context, activity.planId, planningProvider);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeletePlan(
+    BuildContext context,
+    int planId,
+    PlanningProvider planningProvider,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Hapus Rencana'),
+          content: const Text(
+            'Apakah Anda yakin ingin menghapus rencana ini? Tindakan ini tidak dapat dibatalkan.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('BATAL'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  final result = await planningProvider.deletePlan(planId);
+                  if (result && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Rencana berhasil dihapus'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Gagal menghapus rencana: $e'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('HAPUS'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
