@@ -255,7 +255,9 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${child.age} tahun',
+                child.dateOfBirth != null 
+                    ? child.getAgeString() 
+                    : '${child.age} tahun',
                 style: TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 14,

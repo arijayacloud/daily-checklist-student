@@ -100,6 +100,7 @@ class ChildProvider with ChangeNotifier {
     required String name,
     required int age,
     required String parentId,
+    DateTime? dateOfBirth,
     String? avatarUrl,
   }) async {
     if (_user == null || !_user!.isTeacher) {
@@ -119,6 +120,7 @@ class ChildProvider with ChangeNotifier {
         'parent_id': parentId,
         'avatar_url': avatarUrl,
         'teacher_id': _user!.id, // Explicitly set teacher_id to current user
+        if (dateOfBirth != null) 'date_of_birth': dateOfBirth.toIso8601String(),
       });
       
       if (data != null) {
@@ -145,6 +147,7 @@ class ChildProvider with ChangeNotifier {
     required String id,
     required String name,
     required int age,
+    DateTime? dateOfBirth,
     String? avatarUrl,
     String? parentId,
   }) async {
@@ -160,6 +163,7 @@ class ChildProvider with ChangeNotifier {
         'age': age,
         if (avatarUrl != null) 'avatar_url': avatarUrl,
         if (parentId != null) 'parent_id': parentId,
+        if (dateOfBirth != null) 'date_of_birth': dateOfBirth.toIso8601String(),
       });
       
       if (data != null) {

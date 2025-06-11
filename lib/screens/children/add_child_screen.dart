@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 // Laravel API providers
 import '/laravel_api/providers/auth_provider.dart';
@@ -23,7 +24,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-  int _age = 4;
+  DateTime _dateOfBirth = DateTime.now().subtract(const Duration(days: 365 * 4)); // Default to 4 years old
   bool _isSubmitting = false;
   bool _isLoadingParents = true;
   List<dynamic> _parents = [];
@@ -39,7 +40,15 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (widget.childToEdit != null) {
       _isEditMode = true;
       _nameController.text = widget.childToEdit!.name;
-      _age = widget.childToEdit!.age;
+      
+      // Use date of birth if available, otherwise estimate from age
+      if (widget.childToEdit!.dateOfBirth != null) {
+        _dateOfBirth = widget.childToEdit!.dateOfBirth!;
+      } else {
+        // Estimate DOB from age
+        _dateOfBirth = DateTime.now().subtract(Duration(days: 365 * widget.childToEdit!.age));
+      }
+      
       _selectedParentId = widget.childToEdit!.parentId;
     }
   }
@@ -74,6 +83,20 @@ class _AddChildScreenState extends State<AddChildScreen> {
     super.dispose();
   }
 
+  // Calculate age from date of birth
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    
+    // Adjust age if birthday hasn't occurred yet this year
+    if (now.month < birthDate.month || 
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    
+    return age;
+  }
+
   Future<void> _saveChild() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -94,6 +117,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
       final name = _nameController.text.trim();
       final seed = Uri.encodeComponent(name);
       final avatarUrl = 'https://api.dicebear.com/9.x/thumbs/png?seed=$seed';
+      
+      // Calculate age from date of birth
+      final age = _calculateAge(_dateOfBirth);
 
       // If editing existing child
       if (widget.childToEdit != null) {
@@ -101,7 +127,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
         await Provider.of<ChildProvider>(context, listen: false).updateChild(
           id: widget.childToEdit!.id,
           name: name,
-          age: _age,
+          age: age,
+          dateOfBirth: _dateOfBirth,
           avatarUrl: avatarUrl,
         );
 
@@ -117,7 +144,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
         // Add new child
         await Provider.of<ChildProvider>(context, listen: false).addChild(
           name: name,
-          age: _age,
+          age: age,
+          dateOfBirth: _dateOfBirth,
           parentId: parentId,
           avatarUrl: avatarUrl,
         );
@@ -144,8 +172,41 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dateOfBirth,
+      firstDate: DateTime(DateTime.now().year - 7), // Allow up to 7 years old
+      lastDate: DateTime.now(),
+      helpText: 'Pilih Tanggal Lahir',
+      cancelText: 'BATAL',
+      confirmText: 'PILIH',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppTheme.primary,
+              onPrimary: Colors.white,
+              onSurface: AppTheme.onSurface,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _dateOfBirth) {
+      setState(() {
+        _dateOfBirth = picked;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Calculate current age from selected date of birth
+    final currentAge = _calculateAge(_dateOfBirth);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.childToEdit != null ? 'Edit Data Murid' : 'Tambah Murid')
@@ -186,25 +247,49 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Child age
-              Text(
-                'Usia: $_age tahun',
-                style: TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 16,
-                ),
-              ),
-              Slider(
-                value: _age.toDouble(),
-                min: 3,
-                max: 6,
-                divisions: 3,
-                label: _age.toString(),
-                onChanged: (value) {
-                  setState(() {
-                    _age = value.round();
-                  });
-                },
+              // Date of Birth picker
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tanggal Lahir',
+                        style: TextStyle(
+                          color: AppTheme.onSurfaceVariant,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('dd MMMM yyyy').format(_dateOfBirth),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Usia saat ini: $currentAge tahun',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _selectDate(context),
+                    icon: const Icon(Icons.calendar_month),
+                    label: const Text('Ubah'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryContainer,
+                      foregroundColor: AppTheme.onPrimaryContainer,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 

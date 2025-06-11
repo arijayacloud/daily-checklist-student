@@ -86,15 +86,19 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filteredChildren = children.where((child) {
+        final age = child.dateOfBirth != null ? child.getCalculatedAge() : child.age;
         return child.name.toLowerCase().contains(query) ||
-            child.age.toString().contains(query);
+            age.toString().contains(query);
       }).toList();
     }
 
     // Langkah 2: Filter berdasarkan usia
     if (_selectedAgeFilter != 'Semua') {
       final ageFilter = int.parse(_selectedAgeFilter.split(' ')[0]);
-      filteredChildren = filteredChildren.where((child) => child.age == ageFilter).toList();
+      filteredChildren = filteredChildren.where((child) {
+        final age = child.dateOfBirth != null ? child.getCalculatedAge() : child.age;
+        return age == ageFilter;
+      }).toList();
     }
 
     // Langkah 3: Urutkan berdasarkan kriteria
@@ -106,10 +110,18 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
         filteredChildren.sort((a, b) => b.name.compareTo(a.name));
         break;
       case 'age_asc':
-        filteredChildren.sort((a, b) => a.age.compareTo(b.age));
+        filteredChildren.sort((a, b) {
+          final ageA = a.dateOfBirth != null ? a.getCalculatedAge() : a.age;
+          final ageB = b.dateOfBirth != null ? b.getCalculatedAge() : b.age;
+          return ageA.compareTo(ageB);
+        });
         break;
       case 'age_desc':
-        filteredChildren.sort((a, b) => b.age.compareTo(a.age));
+        filteredChildren.sort((a, b) {
+          final ageA = a.dateOfBirth != null ? a.getCalculatedAge() : a.age;
+          final ageB = b.dateOfBirth != null ? b.getCalculatedAge() : b.age;
+          return ageB.compareTo(ageA);
+        });
         break;
     }
 
@@ -423,7 +435,9 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${child.age} tahun',
+                child.dateOfBirth != null 
+                    ? child.getAgeString() 
+                    : '${child.age} tahun',
                 style: TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 14,
@@ -530,7 +544,11 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                   ),
                 ),
                 title: Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${child.age} tahun'),
+                subtitle: Text(
+                  child.dateOfBirth != null 
+                      ? child.getAgeString() 
+                      : '${child.age} tahun'
+                ),
               ),
               const Divider(),
               ListTile(
