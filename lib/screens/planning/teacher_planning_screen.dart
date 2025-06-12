@@ -55,18 +55,6 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         },
         child: const Icon(Icons.add),
       ),
-      appBar: AppBar(
-        title: const Text('Perencanaan Aktivitas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () {
-              Provider.of<PlanningProvider>(context, listen: false).fetchPlans();
-            },
-          ),
-        ],
-      ),
     );
   }
 

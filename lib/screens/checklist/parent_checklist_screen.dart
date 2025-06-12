@@ -433,7 +433,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
       padding: const EdgeInsets.only(top: 12),
       child: Card(
         margin: EdgeInsets.zero,
-        color: AppTheme.surfaceVariant.withOpacity(0.3),
+        color: AppTheme.primaryContainer.withOpacity(0.15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -450,7 +450,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                       color:
                           plannedActivity.completed
                               ? AppTheme.success.withOpacity(0.2)
-                              : AppTheme.primaryContainer,
+                              : AppTheme.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -505,106 +505,11 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                   _buildStatusChip(plannedActivity.completed),
                 ],
               ),
-              if (!plannedActivity.completed) ...[
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () {
-                    // Tampilkan dialog konfirmasi atau langsung tandai sebagai selesai
-                    _showMarkCompletedDialog(
-                      context,
-                      plannedActivity.activityId.toString(),
-                      activityData,
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    minimumSize: const Size(double.infinity, 36),
-                  ),
-                  child: const Text('Tandai Selesai'),
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
-  }
-
-  void _showMarkCompletedDialog(
-    BuildContext context,
-    String activityId,
-    ActivityModel activity,
-  ) {
-    // Implementasi dialog konfirmasi untuk menandai aktivitas sebagai selesai
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Tandai Aktivitas Selesai'),
-            content: Text(
-              'Apakah Anda yakin ingin menandai aktivitas "${activity.title}" sebagai selesai?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('BATAL'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  // Implementasi logika untuk menandai aktivitas sebagai selesai
-                  // dan menambahkan observasi
-                  _markActivityAsCompleted(context, activityId, activity);
-                },
-                child: const Text('TANDAI SELESAI'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  void _markActivityAsCompleted(
-    BuildContext context,
-    String activityId,
-    ActivityModel activity,
-  ) {
-    // Cari checklist item yang sesuai
-    final checklistProvider = Provider.of<ChecklistProvider>(
-      context,
-      listen: false,
-    );
-
-    // Dapatkan semua checklist item untuk anak ini dan filter berdasarkan activityId
-    final allItems = checklistProvider.items;
-    final items = allItems.where((item) => 
-      item.childId == widget.child.id).toList();
-    
-    // Handle marking the activity as completed
-    // This is simplified as we don't have activityId in ChecklistItemModel
-    if (items.isNotEmpty) {
-      // Show observation form
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => ObservationFormScreen(
-            child: widget.child,
-            item: items.first, // Using first item 
-            activity: activity,
-            isTeacher: false,
-          ),
-        ),
-      );
-    } else {
-      // No checklist item found for this activity, create one
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No checklist items found for this activity'),
-        ),
-      );
-    }
   }
 
   Widget _buildEnvironmentChip(String environment) {

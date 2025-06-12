@@ -22,38 +22,67 @@ class ParentPlanningDetailScreen extends StatefulWidget {
 
 class _ParentPlanningDetailScreenState
     extends State<ParentPlanningDetailScreen> {
-  UserModel? _teacher;
-  bool _isLoadingTeacher = true;
+  bool _isLoadingPlan = true;
+  Planning? _currentPlan;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadTeacherData();
+    _loadData();
   }
 
-  Future<void> _loadTeacherData() async {
+  Future<void> _loadData() async {
     setState(() {
-      _isLoadingTeacher = true;
+      _isLoadingPlan = true;
+      _errorMessage = null;
     });
 
     try {
-      final planningProvider = Provider.of<PlanningProvider>(
-        context,
-        listen: false,
-      );
-      final userProvider = Provider.of<UserProvider>(
-        context,
-        listen: false,
-      );
+      // Load plan data
+      await _loadPlanData();
       
-      // Ensure teachers are loaded first
+      // Immediately fetch the teachers list to populate cache
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
       await userProvider.fetchTeachers();
       
-      // Find the plan by ID
-      final plan = planningProvider.plans.firstWhere(
-        (p) => p.id.toString() == widget.planId,
+      // If we have a plan with a teacher ID, directly fetch that specific teacher
+      if (_currentPlan != null && _currentPlan!.teacherId.isNotEmpty) {
+        final teacherName = userProvider.getTeacherNameById(_currentPlan!.teacherId);
+        if (teacherName == null) {
+          // Only fetch if not in cache
+          await userProvider.getUserById(_currentPlan!.teacherId);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading data: $e');
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan saat memuat data: ${e.toString()}';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPlan = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadPlanData() async {
+    final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+    
+    try {
+      // Find the plan by ID - parse as int to ensure correct comparison
+      final planId = int.tryParse(widget.planId);
+      if (planId == null) {
+        throw Exception('ID rencana tidak valid');
+      }
+      
+      // Try to find the plan in existing data first
+      final existingPlan = planningProvider.plans.firstWhere(
+        (p) => p.id == planId,
         orElse: () => Planning(
-          id: 0,
+          id: 0, 
           type: 'daily',
           teacherId: '0',
           childId: null,
@@ -61,51 +90,50 @@ class _ParentPlanningDetailScreenState
           activities: [],
         ),
       );
-
-      if (plan.id != 0) {
-        // Get teacher data
-        final teacherName = userProvider.getTeacherNameById(plan.teacherId);
-        if (teacherName != null) {
-          setState(() {
-            _teacher = UserModel(
-              id: plan.teacherId,
-              name: teacherName,
-              email: '',
-              role: 'teacher'
-            );
-          });
-        } else {
-          // Try to get the teacher data again if not found
-          await userProvider.getUserById(plan.teacherId).then((user) {
-            if (user != null) {
-              setState(() {
-                _teacher = user;
-              });
-            }
-          });
-        }
-      } else {
-        // If plan not found, try to fetch it
-        await planningProvider.fetchPlans();
-      }
-    } catch (e) {
-      debugPrint('Error loading teacher data: $e');
       
-      // Show error as a snackbar if mounted
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memuat data guru: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.orange,
+      // If plan is found, use it
+      if (existingPlan.id != 0) {
+        _currentPlan = existingPlan;
+        debugPrint('Found plan with ID ${existingPlan.id} in cached data');
+      } else {
+        // If plan not found in cache, trigger a refresh
+        await planningProvider.fetchPlans();
+        
+        // Try to find it again after refresh
+        final refreshedPlan = planningProvider.plans.firstWhere(
+          (p) => p.id == planId,
+          orElse: () => Planning(
+            id: 0, 
+            type: 'daily',
+            teacherId: '0',
+            childId: null,
+            startDate: DateTime.now(),
+            activities: [],
           ),
         );
+        
+        if (refreshedPlan.id != 0) {
+          _currentPlan = refreshedPlan;
+          debugPrint('Found plan with ID ${refreshedPlan.id} after refresh');
+        } else {
+          throw Exception('Rencana dengan ID $planId tidak ditemukan');
+        }
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingTeacher = false;
-        });
+    } catch (e) {
+      debugPrint('Error loading plan: $e');
+      rethrow;
+    }
+  }
+
+  // Add this method to specifically fetch the teacher data
+  Future<void> _fetchTeacherData() async {
+    if (_currentPlan != null && _currentPlan!.teacherId.isNotEmpty) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      try {
+        await userProvider.getUserById(_currentPlan!.teacherId);
+        // No need to setState since the Consumer will rebuild when notified
+      } catch (e) {
+        debugPrint('Error fetching teacher data: $e');
       }
     }
   }
@@ -121,12 +149,8 @@ class _ParentPlanningDetailScreenState
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () {
-              // Refresh plan data and teacher data
-              _loadTeacherData(); 
-              
-              // Refresh planning provider
-              final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
-              planningProvider.fetchPlans();
+              // Refresh all data
+              _loadData();
               
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -139,54 +163,76 @@ class _ParentPlanningDetailScreenState
           ),
         ],
       ),
-      body: Consumer2<PlanningProvider, ActivityProvider>(
-        builder: (context, planningProvider, activityProvider, _) {
-          // Find the plan by ID
-          final plan = planningProvider.plans.firstWhere(
-            (p) => p.id.toString() == widget.planId,
-            orElse: () => Planning(
-              id: 0,
-              type: 'daily',
-              teacherId: '0',
-              childId: null,
-              startDate: DateTime.now(),
-              activities: [],
-            ),
-          );
-          
-          // Refresh plan data if it's not found or empty
-          if (plan.id == 0) {
-            planningProvider.fetchPlans();
-            
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text('Memuat data perencanaan...'),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Kembali'),
-                  ),
-                ],
-              ),
-            );
-          }
+      body: _errorMessage != null 
+        ? _buildErrorView()
+        : (_isLoadingPlan 
+            ? _buildLoadingView() 
+            : _buildContentView()),
+    );
+  }
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTeacherInfo(),
-                _buildPlanningHeader(plan),
-                _buildActivityList(plan, activityProvider),
-              ],
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              _errorMessage ?? 'Terjadi kesalahan. Silakan coba lagi.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _loadData,
+            child: const Text('Coba Lagi'),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kembali'),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Memuat data...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContentView() {
+    final plan = _currentPlan;
+    if (plan == null) {
+      return _buildErrorView();
+    }
+    
+    return Consumer<ActivityProvider>(
+      builder: (context, activityProvider, _) {
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTeacherInfo(),
+              _buildPlanningHeader(plan),
+              _buildActivityList(plan, activityProvider),
+            ],
+          ),
+        );
+      }
     );
   }
 
@@ -203,32 +249,65 @@ class _ParentPlanningDetailScreenState
           ),
           const SizedBox(width: 16),
           Expanded(
-            child:
-                _isLoadingTeacher
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Dibuat oleh:',
-                          style: TextStyle(
-                            color: AppTheme.onSurfaceVariant,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _teacher?.name ?? 'Guru',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
+            child: _isLoadingPlan
+                ? const Center(child: CircularProgressIndicator())
+                : Consumer<UserProvider>(
+                    builder: (context, userProvider, _) {
+                      // Get teacher name based on teacherId from planning
+                      final String teacherId = _currentPlan?.teacherId ?? '';
+                      
+                      if (teacherId.isEmpty) {
+                        return _buildTeacherDetails('Guru', true);
+                      }
+                      
+                      // Check if name is in cache
+                      final teacherName = userProvider.getTeacherNameById(teacherId);
+                      
+                      // If we have a name, show it
+                      if (teacherName != null) {
+                        return _buildTeacherDetails(teacherName, false);
+                      }
+                      
+                      // If name not in cache, trigger a direct fetch and show loading
+                      _fetchTeacherData();
+                      return _buildTeacherDetails('Memuat data guru...', false);
+                    }
+                  ),
           ),
         ],
       ),
+    );
+  }
+  
+  Widget _buildTeacherDetails(String name, bool showMissingData) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Dibuat oleh:',
+          style: TextStyle(
+            color: AppTheme.onSurfaceVariant,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        if (showMissingData) 
+          const Text(
+            '(Data guru tidak tersedia)',
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: Colors.orange,
+            ),
+          ),
+      ],
     );
   }
 

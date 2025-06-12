@@ -58,7 +58,6 @@ class _ParentChildrenScreenState extends State<ParentChildrenScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Anak Saya')),
       body: Column(
         children: [_buildSearchBar(), Expanded(child: _buildChildrenGrid())],
       ),

@@ -23,9 +23,12 @@ class ActivityProvider with ChangeNotifier {
     // Listen to auth changes
     _authProvider.addListener(_onAuthChanged);
     
-    // Fetch activities if user is already logged in
+    // Fetch activities if user is already logged in, but defer it outside of build phase
     if (_user != null) {
-      fetchActivities();
+      // Use microtask to schedule this after the current build frame
+      Future.microtask(() {
+        fetchActivities();
+      });
     }
   }
   
@@ -74,20 +77,28 @@ class ActivityProvider with ChangeNotifier {
         // Parse the activities
         List<ActivityModel> fetchedActivities = data.map((item) => ActivityModel.fromJson(item)).toList();
         
-        // If we're in teacher mode, filter activities to show only those created by this teacher
         if (_user!.isTeacher) {
+          // For teachers, filter activities to show only those created by this teacher
           _activities = fetchedActivities.where((activity) => 
             activity.createdBy == _user!.id
           ).toList();
           
           debugPrint('ActivityProvider: Filtered to ${_activities.length} activities for teacher ${_user!.id}');
+        } else if (_user!.isParent) {
+          // For parents, show all activities to see what's assigned to their children
+          _activities = fetchedActivities;
+          debugPrint('ActivityProvider: Using all ${_activities.length} activities for parent ${_user!.id}');
         } else {
-          // For parents, show all activities
+          // For other users
           _activities = fetchedActivities;
         }
+        
+        // Log IDs for debugging
+        debugPrint('ActivityProvider: Activity IDs loaded: ${_activities.map((a) => a.id).join(", ")}');
       } else {
         debugPrint('ActivityProvider: No activities data received');
         _activities = [];
+        _error = 'Failed to load activities. Empty response.';
       }
     } catch (e) {
       debugPrint('Error fetching activities: $e');

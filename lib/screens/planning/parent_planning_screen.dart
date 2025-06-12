@@ -25,6 +25,34 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   CalendarFormat _calendarFormat = CalendarFormat.week;
+  bool _isLoading = false;
+  
+  // Mapping for day of week names in Indonesian
+  final Map<int, String> _weekdayNames = {
+    1: 'Sen',
+    2: 'Sel',
+    3: 'Rab',
+    4: 'Kam',
+    5: 'Jum',
+    6: 'Sab',
+    7: 'Min',
+  };
+  
+  // Mapping for month names in Indonesian
+  final Map<int, String> _monthNames = {
+    1: 'Januari',
+    2: 'Februari',
+    3: 'Maret',
+    4: 'April',
+    5: 'Mei',
+    6: 'Juni',
+    7: 'Juli',
+    8: 'Agustus',
+    9: 'September',
+    10: 'Oktober',
+    11: 'November',
+    12: 'Desember',
+  };
 
   @override
   void initState() {
@@ -35,72 +63,88 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _loadPlans();
+      
+      // Pre-fetch activities for better user experience
+      await Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
     });
   }
 
   Future<void> _loadPlans() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
-    final childProvider = Provider.of<ChildProvider>(context, listen: false);
+    setState(() {
+      _isLoading = true;
+    });
     
-    if (authProvider.user != null && authProvider.user!.isParent) {
-      // Fetch children to find the parent's child
-      await childProvider.fetchChildren();
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+      final childProvider = Provider.of<ChildProvider>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
       
-      if (childProvider.children.isNotEmpty) {
-        // Get the first child associated with this parent
+      // Make sure we have the latest user data
+      if (authProvider.user == null) {
+        debugPrint("ParentPlanningScreen: Tidak ditemukan pengguna yang terautentikasi");
+        return;
+      }
+      
+      debugPrint("ParentPlanningScreen: Memuat rencana untuk peran pengguna: ${authProvider.user!.role}");
+      
+      // Ensure teacher data is loaded for displaying teacher names
+      userProvider.fetchTeachers();
+      
+      if (authProvider.user!.isParent) {
+        // Fetch children first
+        await childProvider.fetchChildren();
+        
+        if (childProvider.children.isEmpty) {
+          debugPrint("ParentPlanningScreen: Tidak ditemukan anak untuk orang tua ini");
+          
+          // Show message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tidak ditemukan data anak untuk akun ini'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          return;
+        }
+        
+        debugPrint("ParentPlanningScreen: Ditemukan ${childProvider.children.length} anak, memuat rencana untuk anak pertama");
+        
+        // Get the first child associated with this parent and fetch their plans
         final childId = childProvider.children.first.id;
         await planningProvider.fetchPlansForParent(childId);
-      } else {
-        // Fallback to all plans if no children found
-        await planningProvider.fetchPlans();
         
+        debugPrint("ParentPlanningScreen: Berhasil memuat ${planningProvider.plans.length} rencana untuk anak dengan ID $childId");
+      } else {
+        // For other roles like teachers, fetch all plans
+        await planningProvider.fetchPlans();
+      }
+    } catch (e) {
+      debugPrint("ParentPlanningScreen: Error memuat rencana - $e");
+      
+      // Show error message if mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tidak ditemukan data anak untuk akun ini'),
+          SnackBar(
+            content: Text('Gagal memuat data: ${e.toString()}'),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } else {
-      // For teachers, fetch all plans
-      await planningProvider.fetchPlans();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-    
-    // Load teacher data
-    Provider.of<UserProvider>(context, listen: false).fetchTeachers();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Jadwal Aktivitas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () {
-              _loadPlans();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Memuat ulang data...'),
-                  duration: Duration(seconds: 1),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            tooltip: 'Bantuan',
-            onPressed: () {
-              _showHelpDialog(context);
-            },
-          ),
-        ],
-      ),
       body: Column(
         children: [_buildCalendar(), Expanded(child: _buildDailySchedule())],
       ),
@@ -124,6 +168,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
               lastDay: DateTime.utc(2030, 12, 31),
               focusedDay: _focusedDay,
               calendarFormat: _calendarFormat,
+              locale: 'id_ID',
               selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
@@ -154,15 +199,22 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                 ),
               ),
               headerStyle: HeaderStyle(
-                formatButtonVisible: true,
+                formatButtonTextStyle: TextStyle(color: AppTheme.onPrimaryContainer),
                 formatButtonDecoration: BoxDecoration(
                   color: AppTheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                formatButtonTextStyle: TextStyle(
-                  color: AppTheme.onPrimaryContainer,
-                ),
+                formatButtonVisible: true,
                 titleCentered: true,
+                titleTextFormatter: (date, locale) {
+                  // Custom formatter for month-year in the header
+                  final monthName = _monthNames[date.month] ?? '';
+                  return '$monthName ${date.year}';
+                },
+              ),
+              daysOfWeekStyle: DaysOfWeekStyle(
+                weekdayStyle: TextStyle(color: AppTheme.onSurface),
+                weekendStyle: TextStyle(color: AppTheme.primary),
               ),
               calendarBuilders: CalendarBuilders(
                 markerBuilder: (context, date, events) {
@@ -181,6 +233,20 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     );
                   }
                   return null;
+                },
+                dowBuilder: (context, day) {
+                  // Custom day of week labels (Mon, Tue, etc)
+                  final weekdayName = _weekdayNames[day.weekday] ?? '';
+                  final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
+                  
+                  return Center(
+                    child: Text(
+                      weekdayName,
+                      style: TextStyle(
+                        color: isWeekend ? AppTheme.primary : AppTheme.onSurface,
+                      ),
+                    ),
+                  );
                 },
               ),
             );
@@ -241,10 +307,12 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   Widget _buildDailySchedule() {
     return Consumer2<PlanningProvider, ActivityProvider>(
       builder: (context, planningProvider, activityProvider, child) {
-        if (planningProvider.isLoading) {
+        // Show loading indicator if either provider is loading
+        if (planningProvider.isLoading || _isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
+        // Show error message if there's an error
         if (planningProvider.error != null) {
           return Center(
             child: Column(
@@ -258,7 +326,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => planningProvider.fetchPlans(),
+                  onPressed: _loadPlans,
                   child: const Text('Coba Lagi'),
                 ),
               ],
@@ -266,6 +334,37 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
           );
         }
 
+        // Check if activities data is loaded
+        if (activityProvider.activities.isEmpty) {
+          // Try to load activities if not already loading
+          if (!activityProvider.isLoading) {
+            Future.microtask(() => activityProvider.fetchActivities());
+          }
+          
+          // Show loading indicator or empty state
+          return Center(
+            child: activityProvider.isLoading
+                ? const CircularProgressIndicator()
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Tidak dapat memuat data aktivitas. Silakan coba lagi.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => activityProvider.fetchActivities(),
+                        child: const Text('Muat Aktivitas'),
+                      ),
+                    ],
+                  ),
+          );
+        }
+
+        // Get activities for selected day
         final activities = _getActivitiesForSelectedDay(planningProvider);
 
         if (activities.isEmpty) {

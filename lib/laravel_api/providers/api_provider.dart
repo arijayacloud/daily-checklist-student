@@ -53,7 +53,11 @@ class ApiProvider with ChangeNotifier {
   Future<dynamic> get(String endpoint) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    
+    // Only notify listeners outside of build phase
+    Future.microtask(() {
+      notifyListeners();
+    });
 
     try {
       final response = await http.get(
@@ -65,6 +69,8 @@ class ApiProvider with ChangeNotifier {
       if (response.statusCode == 401 && _token != null) {
         // Only clear the token if explicitly unauthorized
         await _clearToken();
+        _error = 'Sesi berakhir. Silakan login kembali.';
+        debugPrint('API Error: Unauthorized, token cleared');
       }
 
       return _handleResponse(response);
@@ -78,7 +84,11 @@ class ApiProvider with ChangeNotifier {
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    
+    // Only notify listeners outside of build phase
+    Future.microtask(() {
+      notifyListeners();
+    });
 
     try {
       final response = await http.post(
@@ -86,6 +96,13 @@ class ApiProvider with ChangeNotifier {
         headers: _getHeaders(),
         body: json.encode(data),
       );
+
+      // Handle unauthorized
+      if (response.statusCode == 401 && _token != null) {
+        await _clearToken();
+        _error = 'Sesi berakhir. Silakan login kembali.';
+        debugPrint('API Error: Unauthorized on POST, token cleared');
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -98,7 +115,11 @@ class ApiProvider with ChangeNotifier {
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    
+    // Only notify listeners outside of build phase
+    Future.microtask(() {
+      notifyListeners();
+    });
 
     try {
       final response = await http.put(
@@ -106,6 +127,13 @@ class ApiProvider with ChangeNotifier {
         headers: _getHeaders(),
         body: json.encode(data),
       );
+
+      // Handle unauthorized
+      if (response.statusCode == 401 && _token != null) {
+        await _clearToken();
+        _error = 'Sesi berakhir. Silakan login kembali.';
+        debugPrint('API Error: Unauthorized on PUT, token cleared');
+      }
 
       return _handleResponse(response);
     } catch (e) {
@@ -118,13 +146,24 @@ class ApiProvider with ChangeNotifier {
   Future<dynamic> delete(String endpoint) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    
+    // Only notify listeners outside of build phase
+    Future.microtask(() {
+      notifyListeners();
+    });
 
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/$endpoint'),
         headers: _getHeaders(),
       );
+
+      // Handle unauthorized
+      if (response.statusCode == 401 && _token != null) {
+        await _clearToken();
+        _error = 'Sesi berakhir. Silakan login kembali.';
+        debugPrint('API Error: Unauthorized on DELETE, token cleared');
+      }
 
       return _handleResponse(response);
     } catch (e) {

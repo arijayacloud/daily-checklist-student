@@ -18,6 +18,7 @@ readmebuild.md
 FIREBASE_TO_LARAVEL_MIGRATION.md
 MIGRATION_SUMMARY.md
 READMEOthers.md
+postman_collection.json
 
 # Firebase
 lib/firebase_options.dart
