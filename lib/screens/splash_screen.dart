@@ -26,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeApp() async {
     try {
       // Initialize FCM Service
-      await Provider.of<FCMService>(context, listen: false).init();
+      await Provider.of<FCMService>(context, listen: false).initialize(context);
     } catch (e) {
       print('Error initializing FCM service: $e');
     }

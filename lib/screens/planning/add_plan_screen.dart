@@ -8,7 +8,6 @@ import '/laravel_api/models/planning_model.dart';
 import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/child_provider.dart';
 import '/laravel_api/providers/planning_provider.dart';
-import '/laravel_api/providers/checklist_provider.dart';
 import '/laravel_api/providers/notification_provider.dart';
 import '/laravel_api/providers/api_provider.dart';
 import '/laravel_api/providers/auth_provider.dart';
@@ -357,6 +356,11 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
 
   // Show multi-select dialog
   void _showMultiSelectDialog(BuildContext context, List<ChildModel> children) {
+    // Create list of all child IDs for "Select All" functionality
+    List<String> allChildIds = children.map((child) => child.id).toList();
+    bool selectAllChecked = _selectedChildIds.isEmpty;
+    bool selectSomeChecked = _selectedChildIds.isNotEmpty && _selectedChildIds.length < children.length;
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -369,33 +373,51 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                 height: 300,
                 child: ListView(
                   children: [
-                    // All children option
+                    // All children option - modified to work properly
                     CheckboxListTile(
                       title: const Text('Semua Anak'),
-                      value: _selectedChildIds.isEmpty,
+                      value: selectAllChecked,
+                      tristate: true,
+                      controlAffinity: ListTileControlAffinity.leading,
                       onChanged: (bool? value) {
                         setState(() {
-                          if (value == true) {
-                            _selectedChildIds.clear();
+                          if (value == true || selectSomeChecked) {
+                            _selectedChildIds.clear(); // Empty means "all children"
+                            selectAllChecked = true;
+                            selectSomeChecked = false;
+                          } else {
+                            _selectedChildIds = List.from(allChildIds); // Select all specific children
+                            selectAllChecked = false;
+                            selectSomeChecked = false;
                           }
                         });
                       },
+                      subtitle: Text(
+                        'Rencanakan untuk semua anak tanpa perlu memilih satu per satu',
+                        style: TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+                      ),
                     ),
                     const Divider(),
                     // Individual children
                     ...children.map((childItem) {
                       return CheckboxListTile(
                         title: Text('${childItem.name} (${childItem.age} tahun)'),
-                        value: _selectedChildIds.contains(childItem.id),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              _selectedChildIds.add(childItem.id);
-                            } else {
-                              _selectedChildIds.remove(childItem.id);
-                            }
-                          });
-                        },
+                        value: selectAllChecked ? false : _selectedChildIds.contains(childItem.id),
+                        enabled: !selectAllChecked,
+                        onChanged: selectAllChecked 
+                            ? null 
+                            : (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedChildIds.add(childItem.id);
+                                  } else {
+                                    _selectedChildIds.remove(childItem.id);
+                                  }
+                                  // Update the selectSomeChecked state
+                                  selectSomeChecked = _selectedChildIds.isNotEmpty && 
+                                                    _selectedChildIds.length < children.length;
+                                });
+                              },
                       );
                     }).toList(),
                   ],
@@ -1044,11 +1066,8 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       );
 
       // Refresh notifications after creating a new plan
-      Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
-
-      // Jika ada childIds yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
-      if (_selectedChildIds.isNotEmpty && plan != null) {
-        await _confirmAddToChecklist(plan.id.toString(), plannedActivities);
+      if (mounted) {
+        Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
       }
 
       if (!mounted) return;
@@ -1060,7 +1079,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true); // Pass true to indicate success
     } catch (e) {
       if (!mounted) return;
       
@@ -1082,98 +1101,6 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
           ),
         ),
       );
-    }
-  }
-
-  Future<void> _confirmAddToChecklist(
-    String planId,
-    List<PlannedActivity> activities,
-  ) async {
-    if (!mounted) return;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Tambahkan ke Checklist'),
-          content: const Text(
-            'Apakah Anda ingin langsung menambahkan aktivitas-aktivitas ini ke checklist anak?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('TIDAK'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('YA'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (result == true) {
-      await _addActivitiesToChecklist(activities);
-    }
-  }
-
-  Future<void> _addActivitiesToChecklist(
-    List<PlannedActivity> activities,
-  ) async {
-    if (_selectedChildIds.isEmpty || !mounted) return;
-
-    final checklistProvider = Provider.of<ChecklistProvider>(
-      context,
-      listen: false,
-    );
-
-    final activityProvider = Provider.of<ActivityProvider>(
-      context,
-      listen: false,
-    );
-
-    try {
-      // For each selected child
-      for (final childId in _selectedChildIds) {
-        // Tambahkan setiap aktivitas ke checklist
-        for (final activity in activities) {
-          final activityModel = activityProvider.getActivityById(
-            activity.activityId.toString(),
-          );
-          if (activityModel == null) continue;
-
-          // Use activitySteps instead of customSteps
-          List<String> steps = [];
-          if (activityModel.activitySteps.isNotEmpty) {
-            steps = activityModel.activitySteps.first.steps;
-          }
-
-          await checklistProvider.assignActivity(
-            childId: childId,
-            activityId: activity.activityId.toString(),
-            scheduledDate: activity.scheduledDate,
-          );
-        }
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aktivitas berhasil ditambahkan ke checklist'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error menambahkan ke checklist: $e'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
-      }
     }
   }
 
@@ -1236,9 +1163,9 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       final String planType = _planType == 'daily' ? 'harian' : 'mingguan';
       final String message = 'Guru telah membuat rencana $planType baru untuk tanggal ${DateFormat('dd MMMM yyyy', 'id_ID').format(_startDate)} dengan ${activities.length} aktivitas.';
       
-      // If no specific children selected, notify all parents via system notification API
+      // If no specific children selected (meaning all children), notify all parents
       if (childIds.isEmpty) {
-        // This is a custom API endpoint we need to implement on the backend
+        // Using the system notification endpoint which handles FCM in the backend
         await apiProvider.post('notifications/system', {
           'title': title,
           'message': message,
@@ -1246,9 +1173,18 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
           'related_id': plan.id.toString(),
           'sender_id': authProvider.user!.id,
         });
+        
+        // Display a message to user that notifications were sent to all parents
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notifikasi telah dikirim ke semua orang tua'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } else {
         // Send notification to specific parents of selected children
-        // This is a custom API endpoint we need to implement on the backend
         await apiProvider.post('notifications/send-to-parents', {
           'title': title,
           'message': message,
@@ -1257,9 +1193,27 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
           'child_ids': childIds,
           'sender_id': authProvider.user!.id,
         });
+        
+        // Display a message to user that notifications were sent to specific parents
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Notifikasi telah dikirim ke ${childIds.length} orang tua'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       }
     } catch (e) {
-      // Just log the error, don't throw to avoid disrupting the flow
+      // Show error message if notification sending fails
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengirim notifikasi: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       print('Error sending notifications: $e');
     }
   }

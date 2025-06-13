@@ -57,10 +57,6 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
   }
 
   Future<void> _loadData() async {
-    final checklistProvider = Provider.of<ChecklistProvider>(
-      context,
-      listen: false,
-    );
     final activityProvider = Provider.of<ActivityProvider>(
       context,
       listen: false,
@@ -75,7 +71,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     });
 
     // Fetch checklist items for this child
-    await checklistProvider.fetchChecklistItems(widget.child.id);
+    // await checklistProvider.fetchChecklistItems(widget.child.id);
 
     // Fetch planning data for this child
     await planningProvider.fetchPlansForParent(widget.child.id);

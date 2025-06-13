@@ -34,11 +34,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
         context,
         listen: false,
       );
-
-      // Untuk Laravel API, fetchNotifications sudah dilakukan saat update(user) di provider
-      if (authProvider.user != null && !authProvider.user!.isTeacher) {
-        // Langsung fetch notifications saja karena childId sudah diambil di API
+      
+      // Fetch notifications if user is authenticated
+      if (authProvider.user != null) {
         notificationProvider.fetchNotifications();
+        // Also fetch the unread count for badges
+        notificationProvider.fetchUnreadCount();
       }
     });
   }
@@ -49,30 +50,44 @@ class _NotificationScreenState extends State<NotificationScreen> {
       appBar: AppBar(
         title: const Text('Notifikasi'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.mark_email_read),
-            tooltip: 'Tandai semua sudah dibaca',
-            onPressed: () {
-              Provider.of<NotificationProvider>(
-                context,
-                listen: false,
-              ).markAllAsRead();
+          Consumer<NotificationProvider>(
+            builder: (context, provider, _) {
+              // Only show the mark all as read button if there are unread notifications
+              if (provider.unreadCount > 0) {
+                return IconButton(
+                  icon: const Icon(Icons.mark_email_read),
+                  tooltip: 'Tandai semua sudah dibaca',
+                  onPressed: () async {
+                    final success = await provider.markAllAsRead();
+                    if (success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Semua notifikasi ditandai sudah dibaca'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                );
+              } else {
+                return const SizedBox.shrink(); // Don't show the button if no unread notifications
+              }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.add_alert),
-            tooltip: 'Tambah Notifikasi Uji Coba',
-            onPressed: () {
-              _showAddTestNotificationDialog(context);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.send),
-            tooltip: 'Kirim FCM Notification',
-            onPressed: () {
-              _showSendFCMNotificationDialog(context);
-            },
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.add_alert),
+          //   tooltip: 'Tambah Notifikasi Uji Coba',
+          //   onPressed: () {
+          //     _showAddTestNotificationDialog(context);
+          //   },
+          // ),
+          // IconButton(
+          //   icon: const Icon(Icons.send),
+          //   tooltip: 'Kirim FCM Notification',
+          //   onPressed: () {
+          //     _showSendFCMNotificationDialog(context);
+          //   },
+          // ),
         ],
       ),
       body: _buildNotifications(),
@@ -144,15 +159,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
             style: TextStyle(color: AppTheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => _showAddTestNotificationDialog(context),
-            icon: const Icon(Icons.add_alert),
-            label: const Text('Tambah Notifikasi Uji Coba'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
-            ),
-          ),
+          // ElevatedButton.icon(
+          //   onPressed: () => _showAddTestNotificationDialog(context),
+          //   icon: const Icon(Icons.add_alert),
+          //   label: const Text('Tambah Notifikasi Uji Coba'),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: AppTheme.primary,
+          //     foregroundColor: Colors.white,
+          //   ),
+          // ),
         ],
       ),
     );
@@ -188,6 +203,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
           const SnackBar(content: Text('Notifikasi telah dihapus')),
         );
       },
+      onReadToggle: () {
+        // Toggle read/unread status
+        if (notification.isRead) {
+          provider.markAsUnread(notification.id);
+        } else {
+          provider.markAsRead(notification.id);
+        }
+      },
     );
   }
 
@@ -201,6 +224,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     required bool isRead,
     required Function() onTap,
     required Function(DismissDirection) onDismissed,
+    required Function() onReadToggle,
   }) {
     return Dismissible(
       key: Key(id),
@@ -269,6 +293,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    // Add a read/unread toggle button
+                    IconButton(
+                      icon: Icon(
+                        isRead ? Icons.visibility : Icons.visibility_off,
+                        color: isRead ? AppTheme.onSurfaceVariant : AppTheme.primary,
+                        size: 20,
+                      ),
+                      tooltip: isRead ? 'Tandai belum dibaca' : 'Tandai sudah dibaca',
+                      onPressed: onReadToggle,
                     ),
                     if (!isRead)
                       Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '/laravel_api/models/planning_model.dart';
+import '/laravel_api/models/activity_model.dart';
 import '/laravel_api/models/user_model.dart';
 import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/planning_provider.dart';
@@ -440,6 +441,11 @@ class _ParentPlanningDetailScreenState
     final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
     final formattedDate = dateFormat.format(activity.scheduledDate);
     final formattedTime = activity.scheduledTime ?? 'Tidak diatur';
+    
+    // Get activity details to check if parent can update it
+    final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+    final activityDetails = activityProvider.getActivityById(activity.activityId.toString());
+    final canParentUpdate = _canParentUpdateActivity(activityDetails);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -516,9 +522,60 @@ class _ParentPlanningDetailScreenState
                 ),
               ],
             ),
+            
+            // Add status update section for 'Home' or 'Both' activities
+            if (canParentUpdate) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Status Aktivitas:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Consumer<PlanningProvider>(
+                    builder: (context, planningProvider, _) {
+                      return Switch(
+                        value: activity.completed,
+                        activeColor: Colors.green,
+                        onChanged: (value) async {
+                          if (activity.id != null) {
+                            final success = await planningProvider.markActivityAsCompleted(
+                              activity.id!,
+                              value,
+                            );
+                            
+                            if (success && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(value 
+                                    ? 'Aktivitas berhasil ditandai selesai' 
+                                    : 'Aktivitas ditandai belum selesai'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    }
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+  
+  // Helper to check if parent can update activity
+  bool _canParentUpdateActivity(ActivityModel? activity) {
+    if (activity == null) return false;
+    
+    // Parents can update activities with environment 'Home' or 'Both'
+    return activity.environment == 'Home' || activity.environment == 'Both';
   }
 }

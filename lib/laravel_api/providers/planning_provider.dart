@@ -284,6 +284,7 @@ class PlanningProvider with ChangeNotifier {
               type: _plans[i].type,
               teacherId: _plans[i].teacherId,
               childId: _plans[i].childId,
+              childIds: _plans[i].childIds, // Ensure childIds is included
               startDate: _plans[i].startDate,
               activities: newActivities,
             );
@@ -292,18 +293,20 @@ class PlanningProvider with ChangeNotifier {
           }
         }
         
+        _isLoading = false; // Set loading to false before notifying
         notifyListeners();
         return true;
       } else {
         _error = 'Failed to update activity status';
+        _isLoading = false; // Set loading to false before notifying
+        notifyListeners();
         return false;
       }
     } catch (e) {
       _error = 'Failed to update activity status: $e';
-      return false;
-    } finally {
-      _isLoading = false;
+      _isLoading = false; // Set loading to false before notifying
       notifyListeners();
+      return false;
     }
   }
 

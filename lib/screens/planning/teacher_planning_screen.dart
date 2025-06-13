@@ -48,13 +48,18 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'planning_fab',
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => AddPlanScreen(selectedDate: _selectedDay),
             ),
           );
+          
+          // Refresh plans when returning from add plan screen
+          if (result == true && mounted) {
+            Provider.of<PlanningProvider>(context, listen: false).fetchPlans();
+          }
         },
         child: const Icon(Icons.add),
       ),
@@ -404,15 +409,19 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
               ),
               Checkbox(
                 value: activity.completed,
-                onChanged: (value) {
-                  planningProvider.markActivityAsCompleted(
-                    activity.id!,
-                    value ?? false,
-                  ).then((_) {
-                    if (value == true) {
+                onChanged: (value) async {
+                  if (mounted) {
+                    // Use async/await to wait for the operation to complete
+                    final success = await planningProvider.markActivityAsCompleted(
+                      activity.id!,
+                      value ?? false,
+                    );
+                    
+                    // Only send notification if the operation was successful
+                    if (success && value == true && mounted) {
                       _sendCompletionNotification(activity);
                     }
-                  });
+                  }
                 },
               ),
             ],

@@ -92,18 +92,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                 centerTitle: true,
                 actions: [
                   const NotificationBadge(),
-                  IconButton(
-                    icon: const Icon(Icons.add_alert),
-                    tooltip: 'Notifikasi',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
+                  const SizedBox(width: 10),
                 ],
               ),
       body: TabBarView(

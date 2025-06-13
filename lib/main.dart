@@ -28,9 +28,8 @@ import '/lib/theme/app_theme.dart';
 // Background message handler for FCM
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print('Background message: ${message.messageId}');
-  // Handle notification logic for background messages
 }
 
 Future<void> main() async {
@@ -122,10 +121,50 @@ class MyApp extends StatelessWidget {
         
         // FCM Service provider
         Provider<FCMService>(
-          create: (_) => FCMService(),
+          create: (_) => FCMService(
+            onNotificationTap: (data) {
+              // Handle notification taps here
+              print('Notification tapped with data: $data');
+              // Navigate based on notification type if needed
+              if (data.containsKey('type')) {
+                // Example: Navigate to specific screen based on notification type
+                String type = data['type'];
+                switch (type) {
+                  case 'new_plan':
+                    // Handle plan notification
+                    break;
+                  case 'activity_completed':
+                    // Handle activity notification
+                    break;
+                  default:
+                    // Handle other notification types
+                    break;
+                }
+              }
+            },
+          ),
         ),
       ],
-      child: _buildMaterialApp(),
+      child: Builder(
+        builder: (context) {
+          // Initialize FCM Service after providers are ready
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (Provider.of<AuthProvider>(context, listen: false).isAuthenticated) {
+              Provider.of<FCMService>(context, listen: false).initialize(context);
+            }
+            
+            // Listen to auth state changes to initialize/clean up FCM
+            Provider.of<AuthProvider>(context, listen: false).addListener(() {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isAuthenticated) {
+                Provider.of<FCMService>(context, listen: false).initialize(context);
+              }
+            });
+          });
+          
+          return _buildMaterialApp();
+        },
+      ),
     );
   }
   

@@ -464,7 +464,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
             ),
           );
         },
-        child: Padding(
+                          child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,7 +489,31 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     ),
                   ),
                   const Spacer(),
-                  if (activity.completed)
+                  // Show checkbox for Home or Both activities
+                  if (_canParentUpdateActivity(activityDetails))
+                    Checkbox(
+                      value: activity.completed,
+                      onChanged: (value) async {
+                        if (mounted) {
+                          final success = await planningProvider.markActivityAsCompleted(
+                            activity.id!,
+                            value ?? false,
+                          );
+                          
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(value == true 
+                                  ? 'Aktivitas ditandai selesai' 
+                                  : 'Aktivitas ditandai belum selesai'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    )
+                  else if (activity.completed)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -649,5 +673,13 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         ),
       ),
     );
+  }
+
+  // Helper to check if parent can update activity
+  bool _canParentUpdateActivity(ActivityModel? activity) {
+    if (activity == null) return false;
+    
+    // Parents can update activities with environment 'Home' or 'Both'
+    return activity.environment == 'Home' || activity.environment == 'Both';
   }
 }
