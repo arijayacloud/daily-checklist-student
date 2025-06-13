@@ -6,7 +6,13 @@ import '/config.dart';
 import '/laravel_api/models/notification_model.dart';
 import '/laravel_api/providers/notification_provider.dart';
 import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/api_provider.dart';
 import '/lib/theme/app_theme.dart';
+import '/services/fcm_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({Key? key}) : super(key: key);
@@ -58,6 +64,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
             tooltip: 'Tambah Notifikasi Uji Coba',
             onPressed: () {
               _showAddTestNotificationDialog(context);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.send),
+            tooltip: 'Kirim FCM Notification',
+            onPressed: () {
+              _showSendFCMNotificationDialog(context);
             },
           ),
         ],
@@ -463,5 +476,315 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ],
           ),
     );
+  }
+
+  void _showSendFCMNotificationDialog(BuildContext context) {
+    final titleController = TextEditingController(text: 'FCM Test Notification');
+    final messageController = TextEditingController(
+      text: 'Ini adalah notifikasi FCM untuk pengujian.',
+    );
+    final tokenController = TextEditingController();
+    String selectedType = 'test';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kirim FCM Notification'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Judul',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                decoration: const InputDecoration(
+                  labelText: 'Pesan',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: tokenController,
+                decoration: const InputDecoration(
+                  labelText: 'FCM Token (opsional)',
+                  border: OutlineInputBorder(),
+                  hintText: 'Kosongkan untuk menggunakan token saat ini',
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Tipe Notifikasi:'),
+              StatefulBuilder(
+                builder: (context, setState) {
+                  return Column(
+                    children: [
+                      RadioListTile<String>(
+                        title: const Text('Uji Coba'),
+                        value: 'test',
+                        groupValue: selectedType,
+                        onChanged: (value) {
+                          setState(() => selectedType = value!);
+                        },
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('Perencanaan Baru'),
+                        value: 'new_plan',
+                        groupValue: selectedType,
+                        onChanged: (value) {
+                          setState(() => selectedType = value!);
+                        },
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('Aktivitas Selesai'),
+                        value: 'activity_completed',
+                        groupValue: selectedType,
+                        onChanged: (value) {
+                          setState(() => selectedType = value!);
+                        },
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('Pengingat'),
+                        value: 'reminder',
+                        groupValue: selectedType,
+                        onChanged: (value) {
+                          setState(() => selectedType = value!);
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final title = titleController.text.trim();
+              final message = messageController.text.trim();
+              final token = tokenController.text.trim();
+
+              if (title.isEmpty || message.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Judul dan pesan wajib diisi'),
+                  ),
+                );
+                return;
+              }
+
+              await _sendFCMNotification(
+                context: context,
+                title: title,
+                body: message,
+                type: selectedType,
+                token: token.isNotEmpty ? token : null,
+              );
+
+              Navigator.pop(context);
+            },
+            child: const Text('Kirim'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendFCMNotification({
+    required BuildContext context,
+    required String title,
+    required String body,
+    required String type,
+    String? token,
+  }) async {
+    try {
+      // If no token is provided, get the current device token
+      if (token == null || token.isEmpty) {
+        token = await FirebaseMessaging.instance.getToken();
+      }
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak dapat mendapatkan token FCM'),
+          ),
+        );
+        return;
+      }
+
+      // Prepare notification data
+      final data = {
+        'message': {
+          'token': token,
+          'notification': {
+            'title': title,
+            'body': body,
+          },
+          'data': {
+            'type': type,
+            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            'id': '1',
+            'status': 'done',
+          },
+          'android': {
+            'priority': 'high',
+            'notification': {
+              'notification_priority': 'PRIORITY_MAX',
+              'default_sound': true,
+              'default_vibrate_timings': true,
+            },
+          },
+          'apns': {
+            'payload': {
+              'aps': {
+                'sound': 'default',
+              },
+            },
+          },
+        }
+      };
+
+      // Send the notification using the API provider
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      
+      if (apiProvider.token != null) {
+        // First approach: Send via backend API
+        final response = await http.post(
+          Uri.parse('${apiProvider.baseUrl}/send-notification'),
+          headers: {
+            'Authorization': 'Bearer ${apiProvider.token}',
+            'Content-Type': 'application/json',
+          },
+          body: json.encode({
+            'title': title,
+            'body': body,
+            'data': {
+              'type': type,
+              'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            },
+            'token': token,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notifikasi FCM berhasil dikirim'),
+            ),
+          );
+        } else {
+          // Try direct FCM approach as fallback
+          await _sendDirectFCMNotification(
+            context: context,
+            title: title,
+            body: body,
+            type: type,
+            token: token,
+          );
+        }
+      } else {
+        // Fallback to direct FCM API call
+        await _sendDirectFCMNotification(
+          context: context,
+          title: title,
+          body: body,
+          type: type,
+          token: token,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+        ),
+      );
+    }
+  }
+
+  // Alternative method to send notifications directly using FCM
+  Future<void> _sendDirectFCMNotification({
+    required BuildContext context,
+    required String title,
+    required String body,
+    required String type,
+    required String token,
+  }) async {
+    try {
+      // For testing purposes, we'll show a local notification
+      // In a real implementation, this would use the FCM HTTP v1 API
+      // But for demo purposes, we'll use the local notification functionality
+      
+      // Create a local instance of FlutterLocalNotificationsPlugin
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      
+      // Initialize the plugin
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings();
+      const InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
+      
+      await flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          print('Notification tapped: ${response.payload}');
+        },
+      );
+      
+      // Show a local notification to simulate FCM notification
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'fcm_test_channel',
+        'Test FCM Channel',
+        channelDescription: 'This channel is used for testing FCM notifications',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(),
+      );
+      
+      // Show the notification
+      await flutterLocalNotificationsPlugin.show(
+        DateTime.now().millisecond,
+        title,
+        body,
+        notificationDetails,
+        payload: json.encode({
+          'type': type,
+          'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+        }),
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notifikasi lokal berhasil ditampilkan'),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error menampilkan notifikasi lokal: $e'),
+        ),
+      );
+    }
   }
 }

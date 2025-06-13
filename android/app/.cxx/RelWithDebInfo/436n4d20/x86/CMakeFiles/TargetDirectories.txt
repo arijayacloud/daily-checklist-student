@@ -1,0 +1,2 @@
+C:/laragon/www/daily_checklist_student/android/app/.cxx/RelWithDebInfo/436n4d20/x86/CMakeFiles/edit_cache.dir
+C:/laragon/www/daily_checklist_student/android/app/.cxx/RelWithDebInfo/436n4d20/x86/CMakeFiles/rebuild_cache.dir

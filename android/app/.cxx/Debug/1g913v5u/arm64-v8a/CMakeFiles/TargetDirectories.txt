@@ -1,0 +1,2 @@
+C:/laragon/www/daily_checklist_student/android/app/.cxx/Debug/1g913v5u/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/laragon/www/daily_checklist_student/android/app/.cxx/Debug/1g913v5u/arm64-v8a/CMakeFiles/rebuild_cache.dir

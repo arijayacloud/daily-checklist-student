@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'api_provider.dart';
+import '/services/fcm_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiProvider _apiProvider;
@@ -228,6 +232,166 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Register a new user
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.post('auth/register', {
+        'name': name,
+        'email': email,
+        'password': password,
+        'role': role,
+      });
+
+      _isLoading = false;
+      if (data != null && data['token'] != null) {
+        _apiProvider.setAuthToken(data['token']);
+        // Fetch user data after registration
+        await _fetchUserData();
+        notifyListeners();
+        return true;
+      } else {
+        _error = 'Registration failed';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Login a user
+  Future<bool> login({
+    required String email,
+    required String password,
+    required BuildContext context,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.post('auth/login', {
+        'email': email,
+        'password': password,
+      });
+
+      _isLoading = false;
+      if (data != null && data['token'] != null) {
+        // Save token
+        _apiProvider.setAuthToken(data['token']);
+        
+        // Fetch user data after login
+        await _fetchUserData();
+        
+        // Update FCM token with the auth token
+        try {
+          final fcmService = Provider.of<FCMService>(context, listen: false);
+          await fcmService.updateTokenForUser(data['token']);
+        } catch (e) {
+          print('Error updating FCM token: $e');
+        }
+        
+        notifyListeners();
+        return true;
+      } else {
+        _error = 'Login failed';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Logout the user
+  Future<void> logout(BuildContext context) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Clear FCM token before logging out
+      try {
+        final fcmService = Provider.of<FCMService>(context, listen: false);
+        await fcmService.clearToken();
+      } catch (e) {
+        print('Error clearing FCM token: $e');
+      }
+      
+      await _apiProvider.post('auth/logout', {});
+      _user = null;
+      _apiProvider.clearAuthToken();
+      
+      // Clear stored token in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_token');
+    } catch (e) {
+      _error = 'Failed to logout: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Check if user has a temporary password
+  bool get hasTempPassword => _user?.isTempPassword ?? false;
+
+  // Update user's password
+  Future<bool> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _apiProvider.post('auth/change-password', {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      });
+
+      _isLoading = false;
+      if (data != null && data['success'] == true) {
+        // Update user data to reflect password change
+        if (_user != null) {
+          _user = UserModel(
+            id: _user!.id,
+            name: _user!.name,
+            email: _user!.email,
+            role: _user!.role,
+            isTempPassword: false, // Password is no longer temporary
+          );
+        }
+        notifyListeners();
+        return true;
+      } else {
+        _error = data?['message'] ?? 'Failed to update password';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
       notifyListeners();
       return false;
     }

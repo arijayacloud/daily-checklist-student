@@ -11,11 +11,12 @@ class ApiProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _error;
+  bool _isAuthenticated = false;
 
   String? get token => _token;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  bool get isAuthenticated => _token != null;
+  bool get isAuthenticated => _isAuthenticated;
 
   ApiProvider() {
     _loadToken();
@@ -29,6 +30,7 @@ class ApiProvider with ChangeNotifier {
     // We'll only validate when needed for an actual request
     if (_token != null) {
       debugPrint('Token found in storage, assuming authenticated');
+      _isAuthenticated = true;
       notifyListeners();
     } else {
       debugPrint('No token found in storage');
@@ -39,6 +41,7 @@ class ApiProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
     _token = token;
+    _isAuthenticated = true;
     notifyListeners();
   }
 
@@ -46,6 +49,7 @@ class ApiProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     _token = null;
+    _isAuthenticated = false;
     notifyListeners();
   }
 
@@ -290,5 +294,41 @@ class ApiProvider with ChangeNotifier {
     });
     
     return data != null;
+  }
+
+  // Set authentication token (for new login/registration flows)
+  void setAuthToken(String token) {
+    _token = token;
+    _isAuthenticated = true;
+    _saveTokenToSharedPreferences(token);
+    notifyListeners();
+  }
+  
+  // Clear authentication token (for logout)
+  void clearAuthToken() {
+    _token = null;
+    _isAuthenticated = false;
+    _removeTokenFromSharedPreferences();
+    notifyListeners();
+  }
+
+  // Helper method to save token to SharedPreferences
+  Future<void> _saveTokenToSharedPreferences(String token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', token);
+    } catch (e) {
+      debugPrint('Error saving token to SharedPreferences: $e');
+    }
+  }
+  
+  // Helper method to remove token from SharedPreferences
+  Future<void> _removeTokenFromSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_token');
+    } catch (e) {
+      debugPrint('Error removing token from SharedPreferences: $e');
+    }
   }
 } 

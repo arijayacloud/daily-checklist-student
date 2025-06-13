@@ -8,6 +8,9 @@ import '/laravel_api/models/activity_model.dart';
 import '/laravel_api/models/planning_model.dart';
 import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/planning_provider.dart';
+import '/laravel_api/providers/api_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
 import '/screens/planning/add_plan_screen.dart';
 import '/lib/theme/app_theme.dart';
 import '/screens/planning/planning_detail_screen.dart';
@@ -405,7 +408,11 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                   planningProvider.markActivityAsCompleted(
                     activity.id!,
                     value ?? false,
-                  );
+                  ).then((_) {
+                    if (value == true) {
+                      _sendCompletionNotification(activity);
+                    }
+                  });
                 },
               ),
             ],
@@ -533,5 +540,62 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
         );
       },
     );
+  }
+
+  // Send notification when activity is marked complete
+  Future<void> _sendCompletionNotification(PlannedActivity activity) async {
+    try {
+      final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final childProvider = Provider.of<ChildProvider>(context, listen: false);
+      
+      // Get activity details
+      final activityDetails = activityProvider.getActivityById(activity.activityId.toString());
+      if (activityDetails == null || apiProvider.token == null || authProvider.user == null) return;
+      
+      // Find the planning that contains this activity
+      final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+      final plan = planningProvider.plans.firstWhere(
+        (p) => p.id == activity.planId,
+        orElse: () => Planning(
+          id: 0, 
+          startDate: DateTime.now(), 
+          type: 'daily', 
+          activities: [],
+          childIds: [],
+          teacherId: authProvider.user!.id
+        ),
+      );
+      
+      if (plan.id == 0) return; // Plan not found
+      
+      // Prepare notification data
+      final String title = 'Aktivitas Selesai';
+      final String message = 'Aktivitas "${activityDetails.title}" pada ${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(activity.scheduledDate)} telah ditandai selesai oleh guru.';
+      
+      // If plan has specific children, notify their parents
+      if (plan.childIds.isNotEmpty) {
+        await apiProvider.post('notifications/send-to-parents', {
+          'title': title,
+          'message': message,
+          'type': 'activity_completed',
+          'related_id': activity.id.toString(),
+          'child_ids': plan.childIds,
+          'sender_id': authProvider.user!.id,
+        });
+      } else {
+        // Notify all parents if no specific children are selected
+        await apiProvider.post('notifications/system', {
+          'title': title,
+          'message': message,
+          'type': 'activity_completed',
+          'related_id': activity.id.toString(),
+          'sender_id': authProvider.user!.id,
+        });
+      }
+    } catch (e) {
+      print('Error sending activity completion notification: $e');
+    }
   }
 }

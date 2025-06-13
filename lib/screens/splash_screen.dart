@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../config.dart';
-
-// Laravel auth provider
 import '/laravel_api/providers/auth_provider.dart';
 import '/laravel_api/providers/api_provider.dart';
-
+import '/services/fcm_service.dart';
 import '/screens/auth/login_screen.dart';
-import '/screens/home/parent_home_screen.dart';
 import '/screens/home/teacher_home_screen.dart';
+import '/screens/home/parent_home_screen.dart';
 import '/screens/auth/password_check_screen.dart';
 import '/lib/theme/app_theme.dart';
 
@@ -21,11 +17,21 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  bool _isChecking = true;
-
   @override
   void initState() {
     super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      // Initialize FCM Service
+      await Provider.of<FCMService>(context, listen: false).init();
+    } catch (e) {
+      print('Error initializing FCM service: $e');
+    }
+    
+    // Check authentication status
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAuthStatus();
     });
@@ -33,10 +39,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkAuthStatus() async {
     if (!mounted) return;
-    
-    setState(() {
-      _isChecking = true;
-    });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final apiProvider = Provider.of<ApiProvider>(context, listen: false);
@@ -115,7 +117,6 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 80),
             Container(
               width: 120,
               height: 120,
@@ -128,11 +129,6 @@ class _SplashScreenState extends State<SplashScreen> {
                 size: 80,
                 color: AppTheme.primary,
               ),
-            ).animate().scale(
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.elasticOut,
-              begin: const Offset(0.5, 0.5),
-              end: const Offset(1.0, 1.0),
             ),
             const SizedBox(height: 32),
             Text(
@@ -141,32 +137,17 @@ class _SplashScreenState extends State<SplashScreen> {
                     color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
-                )
-                .animate()
-                .fadeIn(
-                  duration: const Duration(milliseconds: 800),
-                  delay: const Duration(milliseconds: 400),
-                )
-                .slideY(begin: 0.2, end: 0),
+            ),
             const SizedBox(height: 16),
             Text(
                   'Belajar Bersama',
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(color: AppTheme.secondary),
-                )
-                .animate()
-                .fadeIn(
-                  duration: const Duration(milliseconds: 800),
-                  delay: const Duration(milliseconds: 600),
-                )
-                .slideY(begin: 0.2, end: 0),
+            ),
             const SizedBox(height: 80),
             const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
-            ).animate().fadeIn(
-              duration: const Duration(milliseconds: 800),
-              delay: const Duration(milliseconds: 800),
             ),
           ],
         ),

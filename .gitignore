@@ -19,7 +19,7 @@ FIREBASE_TO_LARAVEL_MIGRATION.md
 MIGRATION_SUMMARY.md
 READMEOthers.md
 postman_collection.json
-
+FIREBASE_SETUP.md
 # Firebase
 lib/firebase_options.dart
 google-services.json

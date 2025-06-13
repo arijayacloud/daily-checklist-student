@@ -9,6 +9,9 @@ import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/child_provider.dart';
 import '/laravel_api/providers/planning_provider.dart';
 import '/laravel_api/providers/checklist_provider.dart';
+import '/laravel_api/providers/notification_provider.dart';
+import '/laravel_api/providers/api_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class AddPlanScreen extends StatefulWidget {
@@ -1033,6 +1036,16 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       // Exit if widget was unmounted during the API call
       if (!mounted) return;
 
+      // Send notifications to parents of the selected children
+      await _sendNotificationsToParents(
+        plan: plan,
+        childIds: _selectedChildIds,
+        activities: plannedActivities,
+      );
+
+      // Refresh notifications after creating a new plan
+      Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+
       // Jika ada childIds yang dipilih, tanyakan apakah ingin langsung menambahkan ke checklist
       if (_selectedChildIds.isNotEmpty && plan != null) {
         await _confirmAddToChecklist(plan.id.toString(), plannedActivities);
@@ -1201,6 +1214,54 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       'Sabtu',
     ];
     return dayNames[day % 7];
+  }
+
+  // Method to send notifications to parents when plan is created
+  Future<void> _sendNotificationsToParents({
+    required Planning plan,
+    required List<String> childIds,
+    required List<PlannedActivity> activities,
+  }) async {
+    if (!mounted) return;
+
+    try {
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      if (apiProvider.token == null || authProvider.user == null) return;
+      
+      // Prepare notification data
+      final String title = 'Perencanaan Aktivitas Baru';
+      final String planType = _planType == 'daily' ? 'harian' : 'mingguan';
+      final String message = 'Guru telah membuat rencana $planType baru untuk tanggal ${DateFormat('dd MMMM yyyy', 'id_ID').format(_startDate)} dengan ${activities.length} aktivitas.';
+      
+      // If no specific children selected, notify all parents via system notification API
+      if (childIds.isEmpty) {
+        // This is a custom API endpoint we need to implement on the backend
+        await apiProvider.post('notifications/system', {
+          'title': title,
+          'message': message,
+          'type': 'new_plan',
+          'related_id': plan.id.toString(),
+          'sender_id': authProvider.user!.id,
+        });
+      } else {
+        // Send notification to specific parents of selected children
+        // This is a custom API endpoint we need to implement on the backend
+        await apiProvider.post('notifications/send-to-parents', {
+          'title': title,
+          'message': message,
+          'type': 'new_plan',
+          'related_id': plan.id.toString(),
+          'child_ids': childIds,
+          'sender_id': authProvider.user!.id,
+        });
+      }
+    } catch (e) {
+      // Just log the error, don't throw to avoid disrupting the flow
+      print('Error sending notifications: $e');
+    }
   }
 }
 

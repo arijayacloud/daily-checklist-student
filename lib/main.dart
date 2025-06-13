@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'config.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
+import 'services/fcm_service.dart';
 
 // Laravel API providers
 import '/laravel_api/providers/api_provider.dart';
@@ -21,8 +25,25 @@ import '/screens/splash_screen.dart';
 import '/screens/progress/child_checklist_screen.dart';
 import '/lib/theme/app_theme.dart';
 
+// Background message handler for FCM
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('Background message: ${message.messageId}');
+  // Handle notification logic for background messages
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // Set up FCM background message handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
   await initializeDateFormatting(AppConfig.defaultLocale, null);
   runApp(const MyApp());
 }
@@ -97,6 +118,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProxyProvider<ApiProvider, ChecklistProvider>(
           create: (context) => ChecklistProvider(Provider.of<ApiProvider>(context, listen: false)),
           update: (context, api, previous) => previous ?? ChecklistProvider(api),
+        ),
+        
+        // FCM Service provider
+        Provider<FCMService>(
+          create: (_) => FCMService(),
         ),
       ],
       child: _buildMaterialApp(),
