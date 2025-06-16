@@ -273,7 +273,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Pilih Anak (Opsional):',
+                'Pilih Anak (Wajib):',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -296,7 +296,7 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                       Expanded(
                         child: Text(
                           _selectedChildIds.isEmpty
-                              ? 'Semua Anak'
+                              ? 'Pilih Anak'
                               : _selectedChildIds.length == 1
                                   ? '${_getChildName(_selectedChildIds.first, children)}'
                                   : '${_selectedChildIds.length} anak dipilih',
@@ -358,8 +358,6 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
   void _showMultiSelectDialog(BuildContext context, List<ChildModel> children) {
     // Create list of all child IDs for "Select All" functionality
     List<String> allChildIds = children.map((child) => child.id).toList();
-    bool selectAllChecked = _selectedChildIds.isEmpty;
-    bool selectSomeChecked = _selectedChildIds.isNotEmpty && _selectedChildIds.length < children.length;
     
     showDialog(
       context: context,
@@ -373,69 +371,66 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
                 height: 300,
                 child: ListView(
                   children: [
-                    // All children option - modified to work properly
-                    CheckboxListTile(
-                      title: const Text('Semua Anak'),
-                      value: selectAllChecked,
-                      tristate: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true || selectSomeChecked) {
-                            _selectedChildIds.clear(); // Empty means "all children"
-                            selectAllChecked = true;
-                            selectSomeChecked = false;
-                          } else {
-                            _selectedChildIds = List.from(allChildIds); // Select all specific children
-                            selectAllChecked = false;
-                            selectSomeChecked = false;
-                          }
-                        });
-                      },
-                      subtitle: Text(
-                        'Rencanakan untuk semua anak tanpa perlu memilih satu per satu',
-                        style: TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
-                      ),
-                    ),
-                    const Divider(),
                     // Individual children
                     ...children.map((childItem) {
                       return CheckboxListTile(
                         title: Text('${childItem.name} (${childItem.age} tahun)'),
-                        value: selectAllChecked ? false : _selectedChildIds.contains(childItem.id),
-                        enabled: !selectAllChecked,
-                        onChanged: selectAllChecked 
-                            ? null 
-                            : (bool? value) {
-                                setState(() {
-                                  if (value == true) {
-                                    _selectedChildIds.add(childItem.id);
-                                  } else {
-                                    _selectedChildIds.remove(childItem.id);
-                                  }
-                                  // Update the selectSomeChecked state
-                                  selectSomeChecked = _selectedChildIds.isNotEmpty && 
-                                                    _selectedChildIds.length < children.length;
-                                });
-                              },
+                        value: _selectedChildIds.contains(childItem.id),
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              _selectedChildIds.add(childItem.id);
+                            } else {
+                              _selectedChildIds.remove(childItem.id);
+                            }
+                          });
+                        },
                       );
                     }).toList(),
                   ],
                 ),
               ),
               actions: <Widget>[
-                TextButton(
-                  child: const Text('BATAL'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                // Check/Uncheck All buttons
+                Row(
+                  children: [
+                    TextButton(
+                      child: const Text('PILIH SEMUA'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedChildIds = List.from(allChildIds);
+                        });
+                      },
+                    ),
+                    TextButton(
+                      child: const Text('HAPUS SEMUA'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedChildIds.clear();
+                        });
+                      },
+                    ),
+                  ],
                 ),
-                TextButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    this.setState(() {}); // Update parent state
-                  },
+                const Divider(),
+                // OK/Cancel buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      child: const Text('BATAL'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    TextButton(
+                      child: const Text('OK'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        this.setState(() {}); // Update parent state
+                      },
+                    ),
+                  ],
                 ),
               ],
             );
@@ -937,6 +932,17 @@ class _AddPlanScreenState extends State<AddPlanScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap tambahkan setidaknya satu aktivitas'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    // Check if child selection is required but none are selected
+    if (_selectedChildIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap pilih minimal satu anak'),
           backgroundColor: Colors.orange,
         ),
       );

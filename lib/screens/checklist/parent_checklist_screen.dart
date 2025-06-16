@@ -70,11 +70,11 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
       _isLoading = true;
     });
 
-    // Fetch checklist items for this child
-    // await checklistProvider.fetchChecklistItems(widget.child.id);
-
     // Fetch planning data for this child
     await planningProvider.fetchPlansForParent(widget.child.id);
+    
+    // Set the current child ID in the provider to ensure correct completion status retrieval
+    planningProvider.setCurrentChildId(widget.child.id);
 
     // Make sure activities are loaded
     if (activityProvider.activities.isEmpty) {
@@ -302,8 +302,13 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     bool isExpanded,
     int dayKey,
   ) {
-    // Count completed activities
-    final completedCount = activities.where((a) => a.completed).length;
+    // Count completed activities for the specific child
+    final completedCount = activities.where((a) => 
+      // Completion status is already retrieved correctly from the backend
+      // as it's filtered by child_id in fetchPlansForParent
+      a.completed
+    ).length;
+    
     final completionPercentage =
         activities.isNotEmpty
             ? (completedCount / activities.length * 100).toInt()

@@ -4,16 +4,19 @@ import 'package:intl/intl.dart';
 import '/laravel_api/models/planning_model.dart';
 import '/laravel_api/models/activity_model.dart';
 import '/laravel_api/models/user_model.dart';
+import '/laravel_api/models/child_model.dart';
 import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/planning_provider.dart';
 import '/laravel_api/providers/user_provider.dart';
+import '/laravel_api/providers/child_provider.dart';
 import '/lib/theme/app_theme.dart';
 
 class ParentPlanningDetailScreen extends StatefulWidget {
   final String planId;
+  final String? childId; // Add childId parameter
   static const routeName = '/parent-planning-detail';
 
-  const ParentPlanningDetailScreen({Key? key, required this.planId})
+  const ParentPlanningDetailScreen({Key? key, required this.planId, this.childId})
     : super(key: key);
 
   @override
@@ -26,10 +29,14 @@ class _ParentPlanningDetailScreenState
   bool _isLoadingPlan = true;
   Planning? _currentPlan;
   String? _errorMessage;
-
+  int? _updatingActivityId; // Track which activity is being updated
+  String? _selectedChildId; // Track selected child for completion status
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  
   @override
   void initState() {
     super.initState();
+    _selectedChildId = widget.childId;
     _loadData();
   }
 
@@ -40,6 +47,12 @@ class _ParentPlanningDetailScreenState
     });
 
     try {
+      // Set current child ID in provider if available
+      if (_selectedChildId != null) {
+        final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+        planningProvider.setCurrentChildId(_selectedChildId!);
+      }
+      
       // Load plan data
       await _loadPlanData();
       
@@ -79,7 +92,14 @@ class _ParentPlanningDetailScreenState
         throw Exception('ID rencana tidak valid');
       }
       
-      // Try to find the plan in existing data first
+      // If we have a childId, use it to fetch plans for that child specifically
+      if (_selectedChildId != null) {
+        await planningProvider.fetchPlansForParent(_selectedChildId!);
+      } else {
+        await planningProvider.fetchPlans();
+      }
+      
+      // Try to find the plan in existing data
       final existingPlan = planningProvider.plans.firstWhere(
         (p) => p.id == planId,
         orElse: () => Planning(
@@ -97,28 +117,7 @@ class _ParentPlanningDetailScreenState
         _currentPlan = existingPlan;
         debugPrint('Found plan with ID ${existingPlan.id} in cached data');
       } else {
-        // If plan not found in cache, trigger a refresh
-        await planningProvider.fetchPlans();
-        
-        // Try to find it again after refresh
-        final refreshedPlan = planningProvider.plans.firstWhere(
-          (p) => p.id == planId,
-          orElse: () => Planning(
-            id: 0, 
-            type: 'daily',
-            teacherId: '0',
-            childId: null,
-            startDate: DateTime.now(),
-            activities: [],
-          ),
-        );
-        
-        if (refreshedPlan.id != 0) {
-          _currentPlan = refreshedPlan;
-          debugPrint('Found plan with ID ${refreshedPlan.id} after refresh');
-        } else {
-          throw Exception('Rencana dengan ID $planId tidak ditemukan');
-        }
+        throw Exception('Rencana dengan ID $planId tidak ditemukan');
       }
     } catch (e) {
       debugPrint('Error loading plan: $e');
@@ -139,36 +138,52 @@ class _ParentPlanningDetailScreenState
     }
   }
 
+  void _onChildChanged(String childId) {
+    setState(() {
+      _selectedChildId = childId;
+    });
+    
+    // Set current child ID in provider
+    final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+    planningProvider.setCurrentChildId(childId);
+    
+    // Reload data for this child
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Perencanaan'), 
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () {
-              // Refresh all data
-              _loadData();
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Memuat ulang data...'),
-                  duration: Duration(seconds: 1),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-          ),
-        ],
+    return ScaffoldMessenger(
+      key: _scaffoldMessengerKey,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Detail Perencanaan'), 
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh',
+              onPressed: () {
+                // Refresh all data
+                _loadData();
+                
+                _scaffoldMessengerKey.currentState?.showSnackBar(
+                  const SnackBar(
+                    content: Text('Memuat ulang data...'),
+                    duration: Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: _errorMessage != null 
+          ? _buildErrorView()
+          : (_isLoadingPlan 
+              ? _buildLoadingView() 
+              : _buildContentView()),
       ),
-      body: _errorMessage != null 
-        ? _buildErrorView()
-        : (_isLoadingPlan 
-            ? _buildLoadingView() 
-            : _buildContentView()),
     );
   }
 
@@ -250,65 +265,36 @@ class _ParentPlanningDetailScreenState
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: _isLoadingPlan
-                ? const Center(child: CircularProgressIndicator())
-                : Consumer<UserProvider>(
-                    builder: (context, userProvider, _) {
-                      // Get teacher name based on teacherId from planning
-                      final String teacherId = _currentPlan?.teacherId ?? '';
-                      
-                      if (teacherId.isEmpty) {
-                        return _buildTeacherDetails('Guru', true);
-                      }
-                      
-                      // Check if name is in cache
-                      final teacherName = userProvider.getTeacherNameById(teacherId);
-                      
-                      // If we have a name, show it
-                      if (teacherName != null) {
-                        return _buildTeacherDetails(teacherName, false);
-                      }
-                      
-                      // If name not in cache, trigger a direct fetch and show loading
-                      _fetchTeacherData();
-                      return _buildTeacherDetails('Memuat data guru...', false);
-                    }
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Dibuat oleh:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Consumer<UserProvider>(
+                  builder: (context, userProvider, _) {
+                    final teacherName = _currentPlan != null 
+                        ? userProvider.getTeacherNameById(_currentPlan!.teacherId) ?? 'Memuat...'
+                        : 'Tidak Diketahui';
+                    return Text(
+                      teacherName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  }
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
-  
-  Widget _buildTeacherDetails(String name, bool showMissingData) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Dibuat oleh:',
-          style: TextStyle(
-            color: AppTheme.onSurfaceVariant,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        if (showMissingData) 
-          const Text(
-            '(Data guru tidak tersedia)',
-            style: TextStyle(
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              color: Colors.orange,
-            ),
-          ),
-      ],
     );
   }
 
@@ -441,6 +427,7 @@ class _ParentPlanningDetailScreenState
     final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
     final formattedDate = dateFormat.format(activity.scheduledDate);
     final formattedTime = activity.scheduledTime ?? 'Tidak diatur';
+    final bool isUpdating = _updatingActivityId == activity.id;
     
     // Get activity details to check if parent can update it
     final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
@@ -537,25 +524,51 @@ class _ParentPlanningDetailScreenState
                   ),
                   Consumer<PlanningProvider>(
                     builder: (context, planningProvider, _) {
-                      return Switch(
+                      return isUpdating 
+                          ? const SizedBox(
+                              height: 20, 
+                              width: 20, 
+                              child: CircularProgressIndicator(strokeWidth: 2)
+                            ) 
+                          : Switch(
                         value: activity.completed,
                         activeColor: Colors.green,
                         onChanged: (value) async {
                           if (activity.id != null) {
+                            setState(() {
+                              _updatingActivityId = activity.id;
+                            });
+                            
+                            // Check if this plan belongs to the child of current parent
                             final success = await planningProvider.markActivityAsCompleted(
                               activity.id!,
                               value,
+                              childId: _selectedChildId,
                             );
                             
-                            if (success && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(value 
-                                    ? 'Aktivitas berhasil ditandai selesai' 
-                                    : 'Aktivitas ditandai belum selesai'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                            if (mounted) {
+                              setState(() {
+                                _updatingActivityId = null;
+                              });
+                              
+                              if (success && mounted) {
+                                _scaffoldMessengerKey.currentState?.showSnackBar(
+                                  SnackBar(
+                                    content: Text(value 
+                                      ? 'Aktivitas berhasil ditandai selesai' 
+                                      : 'Aktivitas ditandai belum selesai'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              } else {
+                                _scaffoldMessengerKey.currentState?.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Gagal mengubah status aktivitas'),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
                           }
                         },

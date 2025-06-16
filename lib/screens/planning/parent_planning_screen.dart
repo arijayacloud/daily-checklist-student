@@ -26,6 +26,8 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   DateTime _selectedDay = DateTime.now();
   CalendarFormat _calendarFormat = CalendarFormat.week;
   bool _isLoading = false;
+  int? _updatingActivityId; // Track which activity is being updated
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   
   // Mapping for day of week names in Indonesian
   final Map<int, String> _weekdayNames = {
@@ -99,7 +101,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
           debugPrint("ParentPlanningScreen: Tidak ditemukan anak untuk orang tua ini");
           
           // Show message
-          ScaffoldMessenger.of(context).showSnackBar(
+          _scaffoldMessengerKey.currentState?.showSnackBar(
             const SnackBar(
               content: Text('Tidak ditemukan data anak untuk akun ini'),
               behavior: SnackBarBehavior.floating,
@@ -115,6 +117,9 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         final childId = childProvider.children.first.id;
         await planningProvider.fetchPlansForParent(childId);
         
+        // Set the current child ID in the provider to ensure it's used for activity completion
+        planningProvider.setCurrentChildId(childId);
+        
         debugPrint("ParentPlanningScreen: Berhasil memuat ${planningProvider.plans.length} rencana untuk anak dengan ID $childId");
       } else {
         // For other roles like teachers, fetch all plans
@@ -125,7 +130,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       
       // Show error message if mounted
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
             content: Text('Gagal memuat data: ${e.toString()}'),
             behavior: SnackBarBehavior.floating,
@@ -144,9 +149,12 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [_buildCalendar(), Expanded(child: _buildDailySchedule())],
+    return ScaffoldMessenger(
+      key: _scaffoldMessengerKey,
+      child: Scaffold(
+        body: Column(
+          children: [_buildCalendar(), Expanded(child: _buildDailySchedule())],
+        ),
       ),
     );
   }
@@ -446,6 +454,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   ) {
     final activityDetails = activityProvider.getActivityById(activity.activityId.toString());
     final formattedTime = activity.scheduledTime ?? 'Tidak diatur';
+    final bool isUpdating = _updatingActivityId == activity.id;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -491,24 +500,49 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                   const Spacer(),
                   // Show checkbox for Home or Both activities
                   if (_canParentUpdateActivity(activityDetails))
-                    Checkbox(
+                    isUpdating 
+                      ? const SizedBox(
+                          height: 20, 
+                          width: 20, 
+                          child: CircularProgressIndicator(strokeWidth: 2)
+                        )
+                      : Checkbox(
                       value: activity.completed,
                       onChanged: (value) async {
                         if (mounted) {
+                          setState(() {
+                            _updatingActivityId = activity.id;
+                          });
+                          
                           final success = await planningProvider.markActivityAsCompleted(
                             activity.id!,
                             value ?? false,
+                            childId: planningProvider.currentChildId // Explicitly pass the current child ID
                           );
                           
-                          if (success && mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(value == true 
-                                  ? 'Aktivitas ditandai selesai' 
-                                  : 'Aktivitas ditandai belum selesai'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                          if (mounted) {
+                            setState(() {
+                              _updatingActivityId = null;
+                            });
+                            
+                            if (success) {
+                              _scaffoldMessengerKey.currentState?.showSnackBar(
+                                SnackBar(
+                                  content: Text(value == true 
+                                    ? 'Aktivitas ditandai selesai' 
+                                    : 'Aktivitas ditandai belum selesai'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } else {
+                              _scaffoldMessengerKey.currentState?.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Gagal mengubah status aktivitas'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         }
                       },

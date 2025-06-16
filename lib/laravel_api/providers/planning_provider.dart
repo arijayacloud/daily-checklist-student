@@ -12,6 +12,7 @@ class PlanningProvider with ChangeNotifier {
   bool _isLoading = false;
   List<Planning> _plans = [];
   bool _initialized = false;
+  String? _currentChildId; // Track current child ID for activity completion
 
   PlanningProvider(this._apiProvider, this._authProvider) {
     // Initialize with current auth state
@@ -56,6 +57,13 @@ class PlanningProvider with ChangeNotifier {
   List<Planning> get plans => _plans;
   bool get isLoading => _isLoading || _apiProvider.isLoading;
   String? get error => _error ?? _apiProvider.error;
+  String? get currentChildId => _currentChildId;
+
+  // Set current child ID for activity completion
+  void setCurrentChildId(String childId) {
+    _currentChildId = childId;
+    notifyListeners();
+  }
 
   // Fetch all plans (for teachers or parents)
   Future<void> fetchPlans() async {
@@ -93,6 +101,7 @@ class PlanningProvider with ChangeNotifier {
   Future<void> fetchPlansForParent(String childId) async {
     _isLoading = true;
     _error = null;
+    _currentChildId = childId;
     notifyListeners();
 
     try {
@@ -140,7 +149,7 @@ class PlanningProvider with ChangeNotifier {
           'activity_id': activity.activityId.toString(), // Ensure activity_id is sent as string
           'scheduled_date': activity.scheduledDate.toIso8601String().split('T')[0],
           'scheduled_time': activity.scheduledTime,
-          'reminder': activity.reminder ? 1 : 0, // Convert boolean to 1/0
+          'reminder': activity.reminder, // Send as boolean
         };
       }).toList();
 
@@ -150,10 +159,10 @@ class PlanningProvider with ChangeNotifier {
         'activities': activitiesData, // Add activities to the request
       };
       
-      // Handle child selection
+      // Handle child selection - prioritize childIds if provided
       if (childIds != null && childIds.isNotEmpty) {
         planData['child_ids'] = childIds;
-      } else if (childId != null) {
+      } else if (childId != null && childId.isNotEmpty) {
         planData['child_id'] = childId;
       }
 
@@ -246,16 +255,27 @@ class PlanningProvider with ChangeNotifier {
     }
   }
 
-  // Mark a planned activity as completed or not completed
-  Future<bool> markActivityAsCompleted(int activityId, bool completed) async {
+  // Mark a planned activity as completed or not completed for a specific child
+  Future<bool> markActivityAsCompleted(int activityId, bool completed, {String? childId}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      // Use the provided childId or fallback to currentChildId
+      final String actualChildId = childId ?? _currentChildId ?? '';
+      
+      if (actualChildId.isEmpty) {
+        _error = 'Child ID is required';
+        return false;
+      }
+      
       final data = await _apiProvider.put(
         'planned-activities/$activityId/status',
-        {'completed': completed},
+        {
+          'completed': completed,
+          'child_id': actualChildId,
+        },
       );
       
       if (data != null) {
@@ -284,7 +304,7 @@ class PlanningProvider with ChangeNotifier {
               type: _plans[i].type,
               teacherId: _plans[i].teacherId,
               childId: _plans[i].childId,
-              childIds: _plans[i].childIds, // Ensure childIds is included
+              childIds: _plans[i].childIds,
               startDate: _plans[i].startDate,
               activities: newActivities,
             );
@@ -292,21 +312,114 @@ class PlanningProvider with ChangeNotifier {
             break;
           }
         }
-        
-        _isLoading = false; // Set loading to false before notifying
-        notifyListeners();
         return true;
       } else {
         _error = 'Failed to update activity status';
-        _isLoading = false; // Set loading to false before notifying
-        notifyListeners();
         return false;
       }
     } catch (e) {
       _error = 'Failed to update activity status: $e';
-      _isLoading = false; // Set loading to false before notifying
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Mark a planned activity as completed or not completed for all children in a plan
+  Future<bool> markActivityAsCompletedForAllChildren(int activityId, bool completed) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Find the plan containing this activity
+      int? planId;
+      List<String> childIds = [];
+      
+      // Find the activity to get plan ID and child IDs
+      for (final plan in _plans) {
+        final activityIndex = plan.activities.indexWhere((a) => a.id == activityId);
+        if (activityIndex != -1) {
+          planId = plan.id;
+          childIds = plan.childIds;
+          break;
+        }
+      }
+      
+      if (planId == null) {
+        _error = 'Activity not found';
+        return false;
+      }
+
+      // If there are no specific children, there's no need to update anything
+      if (childIds.isEmpty) {
+        _error = 'No children found for this activity';
+        return false;
+      }
+
+      // Update the completion status for each child
+      bool overallSuccess = true;
+      for (final childId in childIds) {
+        final data = await _apiProvider.put(
+          'planned-activities/$activityId/status',
+          {
+            'completed': completed,
+            'child_id': childId,
+          },
+        );
+        
+        if (data == null) {
+          overallSuccess = false;
+        }
+      }
+
+      // Update local state if at least one child was updated successfully
+      if (overallSuccess) {
+        // Update the activity status in the local data for the UI
+        for (int i = 0; i < _plans.length; i++) {
+          final activityIndex = _plans[i].activities.indexWhere((a) => a.id == activityId);
+          if (activityIndex != -1) {
+            // Create a new activity with updated status
+            final updatedActivity = PlannedActivity(
+              id: _plans[i].activities[activityIndex].id,
+              planId: _plans[i].activities[activityIndex].planId,
+              activityId: _plans[i].activities[activityIndex].activityId,
+              scheduledDate: _plans[i].activities[activityIndex].scheduledDate,
+              scheduledTime: _plans[i].activities[activityIndex].scheduledTime,
+              reminder: _plans[i].activities[activityIndex].reminder,
+              completed: completed,
+            );
+            
+            // Create a new list of activities
+            final newActivities = List<PlannedActivity>.from(_plans[i].activities);
+            newActivities[activityIndex] = updatedActivity;
+            
+            // Create a new plan with updated activities
+            _plans[i] = Planning(
+              id: _plans[i].id,
+              type: _plans[i].type,
+              teacherId: _plans[i].teacherId,
+              childId: _plans[i].childId,
+              childIds: _plans[i].childIds,
+              startDate: _plans[i].startDate,
+              activities: newActivities,
+            );
+            
+            break;
+          }
+        }
+        return true;
+      } else {
+        _error = 'Failed to update activity status for some children';
+        return false;
+      }
+    } catch (e) {
+      _error = 'Failed to update activity status for all children: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -317,7 +430,7 @@ class PlanningProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await _apiProvider.delete('plans/$planId'); // Fixed path - removed leading slash
+      final data = await _apiProvider.delete('plans/$planId');
       
       if (data != null) {
         _plans.removeWhere((plan) => plan.id == planId);

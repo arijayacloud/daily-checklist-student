@@ -21,9 +21,12 @@ class Planning {
   factory Planning.fromJson(Map<String, dynamic> json) {
     List<String> childIds = [];
     if (json['children'] != null) {
-      childIds = List<String>.from(
-        (json['children'] as List).map((child) => child['id'].toString())
-      );
+      // Extract unique child IDs from the related plan_child records
+      final Set<String> uniqueIds = {};
+      for (var child in json['children'] as List) {
+        uniqueIds.add(child['id'].toString());
+      }
+      childIds = uniqueIds.toList();
     }
     
     return Planning(
@@ -60,7 +63,7 @@ class PlannedActivity {
   final DateTime scheduledDate;
   final String? scheduledTime;
   final bool reminder;
-  final bool completed;
+  final bool completed; // Now represents completion status for a specific child
 
   PlannedActivity({
     this.id,

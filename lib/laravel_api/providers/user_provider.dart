@@ -14,6 +14,7 @@ class UserProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   Map<String, String> _userNames = {}; // Cache untuk nama pengguna berdasarkan ID
+  Map<String, UserModel> _userCache = {};
 
   List<UserModel> get teachers => _teachers;
   List<UserModel> get parents => _parents;
@@ -24,46 +25,32 @@ class UserProvider with ChangeNotifier {
 
   // Mengambil data guru dari API
   Future<void> fetchTeachers() async {
-    if (_isLoading) return; // Prevent multiple simultaneous calls
+    if (_teachers.isNotEmpty) {
+      // If we already have teachers, don't fetch again
+      return;
+    }
     
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      _isLoading = true;
-      // Notify listeners outside of the build phase
-      Future.microtask(() => notifyListeners());
-
-      final data = await _apiProvider.get('users?role=teacher');
-      
-      if (data != null) {
-        // Handle both list and map response formats
-        List<dynamic> usersList;
-        if (data is Map && data.containsKey('data')) {
-          usersList = data['data'] as List;
-        } else if (data is List) {
-          usersList = data;
-        } else {
-          _error = 'Unexpected data format from API';
-          _teachers = [];
-          _isLoading = false;
-          notifyListeners();
-          return;
-        }
+      final response = await _apiProvider.get('users/teachers');
+      if (response != null) {
+        _teachers = (response as List)
+            .map((teacherJson) => UserModel.fromJson(teacherJson))
+            .toList();
         
-        _teachers = usersList.map((item) => UserModel.fromJson(item)).toList();
-
-        // Simpan nama guru ke cache
+        // Cache teachers by ID for quick access
         for (var teacher in _teachers) {
+          _userCache[teacher.id] = teacher;
           _userNames[teacher.id] = teacher.name;
         }
-      } else {
-        _teachers = [];
       }
-
-      _isLoading = false;
-      notifyListeners();
     } catch (e) {
-      debugPrint('Error fetching teachers: $e');
+      _error = e.toString();
+    } finally {
       _isLoading = false;
-      _error = 'Failed to load teachers. Please try again.';
       notifyListeners();
     }
   }
@@ -121,52 +108,53 @@ class UserProvider with ChangeNotifier {
   }
 
   // Mengambil data pengguna berdasarkan ID
-  Future<UserModel?> getUserById(String userId) async {
+  Future<UserModel?> getUserById(String id) async {
+    // Check cache first
+    if (_userCache.containsKey(id)) {
+      return _userCache[id];
+    }
+    
     try {
-      final data = await _apiProvider.get('users/$userId');
-      
-      if (data != null) {
-        final user = UserModel.fromJson(data);
-        
-        // Simpan nama ke cache
-        _userNames[userId] = user.name;
-        
+      final response = await _apiProvider.get('users/$id');
+      if (response != null) {
+        final user = UserModel.fromJson(response);
+        _userCache[id] = user; // Add to cache
+        notifyListeners();
         return user;
       }
-      
-      return null;
     } catch (e) {
-      debugPrint('Error fetching user by id: $e');
-      return null;
+      debugPrint('Error fetching user $id: $e');
     }
+    
+    return null;
   }
 
   // Mendapatkan nama guru berdasarkan ID
-  String? getTeacherNameById(String teacherId) {
-    // Cek apakah nama sudah ada di cache
-    if (_userNames.containsKey(teacherId)) {
-      return _userNames[teacherId];
+  String? getTeacherNameById(String? id) {
+    if (id == null || id.isEmpty) return null;
+    
+    // Check cache first
+    if (_userCache.containsKey(id)) {
+      return _userCache[id]!.name;
     }
-
-    // Cari di list guru
+    
+    // Check teachers list
     final teacher = _teachers.firstWhere(
-      (teacher) => teacher.id == teacherId,
-      orElse: () => UserModel(id: '', email: '', name: '', role: 'teacher'),
+      (t) => t.id == id,
+      orElse: () => UserModel(
+        id: '', 
+        name: '', 
+        email: '', 
+        role: '',
+      ),
     );
-
+    
     if (teacher.id.isNotEmpty) {
-      _userNames[teacherId] = teacher.name;
       return teacher.name;
     }
-
-    // Jika tidak ditemukan, ambil data dari API dan simpan ke cache
-    getUserById(teacherId).then((user) {
-      if (user != null) {
-        _userNames[teacherId] = user.name;
-        notifyListeners();
-      }
-    });
-
+    
+    // If not found, fetch it (but return null for now)
+    getUserById(id); // Don't await - will update cache in background
     return null;
   }
 
