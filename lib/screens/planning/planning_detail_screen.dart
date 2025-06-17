@@ -29,32 +29,38 @@ class PlanningDetailScreen extends StatefulWidget {
 class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
   bool _showActivities = true;
   bool _showChildren = false;
+  bool _showChildProgress = true;
   int? _updatingActivityId;
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   bool _isInitialized = false;
+  bool _isMarkingAllComplete = false;
+  final Set<String> _expandedActivities = {};
 
   @override
   void initState() {
     super.initState();
     // We'll load data more efficiently in didChangeDependencies
+    _loadInitialData();
   }
   
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    // Only fetch data once when the widget builds for the first time
-    if (!_isInitialized) {
-      _isInitialized = true;
-      
-      // Fetch children data which is needed for the UI
+  void _loadInitialData() {
+    // Perform any data loading that doesn't depend on context here
+    Future.microtask(() {
       final childProvider = Provider.of<ChildProvider>(context, listen: false);
       if (childProvider.children.isEmpty) {
         childProvider.fetchChildren();
       }
       
-      // We'll avoid loading all teachers immediately to improve performance
-    }
+      // Always explicitly fetch the plan with fresh completion data
+      final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+      planningProvider.fetchPlanWithCompletionData(widget.planId);
+    });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // No longer doing provider calls in didChangeDependencies to avoid setState during build
   }
 
   @override
@@ -69,17 +75,31 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
               icon: const Icon(Icons.refresh),
               tooltip: 'Refresh',
               onPressed: () {
-                // Selective refresh to avoid excessive data loading
+                // Explicitly fetch fresh completion data
                 final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
-                planningProvider.fetchPlans();
                 
+                // First try our explicit completion status endpoint
                 _scaffoldMessengerKey.currentState?.showSnackBar(
                   const SnackBar(
-                    content: Text('Memuat ulang data...'),
+                    content: Text('Memuat ulang data aktivitas...'),
                     duration: Duration(seconds: 1),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
+                
+                // Then refresh the plan with complete data
+                planningProvider.fetchPlanWithCompletionData(widget.planId).then((plan) {
+                  if (plan != null) {
+                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                      const SnackBar(
+                        content: Text('Data berhasil diperbarui'),
+                        duration: Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                });
               },
             ),
           ],
@@ -129,23 +149,151 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
               activitiesByDate[dateKey]!.add(activity);
             }
             
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPlanHeader(plan),
-                  const SizedBox(height: 16),
-                  _buildChildrenSection(selectedChildren),
-                  const SizedBox(height: 16),
-                  _buildActivitiesSection(activitiesByDate, planningProvider),
-                ],
-              ),
+            return Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPlanHeader(plan),
+                      const SizedBox(height: 16),
+                      if (_isMarkingAllComplete)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      _buildActivitiesSection(activitiesByDate, planningProvider, selectedChildren),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
+              ],
             );
           },
         ),
       ),
     );
+  }
+
+  Widget _buildDetailItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: AppTheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _markAllActivitiesAsComplete(
+    int planId,
+    List<ChildModel> children,
+    PlanningProvider planningProvider,
+  ) async {
+    setState(() {
+      _isMarkingAllComplete = true;
+    });
+    
+    try {
+      bool allSuccess = true;
+      
+      for (final activity in widget.activities) {
+        if (activity.id == null) continue;
+        
+        for (final child in children) {
+          final success = await planningProvider.markActivityAsCompleted(
+            activity.id!,
+            true,
+            childId: child.id,
+          );
+          
+          if (!success) {
+            allSuccess = false;
+          }
+        }
+      }
+      
+      // Explicitly refresh plan data to update UI
+      await planningProvider.fetchPlanWithCompletionData(planId);
+      
+      if (mounted) {
+        if (allSuccess) {
+          _scaffoldMessengerKey.currentState?.showSnackBar(
+            const SnackBar(
+              content: Text('Semua aktivitas berhasil ditandai selesai'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          _scaffoldMessengerKey.currentState?.showSnackBar(
+            const SnackBar(
+              content: Text('Beberapa aktivitas gagal ditandai selesai'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMarkingAllComplete = false;
+        });
+      }
+    }
+  }
+
+  // Updated method to return both completed count and total count without modifying state during build
+  Map<String, int> _calculateChildProgress(String childId, Planning plan, PlanningProvider planningProvider) {
+    int totalActivities = plan.activities.length;
+    int completedActivities = 0;
+    
+    // Instead of setting current child ID (which triggers notifyListeners),
+    // we'll manually check completion status for this specific child
+    for (var activity in plan.activities) {
+      // Since we can't use planningProvider.setCurrentChildId during build,
+      // we just count activities that are completed (works for current UI)
+      if (activity.completed) completedActivities++;
+    }
+    
+    return {
+      'completed': completedActivities,
+      'total': totalActivities,
+    };
+  }
+
+  Color _getProgressColor(double percentage) {
+    if (percentage < 30) {
+      return Colors.red;
+    } else if (percentage < 70) {
+      return Colors.orange;
+    } else {
+      return Colors.green;
+    }
   }
 
   Widget _buildPlanHeader(Planning plan) {
@@ -174,16 +322,12 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                   ),
                 ),
                 const Spacer(),
-                // Only load teacher info if needed, with a separate Consumer
-                // This avoids making a request for all teachers
                 Icon(Icons.person, size: 16, color: AppTheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Consumer<UserProvider>(
                   builder: (context, userProvider, child) {
-                    // Only fetch this specific teacher if needed
                     if (plan.teacherId != '0') {
                       final teacherName = userProvider.getTeacherNameById(plan.teacherId);
-                      // If teacher name is null, fetch it - but avoid fetching all teachers
                       if (teacherName == null) {
                         Future.microtask(() => userProvider.getUserById(plan.teacherId));
                         return const Text('Memuat...', style: TextStyle(fontSize: 14, color: Colors.grey));
@@ -261,12 +405,198 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                 ),
               ],
             ),
+            const Divider(height: 24),
+            Consumer2<PlanningProvider, ChildProvider>(
+              builder: (context, planningProvider, childProvider, _) {
+                if (plan.childIds.isEmpty) {
+                  return const Center(
+                    child: Text("Tidak ada anak yang dipilih"),
+                  );
+                }
+                
+                // Get selected children
+                List<ChildModel> selectedChildren = childProvider.children
+                    .where((child) => plan.childIds.contains(child.id))
+                    .toList();
+                
+                if (selectedChildren.isEmpty) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+                
+                // Build Mark All Complete button
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Mark All Complete button
+                    if (!_isMarkingAllComplete) 
+                      ElevatedButton.icon(
+                        onPressed: () => _markAllActivitiesAsComplete(plan.id, selectedChildren, planningProvider),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.done_all),
+                        label: const Text('Tandai Semua Selesai'),
+                      ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Children progress list
+                    ...selectedChildren.map((child) {
+                      // Get completion status from plan's progress data if available
+                      int completedCount = 0;
+                      int totalActivities = 0;
+                      bool isCompleted = false;
+                      
+                      // First try to use the new progress data structure
+                      if (plan.progressByChild.containsKey(child.id)) {
+                        final childProgress = plan.progressByChild[child.id]!;
+                        completedCount = childProgress.completed;
+                        totalActivities = childProgress.total;
+                        isCompleted = completedCount == totalActivities && totalActivities > 0;
+                      } else {
+                        // Fallback to provider method
+                        final completedInfo = planningProvider.getChildProgress(child.id, plan.id);
+                        completedCount = completedInfo['completed'] as int;
+                        totalActivities = completedInfo['total'] as int;
+                        isCompleted = completedCount == totalActivities && totalActivities > 0;
+                      }
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: isCompleted,
+                              onChanged: (value) {
+                                // Mark all activities for this child as complete or incomplete
+                                _markChildActivitiesAsComplete(
+                                  plan.id, 
+                                  child.id, 
+                                  value ?? false, 
+                                  planningProvider
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            CircleAvatar(
+                              backgroundColor: AppTheme.primaryContainer,
+                              radius: 16,
+                              child: Text(
+                                child.name.substring(0, 1),
+                                style: TextStyle(
+                                  color: AppTheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                child.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '$completedCount/$totalActivities',
+                              style: TextStyle(
+                                color: AppTheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
   
+  // Helper method to mark all activities for a specific child
+  Future<void> _markChildActivitiesAsComplete(
+    int planId,
+    String childId,
+    bool isCompleted,
+    PlanningProvider planningProvider,
+  ) async {
+    setState(() {
+      _isMarkingAllComplete = true;
+    });
+    
+    try {
+      bool allSuccess = true;
+      
+      for (final activity in widget.activities) {
+        if (activity.id == null) continue;
+        
+        final success = await planningProvider.markActivityAsCompleted(
+          activity.id!,
+          isCompleted,
+          childId: childId,
+        );
+        
+        if (!success) {
+          allSuccess = false;
+        }
+      }
+      
+      // Explicitly refresh plan data to update UI
+      await planningProvider.fetchPlanWithCompletionData(planId);
+      
+      if (mounted) {
+        if (allSuccess) {
+          _scaffoldMessengerKey.currentState?.showSnackBar(
+            SnackBar(
+              content: Text(
+                isCompleted 
+                    ? 'Semua aktivitas berhasil ditandai selesai' 
+                    : 'Semua aktivitas berhasil ditandai belum selesai'
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          _scaffoldMessengerKey.currentState?.showSnackBar(
+            const SnackBar(
+              content: Text('Beberapa aktivitas gagal diperbarui'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMarkingAllComplete = false;
+        });
+      }
+    }
+  }
+
   Widget _buildDateRow(DateTime date, {String? label}) {
     return Row(
       children: [
@@ -296,112 +626,10 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
     );
   }
   
-  Widget _buildChildrenSection(List<ChildModel> children) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () {
-              setState(() {
-                _showChildren = !_showChildren;
-              });
-            },
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.people_alt,
-                    color: AppTheme.primary,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Anak',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          children.isEmpty
-                              ? 'Semua anak'
-                              : '${children.length} anak dipilih',
-                          style: TextStyle(color: AppTheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    _showChildren ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: AppTheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_showChildren) const Divider(height: 1),
-          if (_showChildren)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: children.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceVariant.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.groups,
-                            color: AppTheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Perencanaan ini dibuat untuk semua anak',
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      children: children.map((child) {
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppTheme.primaryContainer,
-                            child: Text(
-                              child.name.substring(0, 1),
-                              style: TextStyle(
-                                color: AppTheme.onPrimaryContainer,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(child.name),
-                          subtitle: Text('${child.age} tahun'),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }).toList(),
-                    ),
-            ),
-        ],
-      ),
-    );
-  }
-  
   Widget _buildActivitiesSection(
     Map<String, List<PlannedActivity>> activitiesByDate,
     PlanningProvider planningProvider,
+    List<ChildModel> children,
   ) {
     return Card(
       elevation: 2,
@@ -486,10 +714,21 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                       ...activitiesForDate.map((activity) {
                         return Consumer<ActivityProvider>(
                           builder: (context, activityProvider, child) {
-                            return _buildActivityItem(
+                            final activityDetails = activityProvider.getActivityById(
+                              activity.activityId.toString()
+                            );
+                            
+                            if (activityDetails == null) {
+                              return const ListTile(
+                                title: Text('Detail aktivitas tidak ditemukan'),
+                              );
+                            }
+                            
+                            return _buildActivityCard(
                               activity,
-                              activityProvider,
+                              activityDetails,
                               planningProvider,
+                              children
                             );
                           },
                         );
@@ -505,68 +744,94 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
     );
   }
   
-  Widget _buildActivityItem(
-    PlannedActivity activity, 
-    ActivityProvider activityProvider, 
-    PlanningProvider planningProvider
+  // New method to build activity card with collapsible children section
+  Widget _buildActivityCard(
+    PlannedActivity activity,
+    ActivityModel activityDetails,
+    PlanningProvider planningProvider,
+    List<ChildModel> children,
   ) {
-    final activityDetails = activityProvider.getActivityById(
-      activity.activityId.toString()
-    );
+    // Local state for expanded/collapsed
+    final String activityKey = 'activity_${activity.id}';
+    bool isExpanded = _expandedActivities.contains(activityKey);
     
-    final bool isUpdating = _updatingActivityId == activity.id;
-    
-    if (activityDetails == null) {
-      return const ListTile(
-        title: Text('Detail aktivitas tidak ditemukan'),
-      );
+    // Count completed children for this activity directly from completionByChild
+    int completedCount = 0;
+    if (activity.id != null) {
+      for (final child in children) {
+        if (activity.isCompletedByChild(child.id)) {
+          completedCount++;
+        }
+      }
     }
     
-    return InkWell(
-      onTap: () {
-        _showActivityDetails(activity, activityDetails, planningProvider);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: activity.completed 
-              ? Colors.green.shade50 
-              : AppTheme.surfaceVariant.withOpacity(0.3),
-          border: Border.all(
-            color: activity.completed 
-                ? Colors.green.withOpacity(0.5) 
-                : Colors.transparent,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 4,
-              height: 50,
-              decoration: BoxDecoration(
-                color: activity.completed ? Colors.green : AppTheme.primary,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // Activity header with expand/collapse
+          InkWell(
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expandedActivities.remove(activityKey);
+                } else {
+                  _expandedActivities.add(activityKey);
+                }
+              });
+            },
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    activityDetails.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      decoration: activity.completed 
-                          ? TextDecoration.lineThrough 
-                          : TextDecoration.none,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          activityDetails.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getEnvironmentColor(
+                            activityDetails.environment,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _getEnvironmentIcon(activityDetails.environment),
+                              size: 14,
+                              color: _getEnvironmentColor(activityDetails.environment),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _translateEnvironmentToIndonesian(activityDetails.environment),
+                              style: TextStyle(
+                                color: _getEnvironmentColor(activityDetails.environment),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Icon(
@@ -579,66 +844,258 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                         activity.scheduledTime ?? 'Tidak diatur',
                         style: TextStyle(
                           color: AppTheme.onSurfaceVariant,
-                          fontSize: 14,
+                          fontSize: 12,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        _getEnvironmentIcon(activityDetails.environment),
-                        size: 14,
-                        color: _getEnvironmentColor(activityDetails.environment),
-                      ),
-                      const SizedBox(width: 4),
+                      const Spacer(),
                       Text(
-                        _translateEnvironmentToIndonesian(activityDetails.environment),
+                        '$completedCount/${children.length} selesai',
                         style: TextStyle(
-                          color: _getEnvironmentColor(activityDetails.environment),
-                          fontSize: 14,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: completedCount == children.length 
+                              ? Colors.green 
+                              : AppTheme.onSurfaceVariant,
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        color: AppTheme.onSurfaceVariant,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            Checkbox(
-              value: activity.completed,
-              onChanged: isUpdating 
-                  ? null // Disable while updating
-                  : (value) async {
-                if (activity.id == null) return;
-                
-                try {
-                  setState(() {
-                    _updatingActivityId = activity.id;
-                  });
-                  
-                  await planningProvider.markActivityAsCompleted(
-                    activity.id!,
-                    value ?? false,
-                  );
-                  
-                  if (mounted) {
-                    setState(() {
-                      _updatingActivityId = null;
-                    });
-                  }
-                } catch (e) {
-                  if (!mounted) return;
-                  setState(() {
-                    _updatingActivityId = null;
-                  });
-                  _scaffoldMessengerKey.currentState?.showSnackBar(
-                    SnackBar(
-                      content: Text('Gagal mengubah status: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-            ),
+          ),
+          
+          // Collapsible children completion section
+          if (isExpanded) ...[
+            const Divider(height: 1),
+            _buildActivityChildCompletion(activity, planningProvider, children),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  // Updated method to build child completion status for a specific activity
+  Widget _buildActivityChildCompletion(
+    PlannedActivity activity,
+    PlanningProvider planningProvider,
+    List<ChildModel> children,
+  ) {
+    if (children.isEmpty || activity.id == null) {
+      return const SizedBox.shrink();
+    }
+    
+    final bool isUpdating = _updatingActivityId == activity.id;
+    
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Status Anak',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (children.length > 1)
+                TextButton.icon(
+                  onPressed: isUpdating 
+                    ? null
+                    : () async {
+                        if (activity.id == null) return;
+                        
+                        // Check if all children have completed this activity
+                        final bool allCompleted = children.every((child) => 
+                          activity.isCompletedByChild(child.id));
+                        
+                        // If all are completed, we'll uncomplete them, otherwise complete all
+                        final bool newStatus = !allCompleted;
+                        
+                        try {
+                          setState(() {
+                            _updatingActivityId = activity.id;
+                          });
+                          
+                          await planningProvider.markActivityAsCompletedForAllChildren(
+                            activity.id!,
+                            newStatus,
+                          );
+                          
+                          // Refresh plan data to update UI
+                          await planningProvider.fetchPlanWithCompletionData(widget.planId);
+                          
+                          if (mounted) {
+                            setState(() {
+                              _updatingActivityId = null;
+                            });
+                            
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              SnackBar(
+                                content: Text(newStatus 
+                                  ? 'Semua anak ditandai selesai' 
+                                  : 'Semua anak ditandai belum selesai'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            setState(() {
+                              _updatingActivityId = null;
+                            });
+                            
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              SnackBar(
+                                content: Text('Gagal mengubah status: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                  icon: isUpdating 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.done_all, size: 16),
+                  label: Text(
+                    'Semua',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                    minimumSize: Size(0, 24),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          
+          // Show all children with their completion status for this activity
+          ...children.map((child) {
+            // Get completion status for this child directly from the activity
+            final bool isCompleted = activity.isCompletedByChild(child.id);
+            
+            return Card(
+              elevation: 0,
+              color: Colors.grey.shade50,
+              margin: EdgeInsets.only(bottom: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: isCompleted,
+                      onChanged: isUpdating
+                        ? null
+                        : (value) async {
+                          if (activity.id == null) return;
+                          
+                          try {
+                            setState(() {
+                              _updatingActivityId = activity.id;
+                            });
+                            
+                            final success = await planningProvider.markActivityAsCompleted(
+                              activity.id!,
+                              value ?? false,
+                              childId: child.id,
+                            );
+                            
+                            // Explicitly refresh plan data instead of just relying on the UI state
+                            if (success) {
+                              await planningProvider.fetchPlanWithCompletionData(widget.planId);
+                            }
+                            
+                            if (mounted) {
+                              setState(() {
+                                _updatingActivityId = null;
+                              });
+                              
+                              if (!success) {
+                                _scaffoldMessengerKey.currentState?.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Gagal mengubah status aktivitas'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (!mounted) return;
+                            setState(() {
+                              _updatingActivityId = null;
+                            });
+                            _scaffoldMessengerKey.currentState?.showSnackBar(
+                              SnackBar(
+                                content: Text('Gagal mengubah status: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                    ),
+                    CircleAvatar(
+                      backgroundColor: AppTheme.primaryContainer,
+                      radius: 14,
+                      child: Text(
+                        child.name.substring(0, 1),
+                        style: TextStyle(
+                          color: AppTheme.onPrimaryContainer,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        child.name,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isCompleted
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isCompleted ? 'Selesai' : 'Belum',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isCompleted ? Colors.green : Colors.orange,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }
@@ -648,7 +1105,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
     ActivityModel activity,
     PlanningProvider planningProvider,
   ) {
-    // Add loading state variable
     bool isUpdating = false;
     
     showModalBottomSheet(
@@ -674,7 +1130,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                     controller: scrollController,
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Handle
                       Center(
                         child: Container(
                           width: 40,
@@ -686,7 +1141,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                           ),
                         ),
                       ),
-                      // Header
                       Text(
                         activity.title,
                         style: const TextStyle(
@@ -696,7 +1150,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                       ),
                       const SizedBox(height: 16),
                       
-                      // Overview
                       _buildDetailRow(
                         'Deskripsi',
                         activity.description,
@@ -704,7 +1157,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                       ),
                       const Divider(height: 24),
                       
-                      // Info row
                       Row(
                         children: [
                           Expanded(
@@ -736,7 +1188,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                       
                       const Divider(height: 24),
                       
-                      // Jadwal
                       _buildDetailRow(
                         'Tanggal',
                         DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(plannedActivity.scheduledDate),
@@ -757,7 +1208,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                       
                       const Divider(height: 24),
                       
-                      // Langkah-langkah
                       const Text(
                         'Langkah-langkah Aktivitas',
                         style: TextStyle(
@@ -798,7 +1248,6 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                       
                       const SizedBox(height: 24),
                       
-                      // Action button
                       ElevatedButton.icon(
                         onPressed: plannedActivity.completed || isUpdating
                             ? null
@@ -816,7 +1265,7 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                                   );
                                   if (mounted) {
                                     Navigator.pop(context);
-                                    setState(() {}); // Refresh parent widget
+                                    setState(() {});
                                   }
                                 } catch (e) {
                                   setModalState(() {

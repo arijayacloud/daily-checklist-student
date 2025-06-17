@@ -270,7 +270,7 @@ class PlanningProvider with ChangeNotifier {
         return false;
       }
       
-      final data = await _apiProvider.put(
+      final response = await _apiProvider.put(
         'planned-activities/$activityId/status',
         {
           'completed': completed,
@@ -278,40 +278,92 @@ class PlanningProvider with ChangeNotifier {
         },
       );
       
-      if (data != null) {
-        // Update the activity status in the local data
-        for (int i = 0; i < _plans.length; i++) {
-          final activityIndex = _plans[i].activities.indexWhere((a) => a.id == activityId);
-          if (activityIndex != -1) {
-            // Create a new activity with updated status
-            final updatedActivity = PlannedActivity(
-              id: _plans[i].activities[activityIndex].id,
-              planId: _plans[i].activities[activityIndex].planId,
-              activityId: _plans[i].activities[activityIndex].activityId,
-              scheduledDate: _plans[i].activities[activityIndex].scheduledDate,
-              scheduledTime: _plans[i].activities[activityIndex].scheduledTime,
-              reminder: _plans[i].activities[activityIndex].reminder,
-              completed: completed,
-            );
-            
-            // Create a new list of activities
-            final newActivities = List<PlannedActivity>.from(_plans[i].activities);
-            newActivities[activityIndex] = updatedActivity;
-            
-            // Create a new plan with updated activities
-            _plans[i] = Planning(
-              id: _plans[i].id,
-              type: _plans[i].type,
-              teacherId: _plans[i].teacherId,
-              childId: _plans[i].childId,
-              childIds: _plans[i].childIds,
-              startDate: _plans[i].startDate,
-              activities: newActivities,
-            );
-            
-            break;
+      if (response != null && response is Map<String, dynamic>) {
+        // Use enhanced response with all_child_statuses and plan_progress data
+        if (response.containsKey('data')) {
+          final data = response['data'];
+          
+          // Find the activity in our local data
+          for (int i = 0; i < _plans.length; i++) {
+            final activityIndex = _plans[i].activities.indexWhere((a) => a.id == activityId);
+            if (activityIndex != -1) {
+              final plan = _plans[i];
+              final activity = plan.activities[activityIndex];
+              
+              // Create a new activity with updated completion data
+              Map<String, bool> completionByChild = Map.from(activity.completionByChild);
+              
+              // Update specific child completion status
+              completionByChild[actualChildId] = completed;
+              
+              // Update from all_child_statuses if available
+              if (data.containsKey('all_child_statuses') && data['all_child_statuses'] is Map) {
+                final Map<String, dynamic> rawStatuses = Map<String, dynamic>.from(data['all_child_statuses']);
+                
+                rawStatuses.forEach((childId, status) {
+                  completionByChild[childId] = status == true || status == 1;
+                });
+              }
+              
+              // Create a new activity with updated data
+              final updatedActivity = PlannedActivity(
+                id: activity.id,
+                planId: activity.planId,
+                activityId: activity.activityId,
+                scheduledDate: activity.scheduledDate,
+                scheduledTime: activity.scheduledTime,
+                reminder: activity.reminder,
+                // Use is_completed if available, otherwise infer from completionByChild
+                completed: data.containsKey('is_completed') 
+                    ? data['is_completed'] == true || data['is_completed'] == 1
+                    : completionByChild.values.any((status) => status),
+                completionByChild: completionByChild,
+              );
+              
+              // Update the local activities list
+              final newActivities = List<PlannedActivity>.from(_plans[i].activities);
+              newActivities[activityIndex] = updatedActivity;
+              
+              // Update progress data if available
+              Map<String, ChildProgress> progressByChild = Map.from(plan.progressByChild);
+              ProgressData overallProgress = plan.overallProgress;
+              
+              if (data.containsKey('plan_progress')) {
+                // Update child-specific progress
+                if (data['plan_progress'].containsKey('by_child')) {
+                  final Map<String, dynamic> childProgress = Map<String, dynamic>.from(data['plan_progress']['by_child']);
+                  childProgress.forEach((childId, progressData) {
+                    progressByChild[childId] = ChildProgress.fromJson(progressData);
+                  });
+                }
+                
+                // Update overall progress
+                if (data['plan_progress'].containsKey('overall')) {
+                  overallProgress = ProgressData.fromJson(data['plan_progress']['overall']);
+                }
+              }
+              
+              // Create a new plan with updated data
+              _plans[i] = Planning(
+                id: plan.id,
+                type: plan.type,
+                teacherId: plan.teacherId,
+                childId: plan.childId,
+                childIds: plan.childIds,
+                startDate: plan.startDate,
+                activities: newActivities,
+                progressByChild: progressByChild,
+                overallProgress: overallProgress,
+              );
+              
+              break;
+            }
           }
+        } else {
+          // If response doesn't have expected format, refresh plans
+          await fetchPlans();
         }
+        
         return true;
       } else {
         _error = 'Failed to update activity status';
@@ -376,39 +428,8 @@ class PlanningProvider with ChangeNotifier {
 
       // Update local state if at least one child was updated successfully
       if (overallSuccess) {
-        // Update the activity status in the local data for the UI
-        for (int i = 0; i < _plans.length; i++) {
-          final activityIndex = _plans[i].activities.indexWhere((a) => a.id == activityId);
-          if (activityIndex != -1) {
-            // Create a new activity with updated status
-            final updatedActivity = PlannedActivity(
-              id: _plans[i].activities[activityIndex].id,
-              planId: _plans[i].activities[activityIndex].planId,
-              activityId: _plans[i].activities[activityIndex].activityId,
-              scheduledDate: _plans[i].activities[activityIndex].scheduledDate,
-              scheduledTime: _plans[i].activities[activityIndex].scheduledTime,
-              reminder: _plans[i].activities[activityIndex].reminder,
-              completed: completed,
-            );
-            
-            // Create a new list of activities
-            final newActivities = List<PlannedActivity>.from(_plans[i].activities);
-            newActivities[activityIndex] = updatedActivity;
-            
-            // Create a new plan with updated activities
-            _plans[i] = Planning(
-              id: _plans[i].id,
-              type: _plans[i].type,
-              teacherId: _plans[i].teacherId,
-              childId: _plans[i].childId,
-              childIds: _plans[i].childIds,
-              startDate: _plans[i].startDate,
-              activities: newActivities,
-            );
-            
-            break;
-          }
-        }
+        // Instead of updating local state manually, fetch fresh data
+        await fetchPlans();
         return true;
       } else {
         _error = 'Failed to update activity status for some children';
@@ -488,5 +509,241 @@ class PlanningProvider with ChangeNotifier {
       (plan) => plan.id == id, 
       orElse: () => throw Exception('Plan not found')
     );
+  }
+
+  // Get completion count for a specific child and plan
+  Map<String, int> getChildProgress(String childId, int planId) {
+    // Find the plan
+    final plan = _plans.firstWhere(
+      (p) => p.id == planId,
+      orElse: () => Planning(
+        id: 0, 
+        type: 'daily',
+        teacherId: '0',
+        startDate: DateTime.now(),
+        activities: [],
+      ),
+    );
+    
+    if (plan.id == 0) {
+      return {'completed': 0, 'total': 0};
+    }
+    
+    // Use the new progress data if available
+    if (plan.progressByChild.containsKey(childId)) {
+      final childProgress = plan.progressByChild[childId]!;
+      return {
+        'completed': childProgress.completed,
+        'total': childProgress.total,
+      };
+    }
+    
+    // Fallback to manual calculation if progress data not available
+    final int totalActivities = plan.activities.length;
+    
+    // Count completed activities specifically for this child
+    int completedCount = 0;
+    for (final activity in plan.activities) {
+      if (activity.id == null) continue;
+      
+      // Check completion directly from the activity's completionByChild map
+      if (activity.completionByChild.containsKey(childId) && 
+          activity.completionByChild[childId] == true) {
+        completedCount++;
+      }
+    }
+    
+    return {
+      'completed': completedCount,
+      'total': totalActivities,
+    };
+  }
+
+  // Get activity completion status for a specific child
+  bool getActivityCompletionStatus(int activityId, String childId) {
+    // Find the activity in the plans
+    bool isCompleted = false;
+    
+    for (final plan in _plans) {
+      final activityIndex = plan.activities.indexWhere((a) => a.id == activityId);
+      if (activityIndex != -1) {
+        // Check if this activity has completion data for this specific child
+        final activity = plan.activities[activityIndex];
+        if (activity.completionByChild.containsKey(childId)) {
+          // Use child-specific completion status
+          isCompleted = activity.completionByChild[childId]!;
+        } else {
+          // Fall back to overall completion status if no child-specific data
+          isCompleted = activity.completed;
+        }
+        break;
+      }
+    }
+    
+    return isCompleted;
+  }
+
+  // Explicitly fetch completion status for a plan (debugging purpose)
+  Future<Map<String, dynamic>?> getExplicitCompletionStatus(int planId) async {
+    try {
+      final data = await _apiProvider.get('plans/$planId/completion-status');
+      return data;
+    } catch (e) {
+      _error = 'Failed to get completion status: $e';
+      return null;
+    }
+  }
+  
+  // Explicitly fetch plan details with full completion data
+  Future<Planning?> fetchPlanWithCompletionData(int planId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    try {
+      final data = await _apiProvider.get('plans/$planId');
+      
+      if (data != null) {
+        // Process the plan with its completion data
+        final plan = Planning.fromJson(data);
+        
+        // Update the plan in our local list
+        int indexToUpdate = _plans.indexWhere((p) => p.id == planId);
+        if (indexToUpdate >= 0) {
+          _plans[indexToUpdate] = plan;
+        } else {
+          _plans.add(plan);
+        }
+        
+        notifyListeners();
+        return plan;
+      }
+      
+      return null;
+    } catch (e) {
+      _error = 'Failed to fetch plan details: $e';
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Debug method to directly check completion status from server
+  Future<Map<String, dynamic>?> debugCompletionStatus(int planId, int activityId, String childId) async {
+    try {
+      final data = await _apiProvider.get('debug/plans/$planId/activities/$activityId/children/$childId');
+      return data;
+    } catch (e) {
+      _error = 'Debug error: $e';
+      return null;
+    }
+  }
+
+  // Fetch plans specifically for a parent with specialized API endpoint
+  Future<void> fetchParentPlans(String childId) async {
+    _isLoading = true;
+    _error = null;
+    _currentChildId = childId;
+    notifyListeners();
+
+    try {
+      // Use the specialized parent endpoint
+      final data = await _apiProvider.get('parent/plans?child_id=$childId');
+      
+      if (data != null) {
+        // Check if response contains expected format with child_id and plans
+        if (data is Map && data.containsKey('plans')) {
+          final List<dynamic> plansList = data['plans'] as List;
+          _plans = plansList.map((item) => Planning.fromJson(item)).toList();
+          
+          // Store the current childId
+          _currentChildId = data['child_id']?.toString() ?? childId;
+        } else if (data is List) {
+          // Fallback to direct list (for backward compatibility)
+          _plans = data.map((item) => Planning.fromJson(item)).toList();
+        } else {
+          throw Exception('Unexpected data format from parent/plans endpoint');
+        }
+      } else {
+        _error = 'Failed to load plans for child';
+      }
+    } catch (e) {
+      _error = 'Failed to load plans for child: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Fetch detail for a specific parent's plan using specialized API endpoint
+  Future<Planning?> fetchParentPlanDetail(int planId, String? childId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Build query with optional childId
+      String endpoint = 'parent/plans/$planId';
+      if (childId != null && childId.isNotEmpty) {
+        endpoint += '?child_id=$childId';
+      }
+      
+      final data = await _apiProvider.get(endpoint);
+      
+      if (data != null) {
+        final plan = Planning.fromJson(data);
+        
+        // Update in local plans list if it exists
+        int existingIndex = _plans.indexWhere((p) => p.id == planId);
+        if (existingIndex >= 0) {
+          _plans[existingIndex] = plan;
+        }
+        
+        notifyListeners();
+        return plan;
+      } else {
+        _error = 'Failed to fetch parent plan details';
+        return null;
+      }
+    } catch (e) {
+      _error = 'Failed to fetch parent plan details: $e';
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Update an activity's status for a parent using specialized API endpoint
+  Future<bool> parentUpdateActivityStatus(int activityId, bool completed, String childId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiProvider.put(
+        'parent/activities/$activityId/status',
+        {
+          'completed': completed,
+          'child_id': childId,
+        },
+      );
+      
+      if (response != null) {
+        // If the update was successful, refresh the plans to get updated data
+        await fetchParentPlans(childId);
+        return true;
+      } else {
+        _error = 'Failed to update activity status';
+        return false;
+      }
+    } catch (e) {
+      _error = 'Failed to update activity status: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

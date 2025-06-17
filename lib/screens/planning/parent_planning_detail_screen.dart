@@ -89,13 +89,18 @@ class _ParentPlanningDetailScreenState
       // Find the plan by ID - parse as int to ensure correct comparison
       final planId = int.tryParse(widget.planId);
       if (planId == null) {
-        throw Exception('ID rencana tidak valid');
+        throw Exception('Invalid plan ID');
       }
       
-      // If we have a childId, use it to fetch plans for that child specifically
+      // If we have a childId, use parent-specific API method
       if (_selectedChildId != null) {
-        await planningProvider.fetchPlansForParent(_selectedChildId!);
+        // Store the current child ID in provider to use it for activity updates
+        planningProvider.setCurrentChildId(_selectedChildId!);
+        
+        // Use the specialized parent API endpoint
+        await planningProvider.fetchParentPlanDetail(planId, _selectedChildId);
       } else {
+        // First fetch all plans (for backward compatibility)
         await planningProvider.fetchPlans();
       }
       
@@ -117,7 +122,7 @@ class _ParentPlanningDetailScreenState
         _currentPlan = existingPlan;
         debugPrint('Found plan with ID ${existingPlan.id} in cached data');
       } else {
-        throw Exception('Rencana dengan ID $planId tidak ditemukan');
+        throw Exception('Plan with ID $planId not found');
       }
     } catch (e) {
       debugPrint('Error loading plan: $e');
@@ -532,38 +537,77 @@ class _ParentPlanningDetailScreenState
                             ) 
                           : Switch(
                         value: activity.completed,
-                        activeColor: Colors.green,
                         onChanged: (value) async {
                           if (activity.id != null) {
                             setState(() {
                               _updatingActivityId = activity.id;
                             });
                             
-                            // Check if this plan belongs to the child of current parent
-                            final success = await planningProvider.markActivityAsCompleted(
-                              activity.id!,
-                              value,
-                              childId: _selectedChildId,
-                            );
-                            
-                            if (mounted) {
-                              setState(() {
-                                _updatingActivityId = null;
-                              });
+                            try {
+                              // Make sure we have a child ID
+                              final childId = _selectedChildId ?? planningProvider.currentChildId;
+                              if (childId == null || childId.isEmpty) {
+                                throw Exception('Cannot determine child ID');
+                              }
                               
-                              if (success && mounted) {
+                              // Store a local reference to the provider to avoid context issues
+                              final provider = planningProvider;
+                              
+                              // Use the parent-specific API endpoint
+                              final success = await provider.parentUpdateActivityStatus(
+                                activity.id!,
+                                value,
+                                childId
+                              );
+                              
+                              if (mounted) {
+                                setState(() {
+                                  _updatingActivityId = null;
+                                });
+                                
+                                if (success) {
+                                  // Update local state optimistically
+                                  setState(() {
+                                    // Cannot directly set activity.completed as it may be final
+                                    // We'll rely on the refresh to update the state
+                                  });
+                                  
+                                  _scaffoldMessengerKey.currentState?.showSnackBar(
+                                    SnackBar(
+                                      content: Text(value 
+                                        ? 'Activity successfully marked as completed' 
+                                        : 'Activity marked as incomplete'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  
+                                  // Refresh the plan data if we're still mounted
+                                  if (mounted) {
+                                    // Use the stored provider reference
+                                    await provider.fetchParentPlanDetail(
+                                      int.parse(widget.planId),
+                                      childId
+                                    );
+                                  }
+                                } else {
+                                  _scaffoldMessengerKey.currentState?.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Failed to update activity status'),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setState(() {
+                                  _updatingActivityId = null;
+                                });
+                                
                                 _scaffoldMessengerKey.currentState?.showSnackBar(
                                   SnackBar(
-                                    content: Text(value 
-                                      ? 'Aktivitas berhasil ditandai selesai' 
-                                      : 'Aktivitas ditandai belum selesai'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              } else {
-                                _scaffoldMessengerKey.currentState?.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Gagal mengubah status aktivitas'),
+                                    content: Text('Error: ${e.toString()}'),
                                     behavior: SnackBarBehavior.floating,
                                     backgroundColor: Colors.red,
                                   ),
