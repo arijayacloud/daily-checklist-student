@@ -192,6 +192,17 @@ class ApiProvider with ChangeNotifier {
     } else {
       try {
         final errorData = json.decode(response.body);
+        
+        // Special handling for "No query results" message which isn't a critical error
+        if (response.statusCode == 404 && 
+            errorData.containsKey('message') && 
+            errorData['message'].toString().contains('No query results')) {
+          debugPrint('API returned no results: ${errorData['message']}');
+          // Return empty list for collection endpoints or empty map for single resource endpoints
+          notifyListeners();
+          return {};
+        }
+        
         final errorMessage = errorData['message'] ?? 'Unknown error occurred';
         _handleError(errorMessage);
       } catch (e) {

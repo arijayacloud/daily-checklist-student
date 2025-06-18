@@ -252,6 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Email field
                   CustomTextField(
+                        key: const ValueKey('email_field'),
                         controller: _emailController,
                         hintText: 'Email',
                         prefixIcon: Icons.email_outlined,
@@ -276,6 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Password field
                   CustomTextField(
+                        key: const ValueKey('password_field'),
                         controller: _passwordController,
                         hintText: 'Kata Sandi',
                         prefixIcon: Icons.lock_outline,

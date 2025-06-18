@@ -28,12 +28,20 @@ class CustomTextField extends StatefulWidget {
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
-  bool _obscureText = false;
+  late bool _obscureText;
 
   @override
   void initState() {
     super.initState();
     _obscureText = widget.obscureText;
+  }
+  
+  @override
+  void didUpdateWidget(CustomTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.obscureText != widget.obscureText) {
+      _obscureText = widget.obscureText;
+    }
   }
 
   @override

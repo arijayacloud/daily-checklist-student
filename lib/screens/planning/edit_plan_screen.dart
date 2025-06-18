@@ -577,37 +577,232 @@ class _EditPlanScreenState extends State<EditPlanScreen> {
   
   // Dialog untuk menambahkan aktivitas baru
   void _showAddActivityDialog(BuildContext context) {
+    DateTime selectedDate = _startDate;
+    String? selectedActivityId;
+    String? selectedTime;
+    bool enableReminder = false;
+    
+    // Helper function to format dates in Indonesian
+    String formatDate(DateTime date) {
+      return DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(date);
+    }
+    
+    // If weekly plan, show date selection
+    List<DateTime> availableDates = [];
+    if (_planType == 'weekly') {
+      for (int i = 0; i < 7; i++) {
+        availableDates.add(_startDate.add(Duration(days: i)));
+      }
+    } else {
+      availableDates = [_startDate];
+    }
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
         title: const Text('Tambah Aktivitas'),
-        content: const Text(
-          'Fitur tambah aktivitas akan datang segera. '
-          'Silahkan gunakan halaman Detail Rencana untuk menambah aktivitas.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PlanningDetailScreen(
-                    planId: widget.plan.id,
-                    activities: _activities.where((activity) => 
-                        !_removedActivityIds.contains(activity.id)).toList(),
-                    selectedDate: _startDate,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                
+                // Date selection for weekly plans
+                if (_planType == 'weekly') ...[
+                  const Text(
+                    'Pilih Tanggal:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<DateTime>(
+                        value: selectedDate,
+                        isExpanded: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        borderRadius: BorderRadius.circular(8),
+                        items: availableDates.map((date) {
+                          return DropdownMenuItem<DateTime>(
+                            value: date,
+                            child: Text(formatDate(date)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              selectedDate = value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                
+                // Activity selection
+                const Text(
+                  'Pilih Aktivitas:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Consumer<ActivityProvider>(
+                  builder: (context, activityProvider, _) {
+                    if (activityProvider.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    if (activityProvider.activities.isEmpty) {
+                      // If no activities loaded yet, fetch them
+                      Future.microtask(() => activityProvider.fetchActivities());
+                      return const Text('Memuat aktivitas...');
+                    }
+                    
+                    final activities = activityProvider.activities;
+                    
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedActivityId,
+                          hint: const Text('Pilih aktivitas'),
+                          isExpanded: true,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          borderRadius: BorderRadius.circular(8),
+                          items: activities.map((activity) {
+                            return DropdownMenuItem<String>(
+                              value: activity.id,
+                              child: Text(activity.title),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setDialogState(() {
+                              selectedActivityId = value;
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Time selection
+                const Text(
+                  'Waktu (Opsional):',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: ThemeData.light().copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: AppTheme.primary,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (time != null) {
+                      setDialogState(() {
+                        selectedTime = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 18,
+                          color: AppTheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          selectedTime ?? 'Pilih waktu',
+                          style: TextStyle(
+                            color: selectedTime != null ? Colors.black : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              );
-            },
-            child: const Text('Ke Halaman Detail'),
+                const SizedBox(height: 16),
+                
+                // Reminder option
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text('Aktifkan Pengingat'),
+                  value: enableReminder,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      enableReminder = value ?? false;
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
+          actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-        ],
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: selectedActivityId == null
+                  ? null
+                  : () {
+                      // Add the activity to the list
+                      setState(() {
+                        _activities.add(
+                          PlannedActivity(
+                            id: null, // Will be assigned by API when saved
+                            planId: widget.plan.id,
+                            activityId: int.parse(selectedActivityId!),
+                            scheduledDate: selectedDate,
+                            scheduledTime: selectedTime,
+                            reminder: enableReminder,
+                            completed: false,
+                          ),
+                        );
+                      });
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Aktivitas berhasil ditambahkan'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tambah'),
+            ),
+          ],
+        ),
       ),
     );
   }

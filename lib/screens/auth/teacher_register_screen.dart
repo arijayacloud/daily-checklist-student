@@ -196,6 +196,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
 
                   // Name field
                   CustomTextField(
+                        key: const ValueKey('name_field'),
                         controller: _nameController,
                         hintText: 'Nama Lengkap',
                         prefixIcon: Icons.person_outline,
@@ -216,6 +217,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
 
                   // Email field
                   CustomTextField(
+                        key: const ValueKey('email_field'),
                         controller: _emailController,
                         hintText: 'Email',
                         prefixIcon: Icons.email_outlined,
@@ -240,6 +242,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
 
                   // Password field
                   CustomTextField(
+                        key: const ValueKey('password_field'),
                         controller: _passwordController,
                         hintText: 'Kata Sandi',
                         prefixIcon: Icons.lock_outline,
@@ -264,6 +267,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
 
                   // Confirm Password field
                   CustomTextField(
+                        key: const ValueKey('confirm_password_field'),
                         controller: _confirmPasswordController,
                         hintText: 'Konfirmasi Kata Sandi',
                         prefixIcon: Icons.lock_outline,
@@ -305,6 +309,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
                     
                     // Phone field
                     CustomTextField(
+                      key: const ValueKey('phone_field'),
                       controller: _phoneController,
                       hintText: 'Nomor Telepon',
                       prefixIcon: Icons.phone_outlined,
@@ -317,6 +322,7 @@ class _TeacherRegisterScreenState extends State<TeacherRegisterScreen> {
                     
                     // Address field
                     CustomTextField(
+                      key: const ValueKey('address_field'),
                       controller: _addressController,
                       hintText: 'Alamat',
                       prefixIcon: Icons.home_outlined,

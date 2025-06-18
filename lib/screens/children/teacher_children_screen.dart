@@ -43,7 +43,7 @@ class TeacherChildrenScreen extends StatefulWidget {
 class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
-  bool _isDeleting = false;
+  Set<String> _deletingChildIds = {}; // Track which children are being deleted
   String _selectedAgeFilter = 'Semua';
   String _sortBy = 'name_asc';
 
@@ -292,7 +292,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.8,
+              childAspectRatio: 0.75,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
@@ -403,87 +403,111 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onLongPress: () {
-          _showChildOptions(context, child);
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ParentChecklistScreen(child: child),
+            ),
+          );
         },
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              LaravelChildAvatar(
-                child: child,
-                size: 90,
-              ).animate().scale(
-                curve: Curves.easeOutBack,
-                duration: Duration(milliseconds: 400 + (index * 100)),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                child.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ).animate().fadeIn(
-                curve: Curves.easeOut,
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                delay: const Duration(milliseconds: 200),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                child.dateOfBirth != null 
-                    ? child.getAgeString() 
-                    : '${child.age} tahun',
-                style: TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 14,
-                ),
-              ).animate().fadeIn(
-                curve: Curves.easeOut,
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                delay: const Duration(milliseconds: 300),
-              ),
-              const SizedBox(height: 6),
-              Row(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildActionButton(
-                    icon: Icons.visibility,
-                    label: 'Rapor',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ParentChecklistScreen(child: child),
-                        ),
-                      );
-                    },
+                  LaravelChildAvatar(
+                    child: child,
+                    size: 85,
+                  ).animate().scale(
+                    curve: Curves.easeOutBack,
+                    duration: Duration(milliseconds: 400 + (index * 100)),
                   ),
-                  const SizedBox(width: 8),
-                  _buildActionButton(
-                    icon: Icons.edit,
-                    label: 'Edit',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddChildScreen(childToEdit: child),
-                        ),
-                      );
-                    },
+                  const SizedBox(height: 10),
+                  Text(
+                    child.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ).animate().fadeIn(
+                    curve: Curves.easeOut,
+                    duration: Duration(milliseconds: 400 + (index * 100)),
+                    delay: const Duration(milliseconds: 200),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    child.dateOfBirth != null 
+                        ? child.getAgeString() 
+                        : '${child.age} tahun',
+                    style: TextStyle(
+                      color: AppTheme.onSurfaceVariant,
+                      fontSize: 14,
+                    ),
+                  ).animate().fadeIn(
+                    curve: Curves.easeOut,
+                    duration: Duration(milliseconds: 400 + (index * 100)),
+                    delay: const Duration(milliseconds: 300),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildActionButton(
+                        icon: Icons.visibility,
+                        label: 'Rapor',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ParentChecklistScreen(child: child),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _buildActionButton(
+                        icon: Icons.edit,
+                        label: 'Edit',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddChildScreen(childToEdit: child),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _buildDeleteButton(onTap: () => _confirmDeleteChild(context, child)),
+                    ],
+                  ).animate().fadeIn(
+                    curve: Curves.easeOut,
+                    duration: Duration(milliseconds: 400 + (index * 100)),
+                    delay: const Duration(milliseconds: 400),
                   ),
                 ],
-              ).animate().fadeIn(
-                curve: Curves.easeOut,
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                delay: const Duration(milliseconds: 400),
               ),
-            ],
-          ),
+            ),
+            // Loading overlay when deleting
+            if (_deletingChildIds.contains(child.id))
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -520,75 +544,30 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     );
   }
 
-  void _showChildOptions(BuildContext context, ChildModel child) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
+  Widget _buildDeleteButton({required VoidCallback onTap}) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: LaravelChildAvatar(
-                    child: child,
-                    size: 40,
-                  ),
-                ),
-                title: Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                  child.dateOfBirth != null 
-                      ? child.getAgeString() 
-                      : '${child.age} tahun'
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.checklist),
-                title: const Text('Lihat Rapor'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ParentChecklistScreen(child: child),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Edit Data Anak'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddChildScreen(childToEdit: child),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.delete, color: Colors.red[700]),
-                title: Text('Hapus Data Anak', style: TextStyle(color: Colors.red[700])),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDeleteChild(context, child);
-                },
+              const Icon(Icons.delete, size: 16, color: Colors.red),
+              const SizedBox(height: 4),
+              const Text(
+                'Hapus',
+                style: TextStyle(fontSize: 12, color: Colors.red),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -606,7 +585,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              setState(() => _isDeleting = true);
+              setState(() => _deletingChildIds.add(child.id));
               try {
                 await Provider.of<ChildProvider>(context, listen: false).deleteChild(child.id);
                 if (mounted) {
@@ -629,7 +608,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                 }
               } finally {
                 if (mounted) {
-                  setState(() => _isDeleting = false);
+                  setState(() => _deletingChildIds.remove(child.id));
                 }
               }
             },

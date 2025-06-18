@@ -7,7 +7,16 @@ import 'package:daily_checklist_student/laravel_api/models/user_model.dart';
 import 'package:daily_checklist_student/lib/theme/app_theme.dart';
 import 'package:daily_checklist_student/screens/parents/add_parent_screen.dart';
 
-enum ParentSortOption { nameAsc, nameDesc, emailAsc, emailDesc, newest, oldest }
+enum ParentSortOption { 
+  nameAsc, 
+  nameDesc, 
+  emailAsc, 
+  emailDesc, 
+  newest, 
+  oldest,
+  statusActiveFirst,
+  statusInactiveFirst
+}
 
 class ParentsScreen extends StatefulWidget {
   const ParentsScreen({super.key});
@@ -128,6 +137,20 @@ class _ParentsScreenState extends State<ParentsScreen> {
         break;
       case ParentSortOption.oldest:
         // Implementasi jika ada timestamp
+        break;
+      case ParentSortOption.statusActiveFirst:
+        filtered.sort((a, b) {
+          final aStatus = a.status ?? 'inactive';
+          final bStatus = b.status ?? 'inactive';
+          return aStatus.compareTo(bStatus);
+        });
+        break;
+      case ParentSortOption.statusInactiveFirst:
+        filtered.sort((a, b) {
+          final aStatus = a.status ?? 'inactive';
+          final bStatus = b.status ?? 'inactive';
+          return bStatus.compareTo(aStatus);
+        });
         break;
     }
 
@@ -558,6 +581,88 @@ class _ParentsScreenState extends State<ParentsScreen> {
     }
   }
 
+  // Toggle user active/inactive status
+  Future<void> _toggleUserStatus(UserModel parent) async {
+    final bool isActive = (parent.status ?? 'inactive') == 'active';
+    final String newStatus = isActive ? 'inactive' : 'active';
+    final String actionText = isActive ? 'nonaktifkan' : 'aktifkan';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${isActive ? 'Nonaktifkan' : 'Aktifkan'} Akun'),
+        content: Text(
+          'Anda yakin ingin $actionText akun ${parent.name}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              final navigatorContext = context;
+              
+              // Close dialog first
+              Navigator.pop(context);
+              
+              try {
+                setState(() {
+                  _isLoading = true;
+                });
+                
+                final apiProvider = Provider.of<ApiProvider>(navigatorContext, listen: false);
+                
+                // Update user status via API
+                final result = await apiProvider.put(
+                  'users/${parent.id}',
+                  {'status': newStatus}
+                );
+
+                if (result != null) {
+                  // Refresh parent list
+                  await _fetchParents();
+                  
+                  if (mounted) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Akun berhasil ${isActive ? 'dinonaktifkan' : 'diaktifkan'}'),
+                        backgroundColor: AppTheme.success,
+                      ),
+                    );
+                  }
+                } else {
+                  throw Exception('Failed to update user status');
+                }
+              } catch (e) {
+                if (mounted) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal mengubah status akun: $e'),
+                      backgroundColor: AppTheme.error,
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isActive ? Colors.orange : AppTheme.success,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isActive ? 'Nonaktifkan' : 'Aktifkan'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -612,6 +717,10 @@ class _ParentsScreenState extends State<ParentsScreen> {
                       _buildSortChip('Email (A-Z)', ParentSortOption.emailAsc),
                       const SizedBox(width: 8),
                       _buildSortChip('Email (Z-A)', ParentSortOption.emailDesc),
+                      const SizedBox(width: 8),
+                      _buildSortChip('Aktif Dulu', ParentSortOption.statusActiveFirst),
+                      const SizedBox(width: 8),
+                      _buildSortChip('Nonaktif Dulu', ParentSortOption.statusInactiveFirst),
                     ],
                   ),
                 ),
@@ -690,11 +799,34 @@ class _ParentsScreenState extends State<ParentsScreen> {
                                 style: const TextStyle(color: Colors.white),
                               ),
                             ),
-                            title: Text(
-                              parent.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    parent.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: (parent.status ?? 'inactive') == 'active' 
+                                        ? Colors.green.withOpacity(0.2) 
+                                        : Colors.red.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    (parent.status ?? 'inactive') == 'active' ? 'Aktif' : 'Nonaktif',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: (parent.status ?? 'inactive') == 'active' ? Colors.green : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             subtitle: Text(parent.email),
                             children: [
@@ -705,6 +837,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
                                   children: [
                                     const Divider(),
                                     const SizedBox(height: 8),
+                                    // First row of action buttons
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceEvenly,
@@ -721,6 +854,18 @@ class _ParentsScreenState extends State<ParentsScreen> {
                                           label: 'Edit',
                                           color: AppTheme.primary,
                                           onTap: () => _editParent(parent),
+                                        ),
+                                        _buildActionButton(
+                                          icon: (parent.status ?? 'inactive') == 'active' 
+                                              ? Icons.block 
+                                              : Icons.check_circle,
+                                          label: (parent.status ?? 'inactive') == 'active' 
+                                              ? 'Nonaktifkan' 
+                                              : 'Aktifkan',
+                                          color: (parent.status ?? 'inactive') == 'active' 
+                                              ? Colors.orange 
+                                              : Colors.green,
+                                          onTap: () => _toggleUserStatus(parent),
                                         ),
                                         _buildActionButton(
                                           icon: Icons.delete,

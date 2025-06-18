@@ -37,18 +37,32 @@ class UserProvider with ChangeNotifier {
     try {
       final response = await _apiProvider.get('users/teachers');
       if (response != null) {
-        _teachers = (response as List)
-            .map((teacherJson) => UserModel.fromJson(teacherJson))
-            .toList();
-        
-        // Cache teachers by ID for quick access
-        for (var teacher in _teachers) {
-          _userCache[teacher.id] = teacher;
-          _userNames[teacher.id] = teacher.name;
+        if (response is List) {
+          _teachers = response
+              .map((teacherJson) => UserModel.fromJson(teacherJson))
+              .toList();
+          
+          // Cache teachers by ID for quick access
+          for (var teacher in _teachers) {
+            _userCache[teacher.id] = teacher;
+            _userNames[teacher.id] = teacher.name;
+          }
+        } else if (response is Map && response.containsKey('message') && 
+                  response['message'].toString().contains('No query results')) {
+          // Handle "No query results for model" error gracefully
+          debugPrint('No teachers found in database - using empty list');
+          _teachers = []; // Set to empty list instead of throwing an error
+        } else {
+          debugPrint('Unexpected response format when fetching teachers: $response');
+          _teachers = []; // Default to empty list on unexpected format
         }
+      } else {
+        _teachers = []; // Default to empty list if response is null
       }
     } catch (e) {
+      debugPrint('Error fetching teachers: $e');
       _error = e.toString();
+      _teachers = []; // Ensure we have an empty list even on error
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -131,7 +145,7 @@ class UserProvider with ChangeNotifier {
 
   // Mendapatkan nama guru berdasarkan ID
   String? getTeacherNameById(String? id) {
-    if (id == null || id.isEmpty) return null;
+    if (id == null || id.isEmpty) return "Tidak ada guru";
     
     // Check cache first
     if (_userCache.containsKey(id)) {
@@ -153,9 +167,9 @@ class UserProvider with ChangeNotifier {
       return teacher.name;
     }
     
-    // If not found, fetch it (but return null for now)
+    // If not found, fetch it (but return a default name for now)
     getUserById(id); // Don't await - will update cache in background
-    return null;
+    return "Guru";
   }
 
   // Mendapatkan nama orang tua berdasarkan ID

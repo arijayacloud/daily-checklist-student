@@ -90,8 +90,13 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       
       debugPrint("ParentPlanningScreen: Memuat rencana untuk peran pengguna: ${authProvider.user!.role}");
       
-      // Ensure teacher data is loaded for displaying teacher names
-      userProvider.fetchTeachers();
+      // Try to load teacher data in the background but don't block if it fails
+      try {
+        userProvider.fetchTeachers();
+      } catch (teacherError) {
+        debugPrint("ParentPlanningScreen: Tidak dapat memuat data guru: $teacherError");
+        // Continue with the rest of the method - teacher data is not critical
+      }
       
       if (authProvider.user!.isParent) {
         // Fetch children first
@@ -117,12 +122,25 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         final childId = childProvider.children.first.id;
         
         // Use the new unified fetchPlans method with childId parameter
-        await planningProvider.fetchPlans(childId: childId);
+        // Add a timeout to prevent infinite loading
+        await planningProvider.fetchPlans(childId: childId).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint("ParentPlanningScreen: Timeout fetching plans");
+            return;
+          },
+        );
         
         debugPrint("ParentPlanningScreen: Berhasil memuat ${planningProvider.plans.length} rencana untuk anak dengan ID $childId");
       } else {
         // For other roles like teachers, fetch all plans
-        await planningProvider.fetchPlans();
+        await planningProvider.fetchPlans().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint("ParentPlanningScreen: Timeout fetching plans");
+            return;
+          },
+        );
       }
     } catch (e) {
       debugPrint("ParentPlanningScreen: Error memuat rencana - $e");
@@ -400,8 +418,9 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   Widget _buildDailySchedule() {
     return Consumer2<PlanningProvider, ActivityProvider>(
       builder: (context, planningProvider, activityProvider, child) {
-        // Show loading indicator if either provider is loading
-        if (planningProvider.isLoading || _isLoading) {
+        // Only use local loading state to avoid infinite loading from provider states
+        // Show loading indicator during initial loading only
+        if (_isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
@@ -431,7 +450,10 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         if (activityProvider.activities.isEmpty) {
           // Try to load activities if not already loading
           if (!activityProvider.isLoading) {
-            Future.microtask(() => activityProvider.fetchActivities());
+            Future.microtask(() => activityProvider.fetchActivities().timeout(
+              const Duration(seconds: 5),
+              onTimeout: () => null,
+            ));
           }
           
           // Show loading indicator or empty state
@@ -568,9 +590,9 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
+        onTap: () async {
           // Navigate to detail view
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ParentPlanningDetailScreen(
@@ -579,6 +601,18 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
               ),
             ),
           );
+          
+          // Refresh data when coming back from detail screen, but without full reload
+          // Use Future.delayed to make sure this doesn't run during build
+          if (mounted) {
+            Future.delayed(Duration.zero, () {
+              setState(() {
+                // Refresh but don't show loading indicator
+                final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+                planningProvider.fetchPlanWithCompletionData(activity.planId);
+              });
+            });
+          }
         },
         child: Container(
           decoration: BoxDecoration(

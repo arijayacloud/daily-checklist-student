@@ -60,17 +60,18 @@ class _ParentPlanningDetailScreenState
         planningProvider.setCurrentChildId(_selectedChildId!);
       }
       
-      // Immediately fetch the teachers list to populate cache
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      await userProvider.fetchTeachers();
-      
-      // If we have a plan with a teacher ID, directly fetch that specific teacher
-      if (_currentPlan != null && _currentPlan!.teacherId.isNotEmpty) {
-        final teacherName = userProvider.getTeacherNameById(_currentPlan!.teacherId);
-        if (teacherName == null) {
-          // Only fetch if not in cache
+      // Safely try to load teacher data, but don't block UI if it fails
+      try {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        await userProvider.fetchTeachers();
+        
+        // If we have a plan with a teacher ID, directly fetch that specific teacher
+        if (_currentPlan != null && _currentPlan!.teacherId.isNotEmpty) {
           await userProvider.getUserById(_currentPlan!.teacherId);
         }
+      } catch (teacherError) {
+        // Just log the error but don't block the UI rendering
+        debugPrint('Non-critical error loading teacher data: $teacherError');
       }
     } catch (e) {
       debugPrint('Error loading data: $e');
@@ -98,9 +99,21 @@ class _ParentPlanningDetailScreenState
       
       // If we have a childId, use it to fetch plans for that child specifically
       if (_selectedChildId != null) {
-        await planningProvider.fetchPlans(childId: _selectedChildId);
+        await planningProvider.fetchPlans(childId: _selectedChildId).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint("DetailScreen: Timeout fetching plans");
+            return;
+          },
+        );
       } else {
-        await planningProvider.fetchPlans();
+        await planningProvider.fetchPlans().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint("DetailScreen: Timeout fetching plans");
+            return;
+          },
+        );
       }
       
       // Try to find the plan in existing data
@@ -121,7 +134,14 @@ class _ParentPlanningDetailScreenState
         _currentPlan = existingPlan;
         debugPrint('Found plan with ID ${existingPlan.id} in cached data');
       } else {
-        throw Exception('Rencana dengan ID $planId tidak ditemukan');
+        // Try to fetch this specific plan directly
+        debugPrint('Plan not found in cached data, trying direct fetch');
+        final fetchedPlan = await planningProvider.fetchPlanWithCompletionData(planId);
+        if (fetchedPlan != null) {
+          _currentPlan = fetchedPlan;
+        } else {
+          throw Exception('Rencana dengan ID $planId tidak ditemukan');
+        }
       }
     } catch (e) {
       debugPrint('Error loading plan: $e');
@@ -170,17 +190,55 @@ class _ParentPlanningDetailScreenState
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: 'Refresh',
-              onPressed: () {
-                // Refresh all data
-                _loadData();
-                
-                _scaffoldMessengerKey.currentState?.showSnackBar(
-                  const SnackBar(
-                    content: Text('Memuat ulang data...'),
-                    duration: Duration(seconds: 1),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+              onPressed: () async {
+                final planId = int.tryParse(widget.planId);
+                if (planId != null) {
+                  // Show loading indicator
+                  _scaffoldMessengerKey.currentState?.showSnackBar(
+                    const SnackBar(
+                      content: Text('Memuat ulang data...'),
+                      duration: Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  
+                  try {
+                    // Fetch only this specific plan instead of all plans
+                    final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+                    await planningProvider.fetchPlanWithCompletionData(planId);
+                    
+                    // Update the local variable
+                    setState(() {
+                      _currentPlan = planningProvider.plans.firstWhere(
+                        (p) => p.id == planId,
+                        orElse: () => Planning(
+                          id: 0,
+                          type: 'daily',
+                          teacherId: '0',
+                          childId: null,
+                          startDate: DateTime.now(),
+                          activities: [],
+                        ),
+                      );
+                    });
+                    
+                    // Also refresh teacher data if needed
+                    _fetchTeacherData();
+                  } catch (e) {
+                    if (mounted) {
+                      _scaffoldMessengerKey.currentState?.showSnackBar(
+                        SnackBar(
+                          content: Text('Gagal memuat data: ${e.toString()}'),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  // Fallback to full reload if plan ID is invalid
+                  _loadData();
+                }
               },
             ),
           ],
@@ -268,7 +326,7 @@ class _ParentPlanningDetailScreenState
           CircleAvatar(
             backgroundColor: AppTheme.primary,
             radius: 24,
-            child: Icon(Icons.person, color: Colors.white, size: 28),
+            child: const Icon(Icons.person, color: Colors.white, size: 28),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -285,11 +343,19 @@ class _ParentPlanningDetailScreenState
                 const SizedBox(height: 4),
                 Consumer<UserProvider>(
                   builder: (context, userProvider, _) {
-                    final teacherName = _currentPlan != null 
-                        ? userProvider.getTeacherNameById(_currentPlan!.teacherId) ?? 'Memuat...'
-                        : 'Tidak Diketahui';
+                    String displayName = 'Guru';
+                    if (_currentPlan != null) {
+                      if (_currentPlan!.teacherId.isEmpty) {
+                        displayName = 'Tidak diketahui';
+                      } else {
+                        final teacherName = userProvider.getTeacherNameById(_currentPlan!.teacherId);
+                        // teacherName will now be a default string instead of null thanks to our UserProvider fix
+                        displayName = teacherName ?? 'Guru';
+                      }
+                    }
+                    
                     return Text(
-                      teacherName,
+                      displayName,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

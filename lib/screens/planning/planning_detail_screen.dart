@@ -35,6 +35,10 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
   bool _isInitialized = false;
   bool _isMarkingAllComplete = false;
   final Set<String> _expandedActivities = {};
+  // Track updates for specific children with format "activityId_childId"
+  final Set<String> _updatingChildren = {};
+  // Track optimistic UI updates for completion status with format "activityId_childId"
+  final Map<String, bool> _optimisticCompletionStatus = {};
 
   @override
   void initState() {
@@ -54,6 +58,21 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
       // Always explicitly fetch the plan with fresh completion data
       final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
       planningProvider.fetchPlanWithCompletionData(widget.planId);
+    });
+  }
+  
+  @override
+  void dispose() {
+    // Clear any optimistic updates to prevent memory leaks
+    _optimisticCompletionStatus.clear();
+    super.dispose();
+  }
+  
+  // Helper method to apply all optimistic updates after a data refresh
+  void _applyOptimisticUpdates() {
+    setState(() {
+      // No need to do anything, the rendering will use _optimisticCompletionStatus
+      // This just forces a rebuild to apply the optimistic updates
     });
   }
   
@@ -90,6 +109,9 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                 // Then refresh the plan with complete data
                 planningProvider.fetchPlanWithCompletionData(widget.planId).then((plan) {
                   if (plan != null) {
+                    // Apply any optimistic updates after refresh
+                    _applyOptimisticUpdates();
+                    
                     _scaffoldMessengerKey.currentState?.showSnackBar(
                       const SnackBar(
                         content: Text('Data berhasil diperbarui'),
@@ -208,6 +230,16 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
   ) async {
     setState(() {
       _isMarkingAllComplete = true;
+      
+      // Set optimistic updates for all children and activities
+      for (final activity in widget.activities) {
+        if (activity.id == null) continue;
+        
+        for (final child in children) {
+          final updateKey = '${activity.id}_${child.id}';
+          _optimisticCompletionStatus[updateKey] = true;
+        }
+      }
     });
     
     try {
@@ -229,11 +261,27 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
         }
       }
       
+      // Add a delay to ensure backend has processed all updates
+      await Future.delayed(const Duration(milliseconds: 800));
+      
       // Explicitly refresh plan data to update UI
       await planningProvider.fetchPlanWithCompletionData(planId);
       
+      // Apply any remaining optimistic updates after refresh
+      _applyOptimisticUpdates();
+      
       if (mounted) {
         if (allSuccess) {
+          // Clear all optimistic updates as the real data should now be correct
+          for (final activity in widget.activities) {
+            if (activity.id == null) continue;
+            
+            for (final child in children) {
+              final updateKey = '${activity.id}_${child.id}';
+              _optimisticCompletionStatus.remove(updateKey);
+            }
+          }
+          
           _scaffoldMessengerKey.currentState?.showSnackBar(
             const SnackBar(
               content: Text('Semua aktivitas berhasil ditandai selesai'),
@@ -536,6 +584,14 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
   ) async {
     setState(() {
       _isMarkingAllComplete = true;
+      
+      // Set optimistic updates for all activities
+      for (final activity in widget.activities) {
+        if (activity.id != null) {
+          final updateKey = '${activity.id}_$childId';
+          _optimisticCompletionStatus[updateKey] = isCompleted;
+        }
+      }
     });
     
     try {
@@ -555,11 +611,25 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
         }
       }
       
+      // Add a delay to ensure backend has processed all updates
+      await Future.delayed(const Duration(milliseconds: 800));
+      
       // Explicitly refresh plan data to update UI
       await planningProvider.fetchPlanWithCompletionData(planId);
       
+      // Apply any remaining optimistic updates after refresh
+      _applyOptimisticUpdates();
+      
       if (mounted) {
         if (allSuccess) {
+          // If all updates were successful, clear optimistic updates as the real data is now correct
+          for (final activity in widget.activities) {
+            if (activity.id != null) {
+              final updateKey = '${activity.id}_$childId';
+              _optimisticCompletionStatus.remove(updateKey);
+            }
+          }
+          
           _scaffoldMessengerKey.currentState?.showSnackBar(
             SnackBar(
               content: Text(
@@ -908,75 +978,86 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                 ),
               ),
               if (children.length > 1)
-                TextButton.icon(
-                  onPressed: isUpdating 
-                    ? null
-                    : () async {
-                        if (activity.id == null) return;
-                        
-                        // Check if all children have completed this activity
-                        final bool allCompleted = children.every((child) => 
-                          activity.isCompletedByChild(child.id));
-                        
-                        // If all are completed, we'll uncomplete them, otherwise complete all
-                        final bool newStatus = !allCompleted;
-                        
-                        try {
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  child: TextButton.icon(
+                    onPressed: isUpdating 
+                      ? null
+                      : () async {
+                          if (activity.id == null) return;
+                          
+                          // Check if all children have completed this activity
+                          final bool allCompleted = children.every((child) => 
+                            activity.isCompletedByChild(child.id));
+                          
+                          // If all are completed, we'll uncomplete them, otherwise complete all
+                          final bool newStatus = !allCompleted;
+                          
+                          // Immediate optimistic UI update for all children
                           setState(() {
                             _updatingActivityId = activity.id;
+                            for (final child in children) {
+                              _updatingChildren.add('${activity.id}_${child.id}');
+                            }
                           });
                           
-                          await planningProvider.markActivityAsCompletedForAllChildren(
-                            activity.id!,
-                            newStatus,
-                          );
-                          
-                          // Refresh plan data to update UI
-                          await planningProvider.fetchPlanWithCompletionData(widget.planId);
-                          
-                          if (mounted) {
-                            setState(() {
-                              _updatingActivityId = null;
-                            });
-                            
-                            _scaffoldMessengerKey.currentState?.showSnackBar(
-                              SnackBar(
-                                content: Text(newStatus 
-                                  ? 'Semua anak ditandai selesai' 
-                                  : 'Semua anak ditandai belum selesai'),
-                                backgroundColor: Colors.green,
-                              ),
+                          try {
+                            await planningProvider.markActivityAsCompletedForAllChildren(
+                              activity.id!,
+                              newStatus,
                             );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            setState(() {
-                              _updatingActivityId = null;
-                            });
                             
-                            _scaffoldMessengerKey.currentState?.showSnackBar(
-                              SnackBar(
-                                content: Text('Gagal mengubah status: $e'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                            // Refresh plan data to update UI
+                            await planningProvider.fetchPlanWithCompletionData(widget.planId);
+                            
+                            if (mounted) {
+                              _scaffoldMessengerKey.currentState?.showSnackBar(
+                                SnackBar(
+                                  content: Text(newStatus 
+                                    ? 'Semua anak ditandai selesai' 
+                                    : 'Semua anak ditandai belum selesai'),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              _scaffoldMessengerKey.currentState?.showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal mengubah status: $e'),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _updatingActivityId = null;
+                                for (final child in children) {
+                                  _updatingChildren.remove('${activity.id}_${child.id}');
+                                }
+                              });
+                            }
                           }
-                        }
-                      },
-                  icon: isUpdating 
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.done_all, size: 16),
-                  label: Text(
-                    'Semua',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                    minimumSize: Size(0, 24),
+                        },
+                    icon: isUpdating 
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.done_all, size: 16),
+                    label: Text(
+                      'Semua',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                      minimumSize: const Size(0, 24),
+                    ),
                   ),
                 ),
             ],
@@ -986,111 +1067,224 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
           // Show all children with their completion status for this activity
           ...children.map((child) {
             // Get completion status for this child directly from the activity
-            final bool isCompleted = activity.isCompletedByChild(child.id);
+            final String updateKey = '${activity.id}_${child.id}';
+            final bool isUpdatingChild = _updatingChildren.contains(updateKey);
             
-            return Card(
-              elevation: 0,
-              color: Colors.grey.shade50,
-              margin: EdgeInsets.only(bottom: 4),
-              shape: RoundedRectangleBorder(
+            // Check if we have an optimistic update for this specific activity and child
+            bool isCompleted = _optimisticCompletionStatus.containsKey(updateKey)
+                ? _optimisticCompletionStatus[updateKey]!
+                : activity.isCompletedByChild(child.id);
+            
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                color: isUpdatingChild 
+                    ? Colors.grey.shade100 
+                    : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: Colors.grey.shade200,
-                  width: 1,
+                border: Border.all(
+                  color: isCompleted 
+                      ? Colors.green.withOpacity(0.3)
+                      : Colors.grey.shade200,
+                  width: isCompleted ? 1.5 : 1,
                 ),
+                boxShadow: isUpdatingChild
+                    ? null
+                    : isCompleted
+                        ? [BoxShadow(
+                            color: Colors.green.withOpacity(0.1),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          )]
+                        : null,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: isCompleted,
-                      onChanged: isUpdating
-                        ? null
-                        : (value) async {
-                          if (activity.id == null) return;
-                          
-                          try {
-                            setState(() {
-                              _updatingActivityId = activity.id;
-                            });
-                            
-                            final success = await planningProvider.markActivityAsCompleted(
-                              activity.id!,
-                              value ?? false,
-                              childId: child.id,
-                            );
-                            
-                            // Explicitly refresh plan data instead of just relying on the UI state
-                            if (success) {
-                              await planningProvider.fetchPlanWithCompletionData(widget.planId);
-                            }
-                            
-                            if (mounted) {
-                              setState(() {
-                                _updatingActivityId = null;
-                              });
-                              
-                              if (!success) {
-                                _scaffoldMessengerKey.currentState?.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Gagal mengubah status aktivitas'),
-                                    backgroundColor: Colors.red,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: isUpdatingChild ? 0.7 : 1.0,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      child: Row(
+                        children: [
+                          AbsorbPointer(
+                            absorbing: isUpdating || isUpdatingChild,
+                            child: Checkbox(
+                              value: isCompleted,
+                              activeColor: Colors.green,
+                              onChanged: (value) async {
+                                if (activity.id == null) return;
+                                
+                                // Store the new completion value for optimistic UI update
+                                final bool newCompletionState = value ?? false;
+                                
+                                // Apply optimistic UI update - mark the item as updating
+                                // and store optimistic state
+                                setState(() {
+                                  _updatingChildren.add(updateKey);
+                                  _optimisticCompletionStatus[updateKey] = newCompletionState;
+                                });
+                                
+                                try {
+                                  // Make the actual API call in the background
+                                  final success = await planningProvider.markActivityAsCompleted(
+                                    activity.id!,
+                                    newCompletionState,
+                                    childId: child.id,
+                                  );
+                                  
+                                  // Get fresh data after the API call completes
+                                  if (success) {
+                                    // Add a delay before fetching fresh data to ensure the backend has processed
+                                    // the update and the data is consistent
+                                    await Future.delayed(const Duration(milliseconds: 500));
+                                    
+                                    // Verify the completion status is consistent with what we expect
+                                    final activityStatus = await planningProvider.debugCompletionStatus(
+                                        widget.planId, activity.id!, child.id);
+                                    
+                                    // Only update if the completion status in backend matches our expected state 
+                                    // or if we can't verify (then we'll keep the optimistic update)
+                                    final bool backendCompleted = activityStatus != null && 
+                                        activityStatus['completed'] != null &&
+                                        (activityStatus['completed'] == true || activityStatus['completed'] == 1);
+                                    
+                                    // If the backend state doesn't match our expected state, keep optimistic updates
+                                    if (activityStatus == null || backendCompleted == newCompletionState) {
+                                      // If everything is consistent, fetch the full plan data
+                                      final updatedPlan = await planningProvider.fetchPlanWithCompletionData(widget.planId);
+                                      
+                                      if (mounted) {
+                                        // Only now remove optimistic updates if the backend data is correct
+                                        setState(() {
+                                          // Only remove optimistic update if the backend data is consistent
+                                          if (updatedPlan != null) {
+                                            final currentActivity = updatedPlan.activities
+                                                .firstWhere((a) => a.id == activity.id, 
+                                                    orElse: () => PlannedActivity(
+                                                        id: activity.id,
+                                                        planId: widget.planId,
+                                                        activityId: activity.activityId,
+                                                        scheduledDate: activity.scheduledDate
+                                                    ));
+                                            
+                                            // Check if the backend has the correct state
+                                            if (currentActivity.isCompletedByChild(child.id) == newCompletionState) {
+                                              _optimisticCompletionStatus.remove(updateKey);
+                                            }
+                                          }
+                                        });
+                                      }
+                                    }
+                                  } else if (mounted) {
+                                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Gagal mengubah status aktivitas'),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    
+                                    // Revert optimistic update on failure
+                                    setState(() {
+                                      _optimisticCompletionStatus.remove(updateKey);
+                                      // Wait before refreshing data to avoid confusion
+                                      Future.delayed(const Duration(milliseconds: 300), () {
+                                        planningProvider.fetchPlanWithCompletionData(widget.planId);
+                                      });
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  _scaffoldMessengerKey.currentState?.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Gagal mengubah status: $e'),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  
+                                  // Revert optimistic update on error
+                                  if (mounted) {
+                                    setState(() {
+                                      _optimisticCompletionStatus.remove(updateKey);
+                                      // Wait before refreshing data to avoid confusion
+                                      Future.delayed(const Duration(milliseconds: 300), () {
+                                        planningProvider.fetchPlanWithCompletionData(widget.planId);
+                                      });
+                                    });
+                                  }
+                                } finally {
+                                  if (mounted) {
+                                    setState(() {
+                                      _updatingChildren.remove(updateKey);
+                                    });
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                          CircleAvatar(
+                            backgroundColor: isCompleted 
+                                ? Colors.green.withOpacity(0.2) 
+                                : AppTheme.primaryContainer,
+                            radius: 14,
+                            child: isUpdatingChild 
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.grey,
+                                    ),
+                                  )
+                                : Text(
+                                    child.name.substring(0, 1),
+                                    style: TextStyle(
+                                      color: isCompleted 
+                                          ? Colors.green
+                                          : AppTheme.onPrimaryContainer,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                );
-                              }
-                            }
-                          } catch (e) {
-                            if (!mounted) return;
-                            setState(() {
-                              _updatingActivityId = null;
-                            });
-                            _scaffoldMessengerKey.currentState?.showSnackBar(
-                              SnackBar(
-                                content: Text('Gagal mengubah status: $e'),
-                                backgroundColor: Colors.red,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              child.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isCompleted ? FontWeight.bold : FontWeight.normal,
+                                color: isCompleted ? Colors.green.shade800 : null,
                               ),
-                            );
-                          }
-                        },
-                    ),
-                    CircleAvatar(
-                      backgroundColor: AppTheme.primaryContainer,
-                      radius: 14,
-                      child: Text(
-                        child.name.substring(0, 1),
-                        style: TextStyle(
-                          color: AppTheme.onPrimaryContainer,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            ),
+                          ),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? Colors.green.withOpacity(0.1)
+                                  : Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              isCompleted ? 'Selesai' : 'Belum',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isCompleted ? Colors.green : Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        child.name,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isCompleted
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        isCompleted ? 'Selesai' : 'Belum',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isCompleted ? Colors.green : Colors.orange,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );

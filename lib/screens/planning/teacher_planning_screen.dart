@@ -48,9 +48,6 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
     return ScaffoldMessenger(
       key: _scaffoldMessengerKey,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Perencanaan Aktivitas'),
-        ),
         body: Column(
           children: [
             _buildCalendar(),
