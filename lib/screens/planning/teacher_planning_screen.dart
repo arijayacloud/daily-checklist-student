@@ -390,12 +390,12 @@ class _TeacherPlanningScreenState extends State<TeacherPlanningScreen> {
                             percentage = progress.percentage / 100; // Convert to 0-1 range for progress bar
                           } else {
                             // Fallback to calculating progress
-                            final childProgress = planningProvider.getChildProgress(child.id, plan.id);
+                          final childProgress = planningProvider.getChildProgress(child.id, plan.id);
                             childCompletedCount = childProgress['completed'] ?? 0;
                             childTotalCount = childProgress['total'] ?? 0;
                             percentage = childTotalCount > 0 
-                                ? childCompletedCount / childTotalCount 
-                                : 0.0;
+                            ? childCompletedCount / childTotalCount 
+                            : 0.0;
                           }
                             
                           return Padding(

@@ -179,9 +179,8 @@ class PlannedActivity {
   final DateTime scheduledDate;
   final String? scheduledTime;
   final bool reminder;
-  final bool completed;
-  final String? environment;
-  final Map<String, bool> completionByChild;
+  final bool completed; // Overall completion status
+  final Map<String, bool> completionByChild; // Child ID -> completion status
 
   PlannedActivity({
     this.id,
@@ -191,7 +190,6 @@ class PlannedActivity {
     this.scheduledTime,
     this.reminder = true,
     this.completed = false,
-    this.environment,
     Map<String, bool>? completionByChild,
   }) : completionByChild = completionByChild ?? {};
 
@@ -239,17 +237,6 @@ class PlannedActivity {
         completionByChild[childId] = value == 1 || value == true;
       });
     }
-    
-    // Try to extract environment information
-    String? environment;
-    // Direct environment property
-    if (json.containsKey('environment')) {
-      environment = json['environment'];
-    } 
-    // Check if environment is available via related activity
-    else if (json.containsKey('activity') && json['activity'] != null) {
-      environment = json['activity']['environment'];
-    }
 
     return PlannedActivity(
       id: json['id'] != null ? int.parse(json['id'].toString()) : null,
@@ -259,7 +246,6 @@ class PlannedActivity {
       scheduledTime: json['scheduled_time'],
       reminder: json['reminder'] == null ? true : json['reminder'] == 1 || json['reminder'] == true,
       completed: isCompleted,
-      environment: environment,
       completionByChild: completionByChild,
     );
   }
@@ -269,11 +255,10 @@ class PlannedActivity {
       'id': id,
       'plan_id': planId,
       'activity_id': activityId,
-      'scheduled_date': scheduledDate.toIso8601String(),
+      'scheduled_date': scheduledDate.toIso8601String().split('T')[0],
       'scheduled_time': scheduledTime,
       'reminder': reminder,
       'completed': completed,
-      'environment': environment,
       'completion_by_child': completionByChild,
     };
   }

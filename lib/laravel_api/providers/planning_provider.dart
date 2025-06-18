@@ -66,13 +66,21 @@ class PlanningProvider with ChangeNotifier {
   }
 
   // Fetch all plans (for teachers or parents)
-  Future<void> fetchPlans() async {
+  Future<void> fetchPlans({String? childId}) async {
     _isLoading = true;
     _error = null;
+    
+    // If childId is provided, update the current child ID for activity completion
+    if (childId != null) {
+      _currentChildId = childId;
+    }
+    
     notifyListeners();
 
     try {
-      final data = await _apiProvider.get('plans');
+      // Build the endpoint URL based on whether a child ID is specified
+      final endpoint = childId != null ? 'plans?child_id=$childId' : 'plans';
+      final data = await _apiProvider.get(endpoint);
       
       if (data != null) {
         // Check if data is a map with a 'data' property or directly a list
@@ -91,39 +99,6 @@ class PlanningProvider with ChangeNotifier {
       }
     } catch (e) {
       _error = 'Failed to load plans: $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Fetch plans specifically for a child
-  Future<void> fetchPlansForParent(String childId) async {
-    _isLoading = true;
-    _error = null;
-    _currentChildId = childId;
-    notifyListeners();
-
-    try {
-      final data = await _apiProvider.get('plans?child_id=$childId');
-      
-      if (data != null) {
-        // Check if data is a map with a 'data' property or directly a list
-        List<dynamic> plansList;
-        if (data is Map && data.containsKey('data')) {
-          plansList = data['data'] as List;
-        } else if (data is List) {
-          plansList = data;
-        } else {
-          throw Exception('Unexpected data format');
-        }
-        
-        _plans = plansList.map((item) => Planning.fromJson(item)).toList();
-      } else {
-        _error = 'Failed to load plans for child';
-      }
-    } catch (e) {
-      _error = 'Failed to load plans for child: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -637,113 +612,6 @@ class PlanningProvider with ChangeNotifier {
     } catch (e) {
       _error = 'Debug error: $e';
       return null;
-    }
-  }
-
-  // Fetch plans specifically for a parent with specialized API endpoint
-  Future<void> fetchParentPlans(String childId) async {
-    _isLoading = true;
-    _error = null;
-    _currentChildId = childId;
-    notifyListeners();
-
-    try {
-      // Use the specialized parent endpoint
-      final data = await _apiProvider.get('parent/plans?child_id=$childId');
-      
-      if (data != null) {
-        // Check if response contains expected format with child_id and plans
-        if (data is Map && data.containsKey('plans')) {
-          final List<dynamic> plansList = data['plans'] as List;
-          _plans = plansList.map((item) => Planning.fromJson(item)).toList();
-          
-          // Store the current childId
-          _currentChildId = data['child_id']?.toString() ?? childId;
-        } else if (data is List) {
-          // Fallback to direct list (for backward compatibility)
-          _plans = data.map((item) => Planning.fromJson(item)).toList();
-        } else {
-          throw Exception('Unexpected data format from parent/plans endpoint');
-        }
-      } else {
-        _error = 'Failed to load plans for child';
-      }
-    } catch (e) {
-      _error = 'Failed to load plans for child: $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Fetch detail for a specific parent's plan using specialized API endpoint
-  Future<Planning?> fetchParentPlanDetail(int planId, String? childId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // Build query with optional childId
-      String endpoint = 'parent/plans/$planId';
-      if (childId != null && childId.isNotEmpty) {
-        endpoint += '?child_id=$childId';
-      }
-      
-      final data = await _apiProvider.get(endpoint);
-      
-      if (data != null) {
-        final plan = Planning.fromJson(data);
-        
-        // Update in local plans list if it exists
-        int existingIndex = _plans.indexWhere((p) => p.id == planId);
-        if (existingIndex >= 0) {
-          _plans[existingIndex] = plan;
-        }
-        
-        notifyListeners();
-        return plan;
-      } else {
-        _error = 'Failed to fetch parent plan details';
-        return null;
-      }
-    } catch (e) {
-      _error = 'Failed to fetch parent plan details: $e';
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Update an activity's status for a parent using specialized API endpoint
-  Future<bool> parentUpdateActivityStatus(int activityId, bool completed, String childId) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final response = await _apiProvider.put(
-        'parent/activities/$activityId/status',
-        {
-          'completed': completed,
-          'child_id': childId,
-        },
-      );
-      
-      if (response != null) {
-        // If the update was successful, refresh the plans to get updated data
-        await fetchParentPlans(childId);
-        return true;
-      } else {
-        _error = 'Failed to update activity status';
-        return false;
-      }
-    } catch (e) {
-      _error = 'Failed to update activity status: $e';
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
   }
 }

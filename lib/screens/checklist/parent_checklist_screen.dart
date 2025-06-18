@@ -71,15 +71,18 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     });
 
     // Fetch planning data for this child
-    await planningProvider.fetchPlansForParent(widget.child.id);
+    await planningProvider.fetchPlans(childId: widget.child.id);
     
-    // Set the current child ID in the provider to ensure correct completion status retrieval
-    planningProvider.setCurrentChildId(widget.child.id);
-
     // Make sure activities are loaded
     if (activityProvider.activities.isEmpty) {
       await activityProvider.fetchActivities();
     }
+    
+    // Set the current child ID in the provider in a post-frame callback
+    // to ensure we're completely out of build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      planningProvider.setCurrentChildId(widget.child.id);
+    });
 
     setState(() {
       _isLoading = false;
@@ -302,11 +305,13 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     bool isExpanded,
     int dayKey,
   ) {
+    // Get child ID to check child-specific completion status
+    final String childId = widget.child.id;
+    
     // Count completed activities for the specific child
-    final completedCount = activities.where((a) => 
-      // Completion status is already retrieved correctly from the backend
-      // as it's filtered by child_id in fetchPlansForParent
-      a.completed
+    final completedCount = activities.where((activity) => 
+      // Check completion status for this specific child
+      activity.isCompletedByChild(childId)
     ).length;
     
     final completionPercentage =
@@ -430,6 +435,9 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
     PlannedActivity plannedActivity,
     ActivityModel activityData,
   ) {
+    // Get child-specific completion status
+    final bool isCompleted = plannedActivity.isCompletedByChild(widget.child.id);
+    
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Card(
@@ -449,17 +457,17 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                     height: 40,
                     decoration: BoxDecoration(
                       color:
-                          plannedActivity.completed
+                          isCompleted
                               ? AppTheme.success.withOpacity(0.2)
                               : AppTheme.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      plannedActivity.completed
+                      isCompleted
                           ? Icons.check_circle_outline
                           : Icons.pending_actions,
                       color:
-                          plannedActivity.completed
+                          isCompleted
                               ? AppTheme.success
                               : AppTheme.primary,
                     ),
@@ -474,7 +482,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             decoration:
-                                plannedActivity.completed
+                                isCompleted
                                     ? TextDecoration.lineThrough
                                     : null,
                           ),
@@ -503,7 +511,7 @@ class _ParentChecklistScreenState extends State<ParentChecklistScreen> {
                   _buildDifficultyChip(activityData.difficulty),
                   if (plannedActivity.scheduledTime != null)
                     _buildTimeChip(plannedActivity.scheduledTime!),
-                  _buildStatusChip(plannedActivity.completed),
+                  _buildStatusChip(isCompleted),
                 ],
               ),
             ],

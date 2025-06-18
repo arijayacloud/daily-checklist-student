@@ -462,7 +462,7 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
                         isCompleted = completedCount == totalActivities && totalActivities > 0;
                       } else {
                         // Fallback to provider method
-                        final completedInfo = planningProvider.getChildProgress(child.id, plan.id);
+                      final completedInfo = planningProvider.getChildProgress(child.id, plan.id);
                         completedCount = completedInfo['completed'] as int;
                         totalActivities = completedInfo['total'] as int;
                         isCompleted = completedCount == totalActivities && totalActivities > 0;

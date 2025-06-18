@@ -28,7 +28,6 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   bool _isLoading = false;
   int? _updatingActivityId; // Track which activity is being updated
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  String? _selectedChildId;
   
   // Mapping for day of week names in Indonesian
   final Map<int, String> _weekdayNames = {
@@ -65,70 +64,74 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     initializeDateFormatting('id_ID', null);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadChildrenAndPlans();
+      _loadPlans();
       
       // Pre-fetch activities for better user experience
       await Provider.of<ActivityProvider>(context, listen: false).fetchActivities();
     });
   }
 
-  Future<void> _loadChildrenAndPlans() async {
+  Future<void> _loadPlans() async {
     setState(() {
       _isLoading = true;
     });
     
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
       final childProvider = Provider.of<ChildProvider>(context, listen: false);
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       
       // Make sure we have the latest user data
       if (authProvider.user == null) {
-        debugPrint("ParentPlanningScreen: No authenticated user found");
+        debugPrint("ParentPlanningScreen: Tidak ditemukan pengguna yang terautentikasi");
         return;
       }
       
-      if (!authProvider.user!.isParent) {
-        debugPrint("ParentPlanningScreen: Current user is not a parent");
-        return;
-      }
+      debugPrint("ParentPlanningScreen: Memuat rencana untuk peran pengguna: ${authProvider.user!.role}");
       
       // Ensure teacher data is loaded for displaying teacher names
       userProvider.fetchTeachers();
       
-      // Fetch children first
-      await childProvider.fetchChildren();
-      
-      if (childProvider.children.isEmpty) {
-        debugPrint("ParentPlanningScreen: No children found for this parent");
+      if (authProvider.user!.isParent) {
+        // Fetch children first
+        await childProvider.fetchChildren();
         
-        // Show message
-        _scaffoldMessengerKey.currentState?.showSnackBar(
-          const SnackBar(
-            content: Text('No child data found for this account'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
+        if (childProvider.children.isEmpty) {
+          debugPrint("ParentPlanningScreen: Tidak ditemukan anak untuk orang tua ini");
+          
+          // Show message
+          _scaffoldMessengerKey.currentState?.showSnackBar(
+            const SnackBar(
+              content: Text('Tidak ditemukan data anak untuk akun ini'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          return;
+        }
+        
+        debugPrint("ParentPlanningScreen: Ditemukan ${childProvider.children.length} anak, memuat rencana untuk anak pertama");
+        
+        // Get the first child associated with this parent and fetch their plans
+        final childId = childProvider.children.first.id;
+        
+        // Use the new unified fetchPlans method with childId parameter
+        await planningProvider.fetchPlans(childId: childId);
+        
+        debugPrint("ParentPlanningScreen: Berhasil memuat ${planningProvider.plans.length} rencana untuk anak dengan ID $childId");
+      } else {
+        // For other roles like teachers, fetch all plans
+        await planningProvider.fetchPlans();
       }
-      
-      // Set the selected child ID if not already set
-      if (_selectedChildId == null) {
-        _selectedChildId = childProvider.children.first.id;
-      }
-      
-      // Load plans for the selected child
-      await _loadPlansForSelectedChild();
-      
     } catch (e) {
-      debugPrint("ParentPlanningScreen: Error loading data - $e");
+      debugPrint("ParentPlanningScreen: Error memuat rencana - $e");
       
       // Show error message if mounted
       if (mounted) {
         _scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
-            content: Text('Failed to load data: ${e.toString()}'),
+            content: Text('Gagal memuat data: ${e.toString()}'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),
@@ -141,52 +144,6 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         });
       }
     }
-  }
-  
-  Future<void> _loadPlansForSelectedChild() async {
-    if (_selectedChildId == null) return;
-    
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-      
-      final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
-      
-      // Use the new specialized parent API endpoint
-      await planningProvider.fetchParentPlans(_selectedChildId!);
-      
-      // Set the current child ID in the provider to ensure it's used for activity completion
-      planningProvider.setCurrentChildId(_selectedChildId!);
-      
-    } catch (e) {
-      debugPrint("ParentPlanningScreen: Error loading plans - $e");
-      
-      if (mounted) {
-        _scaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text('Failed to load plans: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-  
-  void _onChildChanged(String newChildId) {
-    setState(() {
-      _selectedChildId = newChildId;
-    });
-    
-    // Load plans for the newly selected child
-    _loadPlansForSelectedChild();
   }
 
   @override
@@ -194,24 +151,8 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     return ScaffoldMessenger(
       key: _scaffoldMessengerKey,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Activity Planning'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadChildrenAndPlans,
-              tooltip: 'Refresh',
-            ),
-            IconButton(
-              icon: const Icon(Icons.help_outline),
-              onPressed: () => _showHelpDialog(context),
-              tooltip: 'Help',
-            ),
-          ],
-        ),
         body: Column(
           children: [
-            // Child selector dropdown
             _buildChildSelector(),
             _buildCalendar(), 
             Expanded(child: _buildDailySchedule())
@@ -220,44 +161,83 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       ),
     );
   }
-  
+
   Widget _buildChildSelector() {
-    return Consumer<ChildProvider>(
-      builder: (context, childProvider, _) {
-        if (childProvider.children.isEmpty) {
+    return Consumer2<ChildProvider, PlanningProvider>(
+      builder: (context, childProvider, planningProvider, _) {
+        // If there's only one child or no children, don't show the selector
+        if (childProvider.children.length <= 1) {
           return const SizedBox.shrink();
         }
         
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceVariant.withOpacity(0.3),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.child_care, size: 20),
-              const SizedBox(width: 8),
-              const Text('Child:', style: TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButton<String>(
-                  value: _selectedChildId,
-                  isExpanded: true,
-                  underline: const SizedBox(),
-                  items: childProvider.children.map((child) {
-                    return DropdownMenuItem<String>(
-                      value: child.id,
-                      child: Text(child.name),
-                    );
-                  }).toList(),
-                  onChanged: (String? value) {
-                    if (value != null) {
-                      _onChildChanged(value);
-                    }
-                  },
-                ),
+        // Get current child ID or use the first available child
+        final currentChildId = planningProvider.currentChildId ?? childProvider.children.first.id;
+        
+        // Find the current child
+        final currentChild = childProvider.children.firstWhere(
+          (child) => child.id == currentChildId,
+          orElse: () => childProvider.children.first,
+        );
+        
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.child_care, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Anak:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButton<String>(
+                      value: currentChildId,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      icon: const Icon(Icons.arrow_drop_down),
+                      items: childProvider.children.map((child) {
+                        return DropdownMenuItem<String>(
+                          value: child.id,
+                          child: Text(
+                            child.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (childId) {
+                        if (childId != null && childId != planningProvider.currentChildId) {
+                          // Set the selected child
+                          planningProvider.setCurrentChildId(childId);
+                          
+                          // Fetch plans for the selected child
+                          planningProvider.fetchPlans(childId: childId);
+                          
+                          // Reset selected day to today when changing child
+                          setState(() {
+                            _selectedDay = DateTime.now();
+                            _focusedDay = DateTime.now();
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -389,44 +369,32 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
   }
 
   // Get activities scheduled for the selected day
-  List<PlannedActivityWithPlan> _getActivitiesForSelectedDay(PlanningProvider provider) {
-    final result = <PlannedActivityWithPlan>[];
+  List<PlannedActivity> _getActivitiesForSelectedDay(PlanningProvider provider) {
+    final activities = <PlannedActivity>[];
     
     for (final plan in provider.plans) {
       for (final activity in plan.activities) {
         if (isSameDay(activity.scheduledDate, _selectedDay)) {
-          result.add(PlannedActivityWithPlan(
-            activity: activity, 
-            planId: plan.id,
-            planStartDate: plan.startDate,
-            planType: plan.type
-          ));
+          activities.add(activity);
         }
       }
     }
     
     // Sort activities by time
-    result.sort((a, b) {
-      // First by time
-      if (a.activity.scheduledTime == null && b.activity.scheduledTime == null) {
-        // If both have no time, sort by plan ID to separate activities with same date
-        return a.planId.compareTo(b.planId);
+    activities.sort((a, b) {
+      if (a.scheduledTime == null && b.scheduledTime == null) {
+        return 0;
       }
-      if (a.activity.scheduledTime == null) {
+      if (a.scheduledTime == null) {
         return 1;
       }
-      if (b.activity.scheduledTime == null) {
+      if (b.scheduledTime == null) {
         return -1;
       }
-      int timeComparison = a.activity.scheduledTime!.compareTo(b.activity.scheduledTime!);
-      if (timeComparison != 0) {
-        return timeComparison;
-      }
-      // If time is the same, sort by plan ID
-      return a.planId.compareTo(b.planId);
+      return a.scheduledTime!.compareTo(b.scheduledTime!);
     });
     
-    return result;
+    return activities;
   }
 
   Widget _buildDailySchedule() {
@@ -451,8 +419,8 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _loadPlansForSelectedChild,
-                  child: const Text('Try Again'),
+                  onPressed: _loadPlans,
+                  child: const Text('Coba Lagi'),
                 ),
               ],
             ),
@@ -476,13 +444,13 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                       const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
                       const SizedBox(height: 16),
                       const Text(
-                        'Could not load activity data. Please try again.',
+                        'Tidak dapat memuat data aktivitas. Silakan coba lagi.',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () => activityProvider.fetchActivities(),
-                        child: const Text('Load Activities'),
+                        child: const Text('Muat Aktivitas'),
                       ),
                     ],
                   ),
@@ -490,9 +458,9 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
         }
 
         // Get activities for selected day
-        final activitiesWithPlan = _getActivitiesForSelectedDay(planningProvider);
+        final activities = _getActivitiesForSelectedDay(planningProvider);
 
-        if (activitiesWithPlan.isEmpty) {
+        if (activities.isEmpty) {
           return _buildEmptyState();
         }
 
@@ -508,55 +476,13 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(8),
-                itemCount: activitiesWithPlan.length,
+                itemCount: activities.length,
                 itemBuilder: (context, index) {
-                  final item = activitiesWithPlan[index];
-                  
-                  // Add divider between different plans with the same date
-                  final needsDivider = index > 0 && 
-                      item.planId != activitiesWithPlan[index - 1].planId;
-                  
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (needsDivider) 
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Divider(
-                                  color: Colors.grey.shade300,
-                                  thickness: 1,
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text(
-                                  'Plan #${item.planId}', 
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Divider(
-                                  color: Colors.grey.shade300,
-                                  thickness: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      _buildActivityItem(
-                        context,
-                        item.activity,
-                        planningProvider,
-                        activityProvider,
-                      ),
-                    ],
+                  return _buildActivityItem(
+                    context, 
+                    activities[index], 
+                    planningProvider, 
+                    activityProvider
                   );
                 },
               ),
@@ -579,13 +505,13 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     IconData icon;
 
     if (isToday) {
-      message = 'No activities scheduled for today';
+      message = 'Tidak ada aktivitas yang dijadwalkan untuk hari ini';
       icon = Icons.event_note;
     } else if (isFuture) {
-      message = 'No activities scheduled for this date';
+      message = 'Tidak ada aktivitas yang dijadwalkan untuk tanggal ini';
       icon = Icons.event_available;
     } else {
-      message = 'No activities scheduled for this date';
+      message = 'Tidak ada aktivitas yang dijadwalkan pada tanggal ini';
       icon = Icons.event_busy;
     }
 
@@ -612,8 +538,29 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     ActivityProvider activityProvider,
   ) {
     final activityDetails = activityProvider.getActivityById(activity.activityId.toString());
-    final formattedTime = activity.scheduledTime ?? 'Not Set';
+    final formattedTime = activity.scheduledTime ?? 'Tidak diatur';
     final bool isUpdating = _updatingActivityId == activity.id;
+
+    // Get current plan for this activity to show more details
+    final plan = planningProvider.plans.firstWhere(
+      (p) => p.id == activity.planId,
+      orElse: () => Planning(
+        id: activity.planId, 
+        type: 'daily',
+        teacherId: '',
+        startDate: activity.scheduledDate,
+        activities: [],
+      ),
+    );
+    
+    // Get completion status for current child if available
+    final String? childId = planningProvider.currentChildId;
+    final bool isCompletedByChild = childId != null ? 
+      activity.isCompletedByChild(childId) : activity.completed;
+    
+    // Get background color based on plan type for visual distinction
+    final Color planColor = plan.type == 'weekly' ? 
+      Colors.blue.withOpacity(0.05) : Colors.green.withOpacity(0.05);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -622,35 +569,30 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          // Store a reference to the provider before navigation
-          final provider = planningProvider;
-          
-          // Navigate to detail view with plan ID and child ID
+          // Navigate to detail view
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ParentPlanningDetailScreen(
                 planId: activity.planId.toString(),
-                childId: _selectedChildId,
+                childId: childId,
               ),
             ),
-          ).then((_) {
-            // Use stored provider reference instead of accessing through context
-            if (mounted) {
-              // Refresh plans for selected child
-              if (_selectedChildId != null) {
-                provider.fetchParentPlans(_selectedChildId!);
-              }
-            }
-          });
+          );
         },
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: planColor,
+          ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top row with time and status indicators
               Row(
                 children: [
+                  // Time container
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -668,8 +610,35 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                       ),
                     ),
                   ),
+                  
+                  // Plan type indicator
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: plan.type == 'weekly' ? 
+                        Colors.blue.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: plan.type == 'weekly' ? Colors.blue : Colors.green,
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      plan.type == 'weekly' ? 'Mingguan' : 'Harian',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: plan.type == 'weekly' ? Colors.blue : Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  
                   const Spacer(),
-                  // Show checkbox only for Home or Both activities
+                  // Show checkbox for Home or Both activities
                   if (_canParentUpdateActivity(activityDetails))
                     isUpdating 
                       ? const SizedBox(
@@ -678,23 +647,31 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2)
                         )
                       : Checkbox(
-                      value: activity.completed,
+                      value: isCompletedByChild,
                       onChanged: (value) async {
-                        if (mounted && _selectedChildId != null) {
+                        if (mounted) {
                           setState(() {
                             _updatingActivityId = activity.id;
                           });
                           
                           try {
                             // Store the current child ID as a local variable before API call
-                            final childId = _selectedChildId!;
+                            final childId = planningProvider.currentChildId;
+                            if (childId == null || childId.isEmpty) {
+                              throw Exception('Tidak dapat menentukan ID anak');
+                            }
                             
-                            // Use the parent-specific API endpoint
-                            final success = await planningProvider.parentUpdateActivityStatus(
+                            final success = await planningProvider.markActivityAsCompleted(
                               activity.id!,
                               value ?? false,
-                              childId
+                              childId: childId
                             );
+                            
+                            // If successful, refresh data
+                            if (success) {
+                              // Refresh the specific plan instead of all plans for better performance
+                              await planningProvider.fetchPlanWithCompletionData(activity.planId);
+                            }
                             
                             if (mounted) {
                               setState(() {
@@ -705,15 +682,15 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                                 _scaffoldMessengerKey.currentState?.showSnackBar(
                                   SnackBar(
                                     content: Text(value == true 
-                                      ? 'Activity marked as completed' 
-                                      : 'Activity marked as incomplete'),
+                                      ? 'Aktivitas ditandai selesai' 
+                                      : 'Aktivitas ditandai belum selesai'),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
                               } else {
                                 _scaffoldMessengerKey.currentState?.showSnackBar(
                                   const SnackBar(
-                                    content: Text('Failed to update activity status'),
+                                    content: Text('Gagal mengubah status aktivitas'),
                                     behavior: SnackBarBehavior.floating,
                                     backgroundColor: Colors.red,
                                   ),
@@ -738,7 +715,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                         }
                       },
                     )
-                  else if (activity.completed)
+                  else if (isCompletedByChild)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -749,7 +726,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
-                        'Completed',
+                        'Selesai',
                         style: TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
@@ -767,7 +744,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
-                        'Not Completed',
+                        'Belum Selesai',
                         style: TextStyle(
                           color: Colors.orange,
                           fontWeight: FontWeight.bold,
@@ -778,7 +755,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                activityDetails?.title ?? 'Activity Not Found',
+                activityDetails?.title ?? 'Aktivitas Tidak Ditemukan',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               if (activityDetails != null) ...[
@@ -789,33 +766,42 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (activityDetails.environment == 'School')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.school, size: 14, color: Colors.blue),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'School Activity',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
+              ],
+              const SizedBox(height: 8),
+              // Add a subtle plan identifier
+              Row(
+                children: [
+                  Icon(
+                    Icons.account_tree_outlined, 
+                    size: 12, 
+                    color: AppTheme.onSurfaceVariant.withOpacity(0.5)
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Plan #${activity.planId}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.onSurfaceVariant.withOpacity(0.5),
                     ),
                   ),
-              ],
+                  if (_canParentUpdateActivity(activityDetails)) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.home_outlined, 
+                      size: 12, 
+                      color: Colors.green.withOpacity(0.6)
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Dapat diselesaikan di rumah',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.green.withOpacity(0.6),
+                      ),
+                    ),
+                  ]
+                ],
+              ),
             ],
           ),
         ),
@@ -831,7 +817,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
           children: [
             Icon(Icons.help_outline, color: AppTheme.primary),
             const SizedBox(width: 8),
-            const Text('Help'),
+            const Text('Bantuan'),
           ],
         ),
         content: Column(
@@ -839,12 +825,12 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Child Activity Schedule',
+              'Jadwal Aktivitas Anak',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
             const Text(
-              'This feature shows your child\'s activity schedule planned by the teacher.',
+              'Fitur ini menunjukkan jadwal aktivitas anak Anda yang telah direncanakan oleh guru.',
             ),
             const SizedBox(height: 16),
             Row(
@@ -858,7 +844,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text('Dots on the calendar indicate scheduled activities'),
+                const Text('Titik pada kalender menunjukkan ada aktivitas'),
               ],
             ),
             const SizedBox(height: 8),
@@ -874,7 +860,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    'Completed',
+                    'Selesai',
                     style: TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.bold,
@@ -883,7 +869,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text('Activity has been completed'),
+                const Text('Aktivitas sudah diselesaikan'),
               ],
             ),
             const SizedBox(height: 8),
@@ -899,7 +885,7 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    'Not Completed',
+                    'Belum',
                     style: TextStyle(
                       color: Colors.orange,
                       fontWeight: FontWeight.bold,
@@ -908,20 +894,15 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text('Activity is not completed yet'),
+                const Text('Aktivitas belum diselesaikan'),
               ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Note: You can only update the status of Home and Both activities. School activities can only be updated by teachers.',
-              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Close', style: TextStyle(color: AppTheme.primary)),
+            child: Text('Tutup', style: TextStyle(color: AppTheme.primary)),
           ),
         ],
         shape: RoundedRectangleBorder(
@@ -938,19 +919,4 @@ class _ParentPlanningScreenState extends State<ParentPlanningScreen> {
     // Parents can update activities with environment 'Home' or 'Both'
     return activity.environment == 'Home' || activity.environment == 'Both';
   }
-}
-
-// Helper class to store an activity with its plan information
-class PlannedActivityWithPlan {
-  final PlannedActivity activity;
-  final int planId;
-  final DateTime planStartDate;
-  final String planType;
-  
-  PlannedActivityWithPlan({
-    required this.activity,
-    required this.planId,
-    required this.planStartDate,
-    required this.planType,
-  });
 }
