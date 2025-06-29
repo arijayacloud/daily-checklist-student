@@ -72,8 +72,9 @@ class _SplashScreenState extends State<SplashScreen> {
           
           // Navigate based on role
           debugPrint('SplashScreen: Navigating based on role: $userRole');
-          if (userRole == 'teacher') {
-            debugPrint('SplashScreen: Going to teacher home');
+          if (userRole == 'teacher' || userRole == 'superadmin') {
+            // Both teachers and superadmins go to the teacher interface
+            debugPrint('SplashScreen: Going to teacher home (role: $userRole)');
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const TeacherHomeScreen()),
             );

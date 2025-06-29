@@ -24,8 +24,8 @@ class TeacherActivitiesScreen extends StatefulWidget {
 class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   String _searchQuery = '';
   String _difficultyFilter = 'Semua';
-  int _minAgeFilter = 3;
-  int _maxAgeFilter = 6;
+  double _minAgeFilter = 3.0;
+  double _maxAgeFilter = 6.0;
   bool _isInitialized = false;
 
   final _searchController = TextEditingController();
@@ -233,8 +233,8 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                   ),
                   const SizedBox(width: 8),
                   _buildFilterChip(
-                    label: 'Usia: $_minAgeFilter-$_maxAgeFilter tahun',
-                    isSelected: _minAgeFilter != 3 || _maxAgeFilter != 6,
+                    label: 'Usia: ${_formatAgeDisplay(_minAgeFilter)}-${_formatAgeDisplay(_maxAgeFilter)} tahun',
+                    isSelected: _minAgeFilter != 3.0 || _maxAgeFilter != 6.0,
                     onSelected: (_) => _showFilterDialog(),
                   ),
                 ],
@@ -398,8 +398,8 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                 _searchController.clear();
                 _searchQuery = '';
                 _difficultyFilter = 'Semua';
-                _minAgeFilter = 3;
-                _maxAgeFilter = 6;
+                _minAgeFilter = 3.0;
+                _maxAgeFilter = 6.0;
               });
             },
             style: ElevatedButton.styleFrom(
@@ -579,8 +579,8 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                         onPressed: () {
                           setState(() {
                             _difficultyFilter = 'Semua';
-                            _minAgeFilter = 3;
-                            _maxAgeFilter = 6;
+                            _minAgeFilter = 3.0;
+                            _maxAgeFilter = 6.0;
                           });
                         },
                         child: const Text('Atur Ulang'),
@@ -648,20 +648,20 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                   const SizedBox(height: 8),
                   RangeSlider(
                     values: RangeValues(
-                      _minAgeFilter.toDouble(),
-                      _maxAgeFilter.toDouble(),
+                      _minAgeFilter,
+                      _maxAgeFilter,
                     ),
-                    min: 3,
-                    max: 6,
-                    divisions: 3,
+                    min: 3.0,
+                    max: 6.0,
+                    divisions: 6, // 6 divisions for 0.5 increments between 3.0 and 6.0
                     labels: RangeLabels(
-                      _minAgeFilter.toString(),
-                      _maxAgeFilter.toString(),
+                      _formatAgeDisplay(_minAgeFilter),
+                      _formatAgeDisplay(_maxAgeFilter),
                     ),
                     onChanged: (values) {
                       setState(() {
-                        _minAgeFilter = values.start.round();
-                        _maxAgeFilter = values.end.round();
+                        _minAgeFilter = values.start;
+                        _maxAgeFilter = values.end;
                       });
                     },
                   ),
@@ -669,11 +669,11 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '3 tahun',
+                        '3,0 tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                       Text(
-                        '6 tahun',
+                        '6,0 tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                     ],
@@ -908,5 +908,11 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
         ],
       ),
     );
+  }
+
+  // Format age to display half years correctly (3.5 -> "3,5")
+  String _formatAgeDisplay(double age) {
+    // Convert to string with comma as decimal separator for Indonesian format
+    return age.toString().replaceAll('.', ',');
   }
 }

@@ -6,6 +6,7 @@ import 'package:daily_checklist_student/laravel_api/providers/api_provider.dart'
 import 'package:daily_checklist_student/laravel_api/models/user_model.dart';
 import 'package:daily_checklist_student/lib/theme/app_theme.dart';
 import 'package:daily_checklist_student/screens/parents/add_parent_screen.dart';
+import 'package:daily_checklist_student/screens/parents/add_teacher_screen.dart';
 
 enum ParentSortOption { 
   nameAsc, 
@@ -25,10 +26,17 @@ class ParentsScreen extends StatefulWidget {
   State<ParentsScreen> createState() => _ParentsScreenState();
 }
 
-class _ParentsScreenState extends State<ParentsScreen> {
+class _ParentsScreenState extends State<ParentsScreen> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   List<UserModel> _parents = [];
+  List<UserModel> _teachers = [];
   List<UserModel> _filteredParents = [];
+  List<UserModel> _filteredTeachers = [];
+
+  // Tab controller for superadmin view
+  late TabController _tabController;
+  bool _isSuperadmin = false;
+  int _currentTabIndex = 0;
 
   // Pencarian dan Filter
   final TextEditingController _searchController = TextEditingController();
@@ -52,9 +60,25 @@ class _ParentsScreenState extends State<ParentsScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Initialize tab controller
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _currentTabIndex = _tabController.index;
+          _searchQuery = '';
+          _searchController.clear();
+          _applyFilters();
+        });
+      }
+    });
+    
     // Use a post-frame callback to prevent calling setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchParents();
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      _isSuperadmin = authProvider.user?.isSuperadmin ?? false;
+      _fetchData();
     });
   }
 
@@ -67,10 +91,11 @@ class _ParentsScreenState extends State<ParentsScreen> {
     _editPasswordController.dispose();
     _editPhoneController.dispose();
     _editAddressController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchParents() async {
+  Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
     });
@@ -78,17 +103,37 @@ class _ParentsScreenState extends State<ParentsScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       
-      // Use server-side filtering for created_by instead of client-side filtering
-      await userProvider.fetchParents(filterByCreatedBy: true);
+      if (_isSuperadmin) {
+        // Superadmin: fetch all parents and teachers
+        debugPrint('ParentsScreen: Fetching all parents and teachers as superadmin');
+        
+        // Fetch parents without filtering by created_by
+        await userProvider.fetchParents(filterByCreatedBy: false);
+        
+        // Fetch teachers using our new endpoint
+        await userProvider.fetchTeachers();
+        
+        setState(() {
+          _parents = userProvider.parents;
+          _teachers = userProvider.teachers;
+          debugPrint('ParentsScreen: Fetched ${_parents.length} parents and ${_teachers.length} teachers');
+        });
+      } else {
+        // Regular teacher: only fetch own parents
+        debugPrint('ParentsScreen: Fetching only parents created by this teacher');
+        await userProvider.fetchParents(filterByCreatedBy: true);
+        setState(() {
+          _parents = userProvider.parents;
+          debugPrint('ParentsScreen: Fetched ${_parents.length} parents');
+        });
+      }
       
+      _applyFilters();
       setState(() {
-        // Use all parents from provider since they're already filtered by created_by
-        _parents = userProvider.parents;
-        _applyFilters();
         _isLoading = false;
       });
     } catch (e) {
-      print('Error fetching parents: $e');
+      debugPrint('ParentsScreen: Error fetching data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -105,32 +150,62 @@ class _ParentsScreenState extends State<ParentsScreen> {
   }
 
   void _applyFilters() {
-    List<UserModel> filtered = List.from(_parents);
+    if (_currentTabIndex == 0) {
+      // Filter parents
+      List<UserModel> filtered = List.from(_parents);
 
-    // Terapkan pencarian
-    if (_searchQuery.isNotEmpty) {
-      filtered =
-          filtered.where((parent) {
-            return parent.name.toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                parent.email.toLowerCase().contains(_searchQuery.toLowerCase());
-          }).toList();
+      // Apply search
+      if (_searchQuery.isNotEmpty) {
+        filtered = filtered.where((parent) {
+          return parent.name.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ||
+              parent.email.toLowerCase().contains(_searchQuery.toLowerCase());
+        }).toList();
+      }
+
+      // Apply sorting
+      _applySorting(filtered);
+      
+      setState(() {
+        _filteredParents = filtered;
+      });
+    } else {
+      // Filter teachers
+      List<UserModel> filtered = List.from(_teachers);
+
+      // Apply search
+      if (_searchQuery.isNotEmpty) {
+        filtered = filtered.where((teacher) {
+          return teacher.name.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ||
+              teacher.email.toLowerCase().contains(_searchQuery.toLowerCase());
+        }).toList();
+      }
+
+      // Apply sorting
+      _applySorting(filtered);
+      
+      setState(() {
+        _filteredTeachers = filtered;
+      });
     }
-
-    // Terapkan pengurutan
+  }
+  
+  void _applySorting(List<UserModel> users) {
     switch (_currentSortOption) {
       case ParentSortOption.nameAsc:
-        filtered.sort((a, b) => a.name.compareTo(b.name));
+        users.sort((a, b) => a.name.compareTo(b.name));
         break;
       case ParentSortOption.nameDesc:
-        filtered.sort((a, b) => b.name.compareTo(a.name));
+        users.sort((a, b) => b.name.compareTo(a.name));
         break;
       case ParentSortOption.emailAsc:
-        filtered.sort((a, b) => a.email.compareTo(b.email));
+        users.sort((a, b) => a.email.compareTo(b.email));
         break;
       case ParentSortOption.emailDesc:
-        filtered.sort((a, b) => b.email.compareTo(a.email));
+        users.sort((a, b) => b.email.compareTo(a.email));
         break;
       case ParentSortOption.newest:
         // Implementasi jika ada timestamp
@@ -139,24 +214,20 @@ class _ParentsScreenState extends State<ParentsScreen> {
         // Implementasi jika ada timestamp
         break;
       case ParentSortOption.statusActiveFirst:
-        filtered.sort((a, b) {
+        users.sort((a, b) {
           final aStatus = a.status ?? 'inactive';
           final bStatus = b.status ?? 'inactive';
           return aStatus.compareTo(bStatus);
         });
         break;
       case ParentSortOption.statusInactiveFirst:
-        filtered.sort((a, b) {
+        users.sort((a, b) {
           final aStatus = a.status ?? 'inactive';
           final bStatus = b.status ?? 'inactive';
           return bStatus.compareTo(aStatus);
         });
         break;
     }
-
-    setState(() {
-      _filteredParents = filtered;
-    });
   }
 
   Future<void> _resetPassword(String parentId) async {
@@ -311,7 +382,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
 
                     if (result != null) {
                       // Refresh the parent list after successful deletion
-                      await _fetchParents();
+                      await _fetchData();
                       
                       // Only show a message if the widget is still mounted
                       if (mounted) {
@@ -555,7 +626,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
               ),
             );
           }
-          _fetchParents(); // Refresh data
+          _fetchData(); // Refresh data
         } else {
           throw Exception('Failed to update parent');
         }
@@ -622,7 +693,7 @@ class _ParentsScreenState extends State<ParentsScreen> {
 
                 if (result != null) {
                   // Refresh parent list
-                  await _fetchParents();
+                  await _fetchData();
                   
                   if (mounted) {
                     scaffoldMessenger.showSnackBar(
@@ -668,244 +739,281 @@ class _ParentsScreenState extends State<ParentsScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // Search & Filter Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Cari orang tua...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon:
-                        _searchQuery.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                                _applyFilters();
-                              },
-                            )
-                            : null,
-                    filled: true,
-                    fillColor: AppTheme.surfaceVariant.withAlpha(76),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                    _applyFilters();
-                  },
-                ),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildSortChip('Nama (A-Z)', ParentSortOption.nameAsc),
-                      const SizedBox(width: 8),
-                      _buildSortChip('Nama (Z-A)', ParentSortOption.nameDesc),
-                      const SizedBox(width: 8),
-                      _buildSortChip('Email (A-Z)', ParentSortOption.emailAsc),
-                      const SizedBox(width: 8),
-                      _buildSortChip('Email (Z-A)', ParentSortOption.emailDesc),
-                      const SizedBox(width: 8),
-                      _buildSortChip('Aktif Dulu', ParentSortOption.statusActiveFirst),
-                      const SizedBox(width: 8),
-                      _buildSortChip('Nonaktif Dulu', ParentSortOption.statusInactiveFirst),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // List parents
-          Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _filteredParents.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.people_outline,
-                            size: 64,
-                            color: AppTheme.surfaceVariant,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchQuery.isNotEmpty
-                                ? 'Tidak ada orang tua yang sesuai pencarian'
-                                : 'Belum ada orang tua yang terdaftar',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          if (_searchQuery.isEmpty)
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const AddParentScreen(),
-                                  ),
-                                ).then((_) => _fetchParents());
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Tambah Orang Tua'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primary,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                    : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _filteredParents.length,
-                      itemBuilder: (context, index) {
-                        final parent = _filteredParents[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ExpansionTile(
-                            tilePadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            leading: CircleAvatar(
-                              backgroundColor: AppTheme.primary,
-                              child: Text(
-                                parent.name.isNotEmpty
-                                    ? parent.name[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    parent.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: (parent.status ?? 'inactive') == 'active' 
-                                        ? Colors.green.withOpacity(0.2) 
-                                        : Colors.red.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    (parent.status ?? 'inactive') == 'active' ? 'Aktif' : 'Nonaktif',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: (parent.status ?? 'inactive') == 'active' ? Colors.green : Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            subtitle: Text(parent.email),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Divider(),
-                                    const SizedBox(height: 8),
-                                    // First row of action buttons
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        _buildActionButton(
-                                          icon: Icons.password,
-                                          label: 'Reset Password',
-                                          color: Colors.orange,
-                                          onTap:
-                                              () => _resetPassword(parent.id),
-                                        ),
-                                        _buildActionButton(
-                                          icon: Icons.edit,
-                                          label: 'Edit',
-                                          color: AppTheme.primary,
-                                          onTap: () => _editParent(parent),
-                                        ),
-                                        _buildActionButton(
-                                          icon: (parent.status ?? 'inactive') == 'active' 
-                                              ? Icons.block 
-                                              : Icons.check_circle,
-                                          label: (parent.status ?? 'inactive') == 'active' 
-                                              ? 'Nonaktifkan' 
-                                              : 'Aktifkan',
-                                          color: (parent.status ?? 'inactive') == 'active' 
-                                              ? Colors.orange 
-                                              : Colors.green,
-                                          onTap: () => _toggleUserStatus(parent),
-                                        ),
-                                        _buildActionButton(
-                                          icon: Icons.delete,
-                                          label: 'Hapus',
-                                          color: Colors.red,
-                                          onTap: () => _deleteParent(parent),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-          ),
+          if (_isSuperadmin) _buildTabs(),
+          _buildSearchBar(),
+          _buildFilterSection(),
+          Expanded(child: _buildUserList()),
         ],
       ),
-      floatingActionButton:
-          _parents.isNotEmpty
-              ? FloatingActionButton(
-                heroTag: 'parents_fab',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddParentScreen(),
-                    ),
-                  ).then((_) => _fetchParents());
-                },
-                backgroundColor: AppTheme.primary,
-                child: const Icon(Icons.add, color: Colors.white),
-              )
-              : null,
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'parents_fab',
+        onPressed: () {
+          if (_isSuperadmin && _currentTabIndex == 1) {
+            // Add teacher screen for superadmin
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AddTeacherScreen(),
+              ),
+            ).then((_) => _fetchData());
+          } else {
+            // Add parent screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AddParentScreen(),
+              ),
+            ).then((_) => _fetchData());
+          }
+        },
+        backgroundColor: AppTheme.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+  
+  Widget _buildTabs() {
+    return TabBar(
+      controller: _tabController,
+      tabs: const [
+        Tab(text: 'Orang Tua'),
+        Tab(text: 'Guru'),
+      ],
+      labelColor: AppTheme.primary,
+      unselectedLabelColor: Colors.grey,
+      indicatorColor: AppTheme.primary,
     );
   }
 
-  Widget _buildSortChip(String label, ParentSortOption option) {
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: _isSuperadmin && _currentTabIndex == 1 
+              ? 'Cari guru...' 
+              : 'Cari orang tua...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        _searchController.clear();
+                        _searchQuery = '';
+                      });
+                      _applyFilters();
+                    },
+                  )
+                  : null,
+          filled: true,
+          fillColor: AppTheme.surfaceVariant.withAlpha(76),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+          _applyFilters();
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          Text(
+            'Filter: ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip(
+                    label: _getCurrentSortLabel(),
+                    isSelected: _currentSortOption != ParentSortOption.nameAsc,
+                    onSelected: (_) => _showFilterDialog(),
+                  ),
+                  if (_searchQuery.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'Pencarian: $_searchQuery',
+                      isSelected: true,
+                      onSelected: (_) {
+                        setState(() {
+                          _searchController.clear();
+                          _searchQuery = '';
+                        });
+                        _applyFilters();
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter Detail',
+            iconSize: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getCurrentSortLabel() {
+    switch (_currentSortOption) {
+      case ParentSortOption.nameAsc:
+        return 'Nama (A-Z)';
+      case ParentSortOption.nameDesc:
+        return 'Nama (Z-A)';
+      case ParentSortOption.emailAsc:
+        return 'Email (A-Z)';
+      case ParentSortOption.emailDesc:
+        return 'Email (Z-A)';
+      case ParentSortOption.newest:
+        return 'Terbaru';
+      case ParentSortOption.oldest:
+        return 'Terlama';
+      case ParentSortOption.statusActiveFirst:
+        return 'Aktif Dulu';
+      case ParentSortOption.statusInactiveFirst:
+        return 'Nonaktif Dulu';
+      default:
+        return 'Nama (A-Z)';
+    }
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required Function(bool) onSelected,
+  }) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      selectedColor: AppTheme.primaryContainer,
+      checkmarkColor: AppTheme.onPrimaryContainer,
+      labelStyle: TextStyle(
+        color: isSelected ? AppTheme.onPrimaryContainer : AppTheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        _isSuperadmin && _currentTabIndex == 1
+                            ? 'Filter Guru'
+                            : 'Filter Orang Tua',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _currentSortOption = ParentSortOption.nameAsc;
+                          });
+                        },
+                        child: const Text('Atur Ulang'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Sorting options
+                  const Text(
+                    'Urutkan Berdasarkan',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildSortingChip('Nama (A-Z)', ParentSortOption.nameAsc, setState),
+                      _buildSortingChip('Nama (Z-A)', ParentSortOption.nameDesc, setState),
+                      _buildSortingChip('Email (A-Z)', ParentSortOption.emailAsc, setState),
+                      _buildSortingChip('Email (Z-A)', ParentSortOption.emailDesc, setState),
+                      _buildSortingChip('Aktif Dulu', ParentSortOption.statusActiveFirst, setState),
+                      _buildSortingChip('Nonaktif Dulu', ParentSortOption.statusInactiveFirst, setState),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Apply button
+                  ElevatedButton(
+                    onPressed: () {
+                      this.setState(() {
+                        // Update the parent state
+                        // Sort option already updated in the StatefulBuilder
+                      });
+                      _applyFilters();
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: AppTheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'Terapkan Filter',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSortingChip(String label, ParentSortOption option, StateSetter setState) {
     final isSelected = _currentSortOption == option;
 
     return FilterChip(
@@ -915,14 +1023,292 @@ class _ParentsScreenState extends State<ParentsScreen> {
         setState(() {
           _currentSortOption = option;
         });
-        _applyFilters();
+        // Don't call _applyFilters here as we'll do it when Apply is pressed
       },
-      backgroundColor: AppTheme.surfaceVariant.withAlpha(76),
-      selectedColor: AppTheme.primary.withAlpha(51),
-      checkmarkColor: AppTheme.primary,
+      selectedColor: AppTheme.primaryContainer,
+      checkmarkColor: AppTheme.onPrimaryContainer,
       labelStyle: TextStyle(
-        color: isSelected ? AppTheme.primary : null,
-        fontWeight: isSelected ? FontWeight.bold : null,
+        color: isSelected ? AppTheme.onPrimaryContainer : AppTheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  Widget _buildUserList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (_isSuperadmin) {
+      // Superadmin sees both tabs
+      final currentList = _currentTabIndex == 0 ? _filteredParents : _filteredTeachers;
+      
+      if (currentList.isEmpty) {
+        return _buildEmptyState();
+      }
+      
+      return _buildUserListView(currentList);
+    } else {
+      // Regular teacher only sees parents
+      if (_filteredParents.isEmpty) {
+        return _buildEmptyState();
+      }
+      
+      return _buildUserListView(_filteredParents);
+    }
+  }
+  
+  Widget _buildUserListView(List<UserModel> users) {
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: users.length,
+        itemBuilder: (context, index) {
+          final user = users[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              leading: CircleAvatar(
+                backgroundColor: AppTheme.primary,
+                child: Text(
+                  user.name.isNotEmpty
+                      ? user.name[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (user.status ?? 'inactive') == 'active' 
+                          ? Colors.green.withOpacity(0.2) 
+                          : Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      (user.status ?? 'inactive') == 'active' ? 'Aktif' : 'Nonaktif',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: (user.status ?? 'inactive') == 'active' ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              subtitle: Text(user.email),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      // Display user role for superadmin
+                      if (_isSuperadmin)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _getRoleColor(user.role).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _getRoleDisplayName(user.role),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _getRoleColor(user.role),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      // Display user phone and address if available
+                      if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.phone, size: 16, color: Colors.grey),
+                              const SizedBox(width: 8),
+                              Text(user.phoneNumber!),
+                            ],
+                          ),
+                        ),
+                      if (user.address != null && user.address!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.home, size: 16, color: Colors.grey),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(user.address!)),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      // Action buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildActionButton(
+                            icon: Icons.password,
+                            label: 'Reset Password',
+                            color: Colors.orange,
+                            onTap: () => _resetPassword(user.id),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.edit,
+                            label: 'Edit',
+                            color: AppTheme.primary,
+                            onTap: () => _editParent(user),
+                          ),
+                          _buildActionButton(
+                            icon: (user.status ?? 'inactive') == 'active' 
+                                ? Icons.block 
+                                : Icons.check_circle,
+                            label: (user.status ?? 'inactive') == 'active' 
+                                ? 'Nonaktifkan' 
+                                : 'Aktifkan',
+                            color: (user.status ?? 'inactive') == 'active' 
+                                ? Colors.orange 
+                                : Colors.green,
+                            onTap: () => _toggleUserStatus(user),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.delete,
+                            label: 'Hapus',
+                            color: Colors.red,
+                            onTap: () => _deleteParent(user),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+  
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'superadmin':
+        return Colors.purple;
+      case 'teacher':
+        return Colors.blue;
+      case 'parent':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  String _getRoleDisplayName(String role) {
+    switch (role) {
+      case 'superadmin':
+        return 'Administrator';
+      case 'teacher':
+        return 'Guru';
+      case 'parent':
+        return 'Orang Tua';
+      default:
+        return 'Pengguna';
+    }
+  }
+
+  Widget _buildEmptyState() {
+    String message, buttonText;
+    IconData icon = Icons.people_outline;
+    
+    if (_searchQuery.isNotEmpty) {
+      message = 'Tidak ada pengguna yang sesuai pencarian';
+      buttonText = 'Hapus Filter';
+      icon = Icons.search_off;
+    } else if (_isSuperadmin && _currentTabIndex == 1) {
+      message = 'Belum ada guru yang terdaftar';
+      buttonText = 'Tambah Guru';
+    } else {
+      message = 'Belum ada orang tua yang terdaftar';
+      buttonText = 'Tambah Orang Tua';
+    }
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 64,
+            color: AppTheme.surfaceVariant,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppTheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              if (_searchQuery.isNotEmpty) {
+                setState(() {
+                  _searchController.clear();
+                  _searchQuery = '';
+                });
+                _applyFilters();
+              } else {
+                if (_isSuperadmin && _currentTabIndex == 1) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddTeacherScreen(),
+                    ),
+                  ).then((_) => _fetchData());
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddParentScreen(),
+                    ),
+                  ).then((_) => _fetchData());
+                }
+              }
+            },
+            icon: Icon(_searchQuery.isNotEmpty ? Icons.clear : Icons.add),
+            label: Text(buttonText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }

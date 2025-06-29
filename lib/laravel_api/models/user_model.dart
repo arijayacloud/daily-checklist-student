@@ -80,6 +80,15 @@ class UserModel {
     );
   }
 
-  bool get isTeacher => role == 'teacher';
+  // Check if user is a teacher (now includes superadmin for UI purposes)
+  bool get isTeacher => role == 'teacher' || role == 'superadmin';
+  
+  // Original teacher check (when we need to distinguish between actual teachers and superadmins)
+  bool get isRealTeacher => role == 'teacher';
+  
+  // Check if user is a parent
   bool get isParent => role == 'parent';
+  
+  // Check if user is a superadmin
+  bool get isSuperadmin => role == 'superadmin';
 }

@@ -25,19 +25,22 @@ class UserProvider with ChangeNotifier {
 
   // Mengambil data guru dari API
   Future<void> fetchTeachers() async {
-    if (_teachers.isNotEmpty) {
-      // If we already have teachers, don't fetch again
-      return;
-    }
+    // Don't skip fetching even if we have teachers
+    // This ensures we always have the latest data
     
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _apiProvider.get('users/teachers');
+      debugPrint('UserProvider: Fetching teachers from API');
+      
+      // Use the new dedicated endpoint for teachers
+      final response = await _apiProvider.get('teachers');
+      
       if (response != null) {
         if (response is List) {
+          debugPrint('UserProvider: Successfully received ${response.length} teachers');
           _teachers = response
               .map((teacherJson) => UserModel.fromJson(teacherJson))
               .toList();
@@ -47,22 +50,39 @@ class UserProvider with ChangeNotifier {
             _userCache[teacher.id] = teacher;
             _userNames[teacher.id] = teacher.name;
           }
-        } else if (response is Map && response.containsKey('message') && 
-                  response['message'].toString().contains('No query results')) {
-          // Handle "No query results for model" error gracefully
-          debugPrint('No teachers found in database - using empty list');
-          _teachers = []; // Set to empty list instead of throwing an error
+        } else if (response is Map) {
+          // Check for error messages or empty response
+          if (response.containsKey('message')) {
+            debugPrint('UserProvider: API message: ${response['message']}');
+            
+            // Handle "No query results" message gracefully
+            if (response['message'].toString().contains('No query results')) {
+              debugPrint('UserProvider: No teachers found in database');
+              _teachers = []; // Set to empty list instead of throwing an error
+            } else {
+              // Other error messages
+              _error = response['message'];
+              debugPrint('UserProvider: Error message from API: $_error');
+            }
+          } else {
+            // Empty or unexpected map response
+            debugPrint('UserProvider: Received empty or unexpected map response');
+            _teachers = [];
+          }
         } else {
-          debugPrint('Unexpected response format when fetching teachers: $response');
-          _teachers = []; // Default to empty list on unexpected format
+          // Unexpected response format
+          debugPrint('UserProvider: Unexpected response format: ${response.runtimeType}');
+          _teachers = []; 
         }
       } else {
-        _teachers = []; // Default to empty list if response is null
+        // Null response
+        debugPrint('UserProvider: Received null response from API');
+        _teachers = []; 
       }
     } catch (e) {
-      debugPrint('Error fetching teachers: $e');
-      _error = e.toString();
-      _teachers = []; // Ensure we have an empty list even on error
+      debugPrint('UserProvider: Error fetching teachers: $e');
+      _error = 'Failed to load teachers: $e';
+      _teachers = []; 
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -78,10 +98,19 @@ class UserProvider with ChangeNotifier {
       // Notify listeners outside of the build phase
       Future.microtask(() => notifyListeners());
 
-      // If we need to filter by created_by, add the auth user's ID as a query param
+      // Check if user is superadmin - always fetch all parents for superadmin
+      bool isSuperadmin = _authProvider.user?.isSuperadmin ?? false;
+      
+      // Build endpoint based on role and filtering requirements
       String endpoint = 'users?role=parent';
-      if (filterByCreatedBy && _authProvider.isAuthenticated) {
+      
+      // For teachers: filter by created_by if requested and not superadmin
+      if (filterByCreatedBy && _authProvider.isAuthenticated && !isSuperadmin) {
         endpoint += '&created_by=${_authProvider.userId}';
+        debugPrint('UserProvider: Fetching parents created by teacher ${_authProvider.userId}');
+      } else if (isSuperadmin) {
+        // Superadmin sees all parents
+        debugPrint('UserProvider: Fetching all parents for superadmin');
       }
 
       final data = await _apiProvider.get(endpoint);
@@ -102,6 +131,7 @@ class UserProvider with ChangeNotifier {
         }
         
         _parents = usersList.map((item) => UserModel.fromJson(item)).toList();
+        debugPrint('UserProvider: Loaded ${_parents.length} parents');
 
         // Simpan nama orang tua ke cache
         for (var parent in _parents) {
@@ -263,6 +293,156 @@ class UserProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  // Fetch all users - useful for superadmin user management
+  Future<List<UserModel>> fetchAllUsers({String? role}) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      // Build endpoint based on requested role filter
+      String endpoint = 'users';
+      if (role != null && role.isNotEmpty) {
+        endpoint += '?role=$role';
+      }
+      
+      final data = await _apiProvider.get(endpoint);
+      List<UserModel> users = [];
+      
+      if (data != null) {
+        // Handle both list and map response formats
+        List<dynamic> usersList;
+        if (data is Map && data.containsKey('data')) {
+          usersList = data['data'] as List;
+        } else if (data is List) {
+          usersList = data;
+        } else {
+          _error = 'Unexpected data format from API';
+          _isLoading = false;
+          notifyListeners();
+          return [];
+        }
+        
+        users = usersList.map((item) => UserModel.fromJson(item)).toList();
+        
+        // Update cached teachers if role is teacher or if no role filter
+        if (role == 'teacher' || role == null) {
+          final teachers = users.where((user) => user.role == 'teacher').toList();
+          _teachers = teachers;
+          
+          // Update cache
+          for (var teacher in teachers) {
+            _userCache[teacher.id] = teacher;
+            _userNames[teacher.id] = teacher.name;
+          }
+        }
+        
+        debugPrint('UserProvider: Fetched ${users.length} users with role: ${role ?? "all"}');
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return users;
+    } catch (e) {
+      debugPrint('Error fetching users: $e');
+      _isLoading = false;
+      _error = 'Failed to load users. Please try again.';
+      notifyListeners();
+      return [];
+    }
+  }
+  
+  // Create a new user - handles different endpoints for teacher and parent
+  Future<UserModel?> createUser({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+    String? phoneNumber,
+    String? address,
+    bool isTempPassword = true,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      // Prepare the common data payload
+      final Map<String, dynamic> userData = {
+        'name': name,
+        'email': email,
+        'password': password,
+        if (phoneNumber != null && phoneNumber.isNotEmpty) 'phone_number': phoneNumber,
+        if (address != null && address.isNotEmpty) 'address': address,
+      };
+      
+      // Add is_temp_password for parent accounts
+      if (role == 'parent') {
+        userData['is_temp_password'] = isTempPassword;
+      }
+      
+      // Choose endpoint based on role
+      String endpoint;
+      if (role == 'teacher') {
+        // Check if the current user is superadmin
+        if (_authProvider.user?.isSuperadmin == true) {
+          // Superadmins use the protected create-teacher endpoint
+          endpoint = 'create-teacher';
+          debugPrint('UserProvider: Creating teacher account using superadmin endpoint');
+        } else {
+          // Public endpoint for teacher registration
+          endpoint = 'register';
+          debugPrint('UserProvider: Creating teacher account using public endpoint');
+        }
+      } else if (role == 'parent') {
+        // Protected endpoint for parent registration
+        endpoint = 'register-parent';
+        debugPrint('UserProvider: Creating parent account using protected endpoint');
+      } else {
+        // Generic endpoint for other roles (superadmin, etc.)
+        endpoint = 'users';
+        userData['role'] = role;
+        userData['is_temp_password'] = isTempPassword;
+        debugPrint('UserProvider: Creating ${role} account using generic endpoint');
+      }
+      
+      final data = await _apiProvider.post(endpoint, userData);
+      
+      if (data != null) {
+        // Extract user data from response which might be nested
+        final userData = data is Map && data.containsKey('user') ? data['user'] : data;
+        final user = UserModel.fromJson(userData);
+        
+        debugPrint('UserProvider: Successfully created ${user.role} account for ${user.name}');
+        
+        // Update local lists based on user role
+        if (user.role == 'teacher') {
+          _teachers.add(user);
+        } else if (user.role == 'parent') {
+          _parents.add(user);
+        }
+        
+        // Update cache
+        _userCache[user.id] = user;
+        _userNames[user.id] = user.name;
+        
+        _isLoading = false;
+        notifyListeners();
+        return user;
+      }
+      
+      _error = 'Failed to create user: Server returned null';
+      debugPrint('UserProvider: Server returned null when creating user');
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      debugPrint('UserProvider: Error creating user: $e');
+      _isLoading = false;
+      _error = 'Failed to create user: $e';
+      notifyListeners();
+      return null;
     }
   }
 }

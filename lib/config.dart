@@ -1,7 +1,8 @@
 // Backend configuration for the app
 class AppConfig {
   // API Configuration
-  static const String apiBaseUrl = 'https://slategrey-stork-200486.hostingersite.com/api';
+  static const String apiBaseUrl = 'http://192.168.1.19:8000/api';
+  // static const String apiBaseUrl = 'https://slategrey-stork-200486.hostingersite.com/api';
   
   // Application version
   static const String appVersion = '1.0.0';

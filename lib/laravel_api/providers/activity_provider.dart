@@ -77,7 +77,11 @@ class ActivityProvider with ChangeNotifier {
         // Parse the activities
         List<ActivityModel> fetchedActivities = data.map((item) => ActivityModel.fromJson(item)).toList();
         
-        if (_user!.isTeacher) {
+        if (_user!.isSuperadmin) {
+          // For superadmins, show all activities without filtering
+          _activities = fetchedActivities;
+          debugPrint('ActivityProvider: Using all ${_activities.length} activities for superadmin ${_user!.id}');
+        } else if (_user!.isRealTeacher) {
           // For teachers, filter activities to show only those created by this teacher
           _activities = fetchedActivities.where((activity) => 
             activity.createdBy == _user!.id

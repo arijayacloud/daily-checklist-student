@@ -44,18 +44,13 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
   Set<String> _deletingChildIds = {}; // Track which children are being deleted
-  String _selectedAgeFilter = 'Semua';
+  
+  // New age filtering approach with range values - updated range from 2.0 to 6.0
+  double _minAgeFilter = 2.0;
+  double _maxAgeFilter = 6.0;
   String _sortBy = 'name_asc';
 
-  final List<String> _ageFilters = [
-    'Semua',
-    '3 tahun',
-    '4 tahun',
-    '5 tahun',
-    '6 tahun',
-    '7 tahun',
-    '8 tahun',
-  ];
+  // Sort options remain the same
   final Map<String, String> _sortOptions = {
     'name_asc': 'Nama (A-Z)',
     'name_desc': 'Nama (Z-A)',
@@ -79,6 +74,39 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     super.dispose();
   }
 
+  // Calculate precise age including half years
+  double _calculatePreciseAge(ChildModel child) {
+    if (child.dateOfBirth != null) {
+      // If we have a date of birth, calculate the precise age including months
+      DateTime now = DateTime.now();
+      DateTime birthDate = child.dateOfBirth!;
+      
+      // Calculate years
+      int years = now.year - birthDate.year;
+      
+      // Adjust for months to get half-years
+      int months = now.month - birthDate.month;
+      if (now.day < birthDate.day) {
+        months--;
+      }
+      
+      // If months are negative, adjust the years
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      // Convert to decimal age (e.g., 3.5 years)
+      double age = years + (months / 12.0);
+      
+      // Round to nearest 0.5 for consistency with the filter
+      return (age * 2).round() / 2;
+    } else {
+      // If no date of birth, use the stored age value
+      return child.age.toDouble();
+    }
+  }
+
   List<ChildModel> _getFilteredAndSortedChildren(List<ChildModel> children) {
     // Langkah 1: Filter berdasarkan pencarian
     List<ChildModel> filteredChildren = List.from(children);
@@ -86,20 +114,22 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filteredChildren = children.where((child) {
-        final age = child.dateOfBirth != null ? child.getCalculatedAge() : child.age;
+        final age = _calculatePreciseAge(child);
         return child.name.toLowerCase().contains(query) ||
             age.toString().contains(query);
       }).toList();
     }
 
-    // Langkah 2: Filter berdasarkan usia
-    if (_selectedAgeFilter != 'Semua') {
-      final ageFilter = int.parse(_selectedAgeFilter.split(' ')[0]);
-      filteredChildren = filteredChildren.where((child) {
-        final age = child.dateOfBirth != null ? child.getCalculatedAge() : child.age;
-        return age == ageFilter;
-      }).toList();
-    }
+    // Langkah 2: Filter berdasarkan rentang usia
+    filteredChildren = filteredChildren.where((child) {
+      // Get precise age using our helper method
+      double childAge = _calculatePreciseAge(child);
+      
+      debugPrint('Child: ${child.name}, Age: $childAge, Filter Range: $_minAgeFilter-$_maxAgeFilter');
+      
+      // Check if the child's age is within the selected range
+      return childAge >= _minAgeFilter && childAge <= _maxAgeFilter;
+    }).toList();
 
     // Langkah 3: Urutkan berdasarkan kriteria
     switch (_sortBy) {
@@ -111,21 +141,27 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
         break;
       case 'age_asc':
         filteredChildren.sort((a, b) {
-          final ageA = a.dateOfBirth != null ? a.getCalculatedAge() : a.age;
-          final ageB = b.dateOfBirth != null ? b.getCalculatedAge() : b.age;
+          final ageA = _calculatePreciseAge(a);
+          final ageB = _calculatePreciseAge(b);
           return ageA.compareTo(ageB);
         });
         break;
       case 'age_desc':
         filteredChildren.sort((a, b) {
-          final ageA = a.dateOfBirth != null ? a.getCalculatedAge() : a.age;
-          final ageB = b.dateOfBirth != null ? b.getCalculatedAge() : b.age;
+          final ageA = _calculatePreciseAge(a);
+          final ageB = _calculatePreciseAge(b);
           return ageB.compareTo(ageA);
         });
         break;
     }
 
     return filteredChildren;
+  }
+
+  // Format age to display half years correctly (3.5 -> "3,5")
+  String _formatAgeDisplay(double age) {
+    // Convert to string with comma as decimal separator for Indonesian format
+    return age.toString().replaceAll('.', ',');
   }
 
   @override
@@ -189,83 +225,220 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
 
   Widget _buildFilterSection() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Text('Filter usia: ', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceVariant.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButton<String>(
-                      value: _selectedAgeFilter,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down),
-                      items: _ageFilters.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedAgeFilter = newValue;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Filter: ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurface,
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Text('Urutkan: ', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceVariant.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButton<String>(
-                      value: _sortBy,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down),
-                      items: _sortOptions.entries.map((entry) {
-                        return DropdownMenuItem<String>(
-                          value: entry.key,
-                          child: Text(entry.value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _sortBy = newValue;
-                          });
-                        }
-                      },
-                    ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip(
+                    label: 'Usia: ${_formatAgeDisplay(_minAgeFilter)}-${_formatAgeDisplay(_maxAgeFilter)} tahun',
+                    isSelected: _minAgeFilter != 2.0 || _maxAgeFilter != 6.0,
+                    onSelected: (_) => _showFilterDialog(),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    label: _getSortLabel(),
+                    isSelected: _sortBy != 'name_asc',
+                    onSelected: (_) => _showFilterDialog(),
+                  ),
+                ],
               ),
-            ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter Detail',
+            iconSize: 20,
           ),
         ],
       ),
+    );
+  }
+
+  String _getSortLabel() {
+    return _sortOptions[_sortBy] ?? 'Nama (A-Z)';
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required Function(bool) onSelected,
+  }) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      selectedColor: AppTheme.primaryContainer,
+      checkmarkColor: AppTheme.onPrimaryContainer,
+      labelStyle: TextStyle(
+        color: isSelected ? AppTheme.onPrimaryContainer : AppTheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Filter Anak',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _minAgeFilter = 2.0;
+                            _maxAgeFilter = 6.0;
+                            _sortBy = 'name_asc';
+                          });
+                        },
+                        child: const Text('Atur Ulang'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Age range filter
+                  const Text(
+                    'Rentang Usia',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  RangeSlider(
+                    values: RangeValues(
+                      _minAgeFilter,
+                      _maxAgeFilter,
+                    ),
+                    min: 2.0,
+                    max: 6.0,
+                    divisions: 8, // 8 divisions for 0.5 increments between 2.0 and 6.0
+                    labels: RangeLabels(
+                      _formatAgeDisplay(_minAgeFilter),
+                      _formatAgeDisplay(_maxAgeFilter),
+                    ),
+                    onChanged: (values) {
+                      setState(() {
+                        _minAgeFilter = values.start;
+                        _maxAgeFilter = values.end;
+                      });
+                    },
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '2,0 tahun',
+                        style: TextStyle(color: AppTheme.onSurfaceVariant),
+                      ),
+                      Text(
+                        '6,0 tahun',
+                        style: TextStyle(color: AppTheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Sorting options
+                  const Text(
+                    'Urutkan Berdasarkan',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _sortOptions.entries.map((entry) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: Text(entry.value),
+                            selected: _sortBy == entry.key,
+                            onSelected: (selected) {
+                              setState(() {
+                                _sortBy = entry.key;
+                              });
+                            },
+                            selectedColor: AppTheme.primaryContainer,
+                            checkmarkColor: AppTheme.onPrimaryContainer,
+                            labelStyle: TextStyle(
+                              color: _sortBy == entry.key 
+                                  ? AppTheme.onPrimaryContainer 
+                                  : AppTheme.onSurface,
+                              fontWeight: _sortBy == entry.key 
+                                  ? FontWeight.bold 
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Apply button
+                  ElevatedButton(
+                    onPressed: () {
+                      this.setState(() {
+                        // Update the parent state
+                        this._minAgeFilter = _minAgeFilter;
+                        this._maxAgeFilter = _maxAgeFilter;
+                        this._sortBy = _sortBy;
+                      });
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: AppTheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'Terapkan Filter',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -382,7 +555,8 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
               setState(() {
                 _searchController.clear();
                 _searchQuery = '';
-                _selectedAgeFilter = 'Semua';
+                _minAgeFilter = 2.0;
+                _maxAgeFilter = 6.0;
                 _sortBy = 'name_asc';
               });
             },
@@ -398,6 +572,10 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
   }
 
   Widget _buildChildCard(BuildContext context, ChildModel child, int index) {
+    // Calculate the precise age for display
+    final preciseAge = _calculatePreciseAge(child);
+    final formattedAge = _formatAgeDisplay(preciseAge);
+    
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -442,9 +620,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    child.dateOfBirth != null 
-                        ? child.getAgeString() 
-                        : '${child.age} tahun',
+                    '$formattedAge tahun',
                     style: TextStyle(
                       color: AppTheme.onSurfaceVariant,
                       fontSize: 14,

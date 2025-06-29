@@ -32,6 +32,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   late TabController _tabController;
+  bool _isSuperadmin = false;
 
   final List<Widget> _screens = const [
     TeacherChildrenScreen(),
@@ -55,6 +56,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 
     // Fetch initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Check if user is superadmin
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      setState(() {
+        _isSuperadmin = authProvider.user?.isSuperadmin ?? false;
+      });
+      
       // Laravel API providers
       final childProvider = Provider.of<ChildProvider>(context, listen: false);
       final activityProvider = Provider.of<ActivityProvider>(context, listen: false);
@@ -114,30 +121,30 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.child_care_outlined),
-              activeIcon: Icon(Icons.child_care),
+              icon: const Icon(Icons.child_care_outlined),
+              activeIcon: const Icon(Icons.child_care),
               label: 'Peserta Didik',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_outlined),
-              activeIcon: Icon(Icons.assignment),
+              icon: const Icon(Icons.assignment_outlined),
+              activeIcon: const Icon(Icons.assignment),
               label: 'Aktivitas',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.people_outline),
-              activeIcon: Icon(Icons.people),
-              label: 'Orang Tua',
+              icon: const Icon(Icons.people_outline),
+              activeIcon: const Icon(Icons.people),
+              label: _isSuperadmin ? 'Pengguna' : 'Orang Tua',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today_outlined),
-              activeIcon: Icon(Icons.calendar_today),
+              icon: const Icon(Icons.calendar_today_outlined),
+              activeIcon: const Icon(Icons.calendar_today),
               label: 'Jadwal',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
               label: 'Profil',
             ),
           ],
@@ -192,7 +199,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     final titles = [
       'Daftar Peserta Didik',
       'Daftar Aktivitas',
-      'Data Orang Tua',
+      _isSuperadmin ? 'Manajemen Pengguna' : 'Data Orang Tua',
       'Jadwal Kegiatan',
       'Profil',
     ];

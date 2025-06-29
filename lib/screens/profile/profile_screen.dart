@@ -24,6 +24,7 @@ class ProfileScreen extends StatelessWidget {
       name: user.name,
       email: user.email,
       isTeacher: user.isTeacher,
+      isSuperadmin: user.isSuperadmin,
       onLogout: () => _showLogoutConfirmationDialog(context, authProvider),
     );
   }
@@ -34,6 +35,7 @@ class ProfileScreen extends StatelessWidget {
     required String name,
     required String email,
     required bool isTeacher,
+    required bool isSuperadmin,
     required VoidCallback onLogout,
   }) {
     return Scaffold(
@@ -116,7 +118,7 @@ class ProfileScreen extends StatelessWidget {
                       _buildInfoItem(
                         Icons.badge_outlined,
                         'Peran',
-                        isTeacher ? 'Guru' : 'Orang Tua',
+                        isSuperadmin ? 'Admin' : (isTeacher ? 'Guru' : 'Orang Tua'),
                       ),
                     ],
                   ),

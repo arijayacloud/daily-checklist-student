@@ -79,7 +79,23 @@ class PlanningProvider with ChangeNotifier {
 
     try {
       // Build the endpoint URL based on whether a child ID is specified
-      final endpoint = childId != null ? 'plans?child_id=$childId' : 'plans';
+      String endpoint;
+      
+      // Check if user is superadmin
+      if (_user != null && _user!.isSuperadmin) {
+        // Superadmin can see all plans without filtering
+        endpoint = 'plans';
+        debugPrint('PlanningProvider: Fetching all plans for superadmin');
+      } else if (childId != null) {
+        // For specific child view (used by both teachers and parents)
+        endpoint = 'plans?child_id=$childId';
+        debugPrint('PlanningProvider: Fetching plans for specific child: $childId');
+      } else {
+        // Default case - filtered by user role (teacher sees their plans)
+        endpoint = 'plans';
+        debugPrint('PlanningProvider: Fetching plans for ${_user?.role ?? 'unknown role'}');
+      }
+      
       final data = await _apiProvider.get(endpoint);
       
       if (data != null) {
@@ -94,11 +110,14 @@ class PlanningProvider with ChangeNotifier {
         }
         
         _plans = plansList.map((item) => Planning.fromJson(item)).toList();
+        debugPrint('PlanningProvider: Successfully loaded ${_plans.length} plans');
       } else {
         _error = 'Failed to load plans';
+        debugPrint('PlanningProvider: Failed to load plans - null response');
       }
     } catch (e) {
       _error = 'Failed to load plans: $e';
+      debugPrint('PlanningProvider: Error: $_error');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -112,6 +131,7 @@ class PlanningProvider with ChangeNotifier {
     List<String>? childIds,
     required List<PlannedActivity> activities,
     required String type,
+    String? teacherId, // Add optional teacherId parameter for superadmin
   }) async {
     _isLoading = true;
     _error = null;
@@ -133,6 +153,12 @@ class PlanningProvider with ChangeNotifier {
         'start_date': startDate.toIso8601String().split('T')[0],
         'activities': activitiesData, // Add activities to the request
       };
+      
+      // Handle teacher selection for superadmin
+      if (_user != null && _user!.isSuperadmin && teacherId != null) {
+        planData['teacher_id'] = teacherId;
+        debugPrint('PlanningProvider: Superadmin creating plan for teacher: $teacherId');
+      }
       
       // Handle child selection - prioritize childIds if provided
       if (childIds != null && childIds.isNotEmpty) {

@@ -72,20 +72,30 @@ class ChildProvider with ChangeNotifier {
       // Use different endpoints based on user role
       String endpoint = 'children';
       
+      // For superadmins, fetch all children without filtering
+      if (_user!.isSuperadmin) {
+        // Just use the base endpoint to get all children
+        debugPrint('ChildProvider: Fetching all children for superadmin');
+      }
       // For teachers, fetch children created by them
-      // For parents, fetch children connected to them
-      if (_user!.isTeacher) {
+      else if (_user!.isRealTeacher) {
         endpoint = 'children?teacher_id=${_user!.id}';
-      } else if (_user!.isParent) {
+        debugPrint('ChildProvider: Fetching children for teacher ${_user!.id}');
+      } 
+      // For parents, fetch children connected to them
+      else if (_user!.isParent) {
         endpoint = 'children?parent_id=${_user!.id}';
+        debugPrint('ChildProvider: Fetching children for parent ${_user!.id}');
       }
       
       final data = await _apiProvider.get(endpoint);
       
       if (data != null) {
         _children = (data as List).map((item) => ChildModel.fromJson(item)).toList();
+        debugPrint('ChildProvider: Loaded ${_children.length} children');
       } else {
         _children = [];
+        debugPrint('ChildProvider: No children data received');
       }
     } catch (e) {
       debugPrint('Error fetching children: $e');
@@ -103,8 +113,9 @@ class ChildProvider with ChangeNotifier {
     DateTime? dateOfBirth,
     String? avatarUrl,
   }) async {
-    if (_user == null || !_user!.isTeacher) {
-      _error = 'Only teachers can add children';
+    // Allow both teachers and superadmins to add children
+    if (_user == null || (!_user!.isRealTeacher && !_user!.isSuperadmin)) {
+      _error = 'Only teachers and administrators can add children';
       notifyListeners();
       return null;
     }
@@ -189,8 +200,9 @@ class ChildProvider with ChangeNotifier {
   }
 
   Future<bool> deleteChild(String id) async {
-    if (_user == null || !_user!.isTeacher) {
-      _error = 'Only teachers can delete children';
+    // Allow both teachers and superadmins to delete children
+    if (_user == null || (!_user!.isRealTeacher && !_user!.isSuperadmin)) {
+      _error = 'Only teachers and administrators can delete children';
       notifyListeners();
       return false;
     }
