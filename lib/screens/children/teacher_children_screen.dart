@@ -45,9 +45,9 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
   final _searchController = TextEditingController();
   Set<String> _deletingChildIds = {}; // Track which children are being deleted
   
-  // New age filtering approach with range values - updated range from 2.0 to 6.0
-  double _minAgeFilter = 2.0;
-  double _maxAgeFilter = 6.0;
+  // New age filtering approach with range values
+  double _minAgeFilter = 3.0;
+  double _maxAgeFilter = 8.0;
   String _sortBy = 'name_asc';
 
   // Sort options remain the same
@@ -74,39 +74,6 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     super.dispose();
   }
 
-  // Calculate precise age including half years
-  double _calculatePreciseAge(ChildModel child) {
-    if (child.dateOfBirth != null) {
-      // If we have a date of birth, calculate the precise age including months
-      DateTime now = DateTime.now();
-      DateTime birthDate = child.dateOfBirth!;
-      
-      // Calculate years
-      int years = now.year - birthDate.year;
-      
-      // Adjust for months to get half-years
-      int months = now.month - birthDate.month;
-      if (now.day < birthDate.day) {
-        months--;
-      }
-      
-      // If months are negative, adjust the years
-      if (months < 0) {
-        years--;
-        months += 12;
-      }
-      
-      // Convert to decimal age (e.g., 3.5 years)
-      double age = years + (months / 12.0);
-      
-      // Round to nearest 0.5 for consistency with the filter
-      return (age * 2).round() / 2;
-    } else {
-      // If no date of birth, use the stored age value
-      return child.age.toDouble();
-    }
-  }
-
   List<ChildModel> _getFilteredAndSortedChildren(List<ChildModel> children) {
     // Langkah 1: Filter berdasarkan pencarian
     List<ChildModel> filteredChildren = List.from(children);
@@ -114,7 +81,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filteredChildren = children.where((child) {
-        final age = _calculatePreciseAge(child);
+        final age = child.dateOfBirth != null ? child.getCalculatedAge() : child.age;
         return child.name.toLowerCase().contains(query) ||
             age.toString().contains(query);
       }).toList();
@@ -122,13 +89,9 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
 
     // Langkah 2: Filter berdasarkan rentang usia
     filteredChildren = filteredChildren.where((child) {
-      // Get precise age using our helper method
-      double childAge = _calculatePreciseAge(child);
-      
-      debugPrint('Child: ${child.name}, Age: $childAge, Filter Range: $_minAgeFilter-$_maxAgeFilter');
-      
+      final age = child.dateOfBirth != null ? child.getCalculatedAge() : child.age.toDouble();
       // Check if the child's age is within the selected range
-      return childAge >= _minAgeFilter && childAge <= _maxAgeFilter;
+      return age >= _minAgeFilter && age <= _maxAgeFilter;
     }).toList();
 
     // Langkah 3: Urutkan berdasarkan kriteria
@@ -141,15 +104,15 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
         break;
       case 'age_asc':
         filteredChildren.sort((a, b) {
-          final ageA = _calculatePreciseAge(a);
-          final ageB = _calculatePreciseAge(b);
+          final ageA = a.dateOfBirth != null ? a.getCalculatedAge() : a.age;
+          final ageB = b.dateOfBirth != null ? b.getCalculatedAge() : b.age;
           return ageA.compareTo(ageB);
         });
         break;
       case 'age_desc':
         filteredChildren.sort((a, b) {
-          final ageA = _calculatePreciseAge(a);
-          final ageB = _calculatePreciseAge(b);
+          final ageA = a.dateOfBirth != null ? a.getCalculatedAge() : a.age;
+          final ageB = b.dateOfBirth != null ? b.getCalculatedAge() : b.age;
           return ageB.compareTo(ageA);
         });
         break;
@@ -243,7 +206,7 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                 children: [
                   _buildFilterChip(
                     label: 'Usia: ${_formatAgeDisplay(_minAgeFilter)}-${_formatAgeDisplay(_maxAgeFilter)} tahun',
-                    isSelected: _minAgeFilter != 2.0 || _maxAgeFilter != 6.0,
+                    isSelected: _minAgeFilter != 3.0 || _maxAgeFilter != 8.0,
                     onSelected: (_) => _showFilterDialog(),
                   ),
                   const SizedBox(width: 8),
@@ -318,8 +281,8 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                       TextButton(
                         onPressed: () {
                           setState(() {
-                            _minAgeFilter = 2.0;
-                            _maxAgeFilter = 6.0;
+                            _minAgeFilter = 3.0;
+                            _maxAgeFilter = 8.0;
                             _sortBy = 'name_asc';
                           });
                         },
@@ -340,9 +303,9 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                       _minAgeFilter,
                       _maxAgeFilter,
                     ),
-                    min: 2.0,
-                    max: 6.0,
-                    divisions: 8, // 8 divisions for 0.5 increments between 2.0 and 6.0
+                    min: 3.0,
+                    max: 8.0,
+                    divisions: 10, // 10 divisions for 0.5 increments between 3.0 and 8.0
                     labels: RangeLabels(
                       _formatAgeDisplay(_minAgeFilter),
                       _formatAgeDisplay(_maxAgeFilter),
@@ -358,11 +321,11 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '2,0 tahun',
+                        '3,0 tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                       Text(
-                        '6,0 tahun',
+                        '8,0 tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                     ],
@@ -555,8 +518,8 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
               setState(() {
                 _searchController.clear();
                 _searchQuery = '';
-                _minAgeFilter = 2.0;
-                _maxAgeFilter = 6.0;
+                _minAgeFilter = 3.0;
+                _maxAgeFilter = 8.0;
                 _sortBy = 'name_asc';
               });
             },
@@ -572,10 +535,6 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
   }
 
   Widget _buildChildCard(BuildContext context, ChildModel child, int index) {
-    // Calculate the precise age for display
-    final preciseAge = _calculatePreciseAge(child);
-    final formattedAge = _formatAgeDisplay(preciseAge);
-    
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -620,7 +579,9 @@ class _TeacherChildrenScreenState extends State<TeacherChildrenScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '$formattedAge tahun',
+                    child.dateOfBirth != null 
+                        ? child.getAgeString() 
+                        : '${child.age} tahun',
                     style: TextStyle(
                       color: AppTheme.onSurfaceVariant,
                       fontSize: 14,

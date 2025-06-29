@@ -24,8 +24,22 @@ class TeacherActivitiesScreen extends StatefulWidget {
 class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   String _searchQuery = '';
   String _difficultyFilter = 'Semua';
+  
+  /// Age filter values with support for half-year increments (0.5)
+  /// Default filter range is 3.0 to 6.0 years
   double _minAgeFilter = 3.0;
   double _maxAgeFilter = 6.0;
+  
+  /// Constants defining the supported age range for activities
+  /// MIN_AGE_SUPPORTED is 0.5 years (6 months)
+  /// MAX_AGE_SUPPORTED is 8.0 years
+  static const double MIN_AGE_SUPPORTED = 0.5;
+  static const double MAX_AGE_SUPPORTED = 8.0;
+  
+  /// Number of divisions for the range slider to support 0.5 increments
+  /// between MIN_AGE_SUPPORTED and MAX_AGE_SUPPORTED
+  static const int AGE_DIVISIONS = 15; // (8.0 - 0.5) * 2 = 15 steps of 0.5
+  
   bool _isInitialized = false;
 
   final _searchController = TextEditingController();
@@ -64,6 +78,21 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
     }
   }
 
+  /// Helper method to check if an activity's age range overlaps with the filter range
+  /// Returns true if there is any overlap between the activity's age range and the filter range
+  bool _isAgeInRange(ActivityModel activity) {
+    // Check if there's an overlap between the activity's age range and the filter range
+    bool isInRange = !(activity.maxAge < _minAgeFilter || activity.minAge > _maxAgeFilter);
+    
+    // Log detailed information about the age comparison for easier debugging
+    debugPrint('Age comparison for "${activity.title}": ' +
+        'Activity range: ${activity.minAge}-${activity.maxAge}, ' +
+        'Filter range: $_minAgeFilter-$_maxAgeFilter, ' +
+        'In range: $isInRange');
+    
+    return isInRange;
+  }
+
   List<ActivityModel> _getFilteredActivities(List<ActivityModel> activities) {
     debugPrint('TeacherActivitiesScreen: Filtering ${activities.length} activities');
     
@@ -72,7 +101,8 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
       return [];
     }
     
-    return activities.where((activity) {
+    // Use toList() to create a new list instead of modifying the original
+    final List<ActivityModel> result = activities.where((activity) {
       // Search filter
       if (_searchQuery.isNotEmpty) {
         final title = activity.title.toLowerCase();
@@ -91,14 +121,16 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
         return false;
       }
 
-      // Age range filter
-      // Laravel Model has direct minAge and maxAge properties
-      if (activity.maxAge < _minAgeFilter || activity.minAge > _maxAgeFilter) {
+      // Age range filter using the helper method
+      if (!_isAgeInRange(activity)) {
         return false;
       }
-
+      
       return true;
     }).toList();
+    
+    debugPrint('TeacherActivitiesScreen: Filtered to ${result.length} activities after applying filters');
+    return result;
   }
 
   String _translateDifficultyToEnglish(String difficulty) {
@@ -512,7 +544,11 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
   }
   
   String _buildAgeAndDifficultyText(ActivityModel activity) {
-    String ageRangeText = '${activity.minAge}-${activity.maxAge} tahun';
+    // Format min and max age using the same formatting function we use for the filter
+    String minAgeFormatted = _formatAgeDisplay(activity.minAge);
+    String maxAgeFormatted = _formatAgeDisplay(activity.maxAge);
+    
+    String ageRangeText = '$minAgeFormatted-$maxAgeFormatted tahun';
     return '$ageRangeText • ${_translateDifficultyToIndonesian(activity.difficulty)}';
   }
 
@@ -651,13 +687,15 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                       _minAgeFilter,
                       _maxAgeFilter,
                     ),
-                    min: 3.0,
-                    max: 6.0,
-                    divisions: 6, // 6 divisions for 0.5 increments between 3.0 and 6.0
+                    min: MIN_AGE_SUPPORTED,
+                    max: MAX_AGE_SUPPORTED,
+                    divisions: AGE_DIVISIONS, // For 0.5 step increments in the expanded range
                     labels: RangeLabels(
-                      _formatAgeDisplay(_minAgeFilter),
-                      _formatAgeDisplay(_maxAgeFilter),
+                      '${_formatAgeDisplay(_minAgeFilter)} tahun',
+                      '${_formatAgeDisplay(_maxAgeFilter)} tahun',
                     ),
+                    activeColor: AppTheme.primary,
+                    inactiveColor: AppTheme.surfaceVariant,
                     onChanged: (values) {
                       setState(() {
                         _minAgeFilter = values.start;
@@ -669,11 +707,11 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '3,0 tahun',
+                        '${_formatAgeDisplay(MIN_AGE_SUPPORTED)} tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                       Text(
-                        '6,0 tahun',
+                        '${_formatAgeDisplay(MAX_AGE_SUPPORTED)} tahun',
                         style: TextStyle(color: AppTheme.onSurfaceVariant),
                       ),
                     ],
@@ -910,9 +948,19 @@ class _TeacherActivitiesScreenState extends State<TeacherActivitiesScreen> {
     );
   }
 
-  // Format age to display half years correctly (3.5 -> "3,5")
+  // Format age to display half years correctly (3.5 -> "3,5 tahun")
+  /// Formats an age value for display, handling both full years and half years
+  /// Examples:
+  /// - 3.0 becomes "3"
+  /// - 3.5 becomes "3,5"
   String _formatAgeDisplay(double age) {
-    // Convert to string with comma as decimal separator for Indonesian format
-    return age.toString().replaceAll('.', ',');
+    // Handle full years vs half years format
+    if (age == age.roundToDouble()) {
+      // For full years: 3.0 -> "3 tahun"
+      return age.toInt().toString();
+    } else {
+      // For half years: 3.5 -> "3,5"
+      return age.toString().replaceAll('.', ',');
+    }
   }
 }

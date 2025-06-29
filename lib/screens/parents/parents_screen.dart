@@ -839,17 +839,17 @@ class _ParentsScreenState extends State<ParentsScreen> with SingleTickerProvider
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
                   _buildFilterChip(
                     label: _getCurrentSortLabel(),
                     isSelected: _currentSortOption != ParentSortOption.nameAsc,
                     onSelected: (_) => _showFilterDialog(),
                   ),
                   if (_searchQuery.isNotEmpty) ...[
-                    const SizedBox(width: 8),
+            const SizedBox(width: 8),
                     _buildFilterChip(
                       label: 'Pencarian: $_searchQuery',
                       isSelected: true,
