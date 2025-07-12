@@ -9,6 +9,9 @@ import '/laravel_api/providers/activity_provider.dart';
 import '/laravel_api/providers/planning_provider.dart';
 import '/laravel_api/providers/user_provider.dart';
 import '/laravel_api/providers/child_provider.dart';
+import '/laravel_api/providers/auth_provider.dart';
+import '/laravel_api/models/observation_model.dart';
+import '/screens/planning/parent_observation_screen.dart';
 import '/lib/theme/app_theme.dart';
 
 class ParentPlanningDetailScreen extends StatefulWidget {
@@ -248,6 +251,24 @@ class _ParentPlanningDetailScreenState
           : (_isLoadingPlan 
               ? _buildLoadingView() 
               : _buildContentView()),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ParentObservationScreen(
+                  planId: widget.planId,
+                  planTitle: 'Perencanaan ${widget.planId}',
+                  childId: widget.childId,
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.psychology),
+          label: const Text('Observasi'),
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+        ),
       ),
     );
   }
