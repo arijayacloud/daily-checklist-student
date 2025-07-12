@@ -9,6 +9,7 @@ import '/laravel_api/providers/planning_provider.dart';
 import '/laravel_api/providers/child_provider.dart';
 import '/lib/theme/app_theme.dart';
 import '/laravel_api/providers/user_provider.dart';
+import '/screens/planning/teacher_observation_screen.dart';
 
 class PlanningDetailScreen extends StatefulWidget {
   final int planId;
@@ -196,6 +197,23 @@ class _PlanningDetailScreenState extends State<PlanningDetailScreen> {
               ],
             );
           },
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TeacherObservationScreen(
+                  planId: widget.planId,
+                  planTitle: 'Perencanaan ${widget.planId}',
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.psychology),
+          label: const Text('Observasi'),
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
         ),
       ),
     );

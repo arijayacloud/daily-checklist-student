@@ -1,3 +1,4 @@
+import 'package:daily_checklist_student/laravel_api/providers/observation_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -117,6 +118,15 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProxyProvider<ApiProvider, ChecklistProvider>(
           create: (context) => ChecklistProvider(Provider.of<ApiProvider>(context, listen: false)),
           update: (context, api, previous) => previous ?? ChecklistProvider(api),
+        ),
+
+        ChangeNotifierProxyProvider2<ApiProvider, AuthProvider, ObservationProvider>(
+          create: (context) => ObservationProvider(
+            Provider.of<ApiProvider>(context, listen: false),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, api, auth, previous) => 
+            previous ?? ObservationProvider(api, auth),
         ),
         
         // FCM Service provider

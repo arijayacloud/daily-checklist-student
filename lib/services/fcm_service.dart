@@ -227,7 +227,7 @@ class FCMService {
       
       // Make a direct API call with the auth token
       // final uri = Uri.parse('https://slategrey-stork-200486.hostingersite.com/api/notifications/register-token');
-      final uri = Uri.parse('http://192.168.1.19:8000/api/notifications/register-token');
+      final uri = Uri.parse('http://192.168.1.35:8000/api/notifications/register-token');
       final response = await http.post(
         uri,
         headers: {
@@ -265,7 +265,7 @@ class FCMService {
       
       // Make a direct API call to clear the token
       // final uri = Uri.parse('https://slategrey-stork-200486.hostingersite.com/api/notifications/unregister-token');
-      final uri = Uri.parse('http://192.168.1.19:8000/api/notifications/unregister-token');
+      final uri = Uri.parse('http://192.168.1.35:8000/api/notifications/unregister-token');
       final response = await http.post(
         uri,
         headers: {
