@@ -9,6 +9,8 @@ import '/laravel_api/providers/planning_provider.dart';
 import '/laravel_api/providers/child_provider.dart';
 import '/laravel_api/providers/user_provider.dart';
 import '/lib/theme/app_theme.dart';
+import '/screens/planning/observation_form_dialog.dart';
+import 'package:flutter/services.dart';
 
 class TeacherObservationScreen extends StatefulWidget {
   final int planId;
@@ -709,188 +711,42 @@ class _TeacherObservationScreenState extends State<TeacherObservationScreen> {
       return;
     }
     
-    String? selectedChildId = children.first.id;
-    DateTime selectedDate = DateTime.now();
-    final observationResultController = TextEditingController();
-    Map<String, bool> conclusions = {
-      'presentasi_ulang': false,
-      'extension': false,
-      'bahasa': false,
-      'presentasi_langsung': false,
-    };
-    
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: const Text('Tambah Observasi'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Child selection
-                    DropdownButtonFormField<String>(
-                      value: selectedChildId,
-                      decoration: const InputDecoration(
-                        labelText: 'Pilih Anak',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: children.map((child) {
-                        return DropdownMenuItem(
-                          value: child.id,
-                          child: Text(child.name),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedChildId = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Date selection
-                    InkWell(
-                      onTap: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now(),
-                        );
-                        if (date != null) {
-                          setState(() {
-                            selectedDate = date;
-                          });
-                        }
-                      },
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Tanggal Observasi',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Text(
-                          DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(selectedDate),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Observation result
-                    TextField(
-                      controller: observationResultController,
-                      decoration: const InputDecoration(
-                        labelText: 'Hasil Observasi (Opsional)',
-                        border: OutlineInputBorder(),
-                        hintText: 'Catatan hasil observasi...',
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Conclusions
-                    const Text(
-                      'Kesimpulan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    _buildConclusionCheckbox(
-                      'Presentasi Ulang',
-                      conclusions['presentasi_ulang']!,
-                      (value) {
-                        setState(() {
-                          conclusions['presentasi_ulang'] = value;
-                        });
-                      },
-                    ),
-                    _buildConclusionCheckbox(
-                      'Extension',
-                      conclusions['extension']!,
-                      (value) {
-                        setState(() {
-                          conclusions['extension'] = value;
-                        });
-                      },
-                    ),
-                    _buildConclusionCheckbox(
-                      'Bahasa',
-                      conclusions['bahasa']!,
-                      (value) {
-                        setState(() {
-                          conclusions['bahasa'] = value;
-                        });
-                      },
-                    ),
-                    _buildConclusionCheckbox(
-                      'Presentasi Langsung',
-                      conclusions['presentasi_langsung']!,
-                      (value) {
-                        setState(() {
-                          conclusions['presentasi_langsung'] = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ObservationFormDialog(
+        children: children,
+        onSubmit: ({
+          required String childId,
+          required DateTime observationDate,
+          required String? observationResult,
+          required Map<String, bool> conclusions,
+        }) async {
+          final success = await observationProvider.createObservation(
+            planId: widget.planId.toString(),
+            childId: childId,
+            observationDate: observationDate,
+            observationResult: observationResult,
+            conclusions: conclusions,
+          );
+          if (success != null) {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              const SnackBar(
+                content: Text('Observasi berhasil ditambahkan'),
+                backgroundColor: Colors.green,
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Batal'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (selectedChildId == null) {
-                      _scaffoldMessengerKey.currentState?.showSnackBar(
-                        const SnackBar(
-                          content: Text('Pilih anak terlebih dahulu'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-                    
-                    Navigator.of(context).pop();
-                    
-                    final success = await observationProvider.createObservation(
-                      planId: widget.planId.toString(),
-                      childId: selectedChildId!,
-                      observationDate: selectedDate,
-                      observationResult: observationResultController.text.isNotEmpty 
-                          ? observationResultController.text 
-                          : null,
-                      conclusions: conclusions,
-                    );
-                    
-                    if (success != null) {
-                      _scaffoldMessengerKey.currentState?.showSnackBar(
-                        const SnackBar(
-                          content: Text('Observasi berhasil ditambahkan'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } else {
-                      _scaffoldMessengerKey.currentState?.showSnackBar(
-                        SnackBar(
-                          content: Text('Gagal menambahkan observasi: ${observationProvider.error}'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
             );
-          },
-        );
-      },
+          } else {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Gagal menambahkan observasi: ${observationProvider.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -904,9 +760,78 @@ class _TeacherObservationScreenState extends State<TeacherObservationScreen> {
   }
 
   void _showEditObservationDialog(BuildContext context, ObservationModel observation) {
-    // Similar to add dialog but with pre-filled values
-    // Implementation would be similar to _showAddObservationDialog
-    // but with existing observation data
+    final observationProvider = Provider.of<ObservationProvider>(context, listen: false);
+    final planningProvider = Provider.of<PlanningProvider>(context, listen: false);
+    final childProvider = Provider.of<ChildProvider>(context, listen: false);
+
+    final plan = planningProvider.plans.firstWhere(
+      (p) => p.id == widget.planId,
+      orElse: () => Planning(
+        id: 0,
+        type: 'daily',
+        teacherId: '0',
+        childId: null,
+        startDate: DateTime.now(),
+        activities: [],
+      ),
+    );
+
+    List<ChildModel> children = [];
+    if (plan.childIds.isNotEmpty) {
+      children = childProvider.children
+          .where((child) => plan.childIds.contains(child.id))
+          .toList();
+    }
+
+    if (children.isEmpty) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        const SnackBar(
+          content: Text('Tidak ada anak yang dipilih dalam perencanaan ini'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ObservationFormDialog(
+        children: children,
+        initialObservation: observation,
+        initialDate: observation.observationDate,
+        onSubmit: ({
+          required String childId,
+          required DateTime observationDate,
+          required String? observationResult,
+          required Map<String, bool> conclusions,
+        }) async {
+          final updated = await observationProvider.updateObservation(
+            planId: widget.planId.toString(),
+            observationId: observation.id,
+            observationDate: observationDate,
+            observationResult: observationResult,
+            conclusions: conclusions,
+          );
+          if (updated != null) {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              const SnackBar(
+                content: Text('Observasi berhasil diperbarui'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Gagal memperbarui observasi: ${observationProvider.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   void _showDeleteConfirmation(BuildContext context, ObservationModel observation) {

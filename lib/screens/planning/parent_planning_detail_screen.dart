@@ -251,24 +251,6 @@ class _ParentPlanningDetailScreenState
           : (_isLoadingPlan 
               ? _buildLoadingView() 
               : _buildContentView()),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ParentObservationScreen(
-                  planId: widget.planId,
-                  planTitle: 'Perencanaan ${widget.planId}',
-                  childId: widget.childId,
-                ),
-              ),
-            );
-          },
-          icon: const Icon(Icons.psychology),
-          label: const Text('Observasi'),
-          backgroundColor: AppTheme.primary,
-          foregroundColor: Colors.white,
-        ),
       ),
     );
   }
@@ -648,6 +630,36 @@ class _ParentPlanningDetailScreenState
             // Completion status label
             const SizedBox(height: 12),
             _buildCompletionStatusLabel(progressPercentage),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ParentObservationScreen(
+                          planId: plan.id.toString(),
+                          planTitle: 'Perencanaan ${plan.id}',
+                          childId: _selectedChildId,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.psychology),
+                  label: const Text('Observasi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

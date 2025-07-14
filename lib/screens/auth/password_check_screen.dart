@@ -90,7 +90,7 @@ class _PasswordCheckScreenState extends State<PasswordCheckScreen> {
 
   void _goToHomeScreen(String role) {
     debugPrint('PasswordCheckScreen: Going to home for role: $role');
-    if (role == 'teacher') {
+    if (role == 'teacher' || role == 'superadmin') {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => const TeacherHomeScreen(),
