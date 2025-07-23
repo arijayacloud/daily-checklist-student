@@ -28,11 +28,19 @@ class ChildModel {
         print('Error parsing date of birth: $e');
       }
     }
-    
+
+    // Parse age safely (from int or String)
+    int parsedAge = 0;
+    if (json['age'] is int) {
+      parsedAge = json['age'];
+    } else if (json['age'] is String) {
+      parsedAge = int.tryParse(json['age']) ?? 0;
+    }
+
     return ChildModel(
       id: json['id'].toString(),
       name: json['name'] ?? '',
-      age: json['age'] ?? 0,
+      age: parsedAge,
       dateOfBirth: dob,
       parentId: json['parent_id'].toString(),
       teacherId: json['teacher_id'].toString(),

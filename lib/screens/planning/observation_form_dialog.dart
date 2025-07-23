@@ -232,7 +232,7 @@ class _ObservationFormDialogState extends State<ObservationFormDialog> {
       _buildCheckbox('Presentasi Ulang', 'presentasi_ulang'),
       _buildCheckbox('Extension', 'extension'),
       _buildCheckbox('Bahasa', 'bahasa'),
-      _buildCheckbox('Presentasi Langsung', 'presentasi_langsung'),
+      _buildCheckbox('Presentasi Lanjutan', 'presentasi_langsung'),
     ];
   }
 

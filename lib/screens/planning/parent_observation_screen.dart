@@ -584,7 +584,7 @@ class _ParentObservationScreenState extends State<ParentObservationScreen> {
             Icons.language,
           ),
           _buildConclusionItem(
-            'Presentasi Langsung',
+            'Presentasi Lanjutan',
             observation.presentasiLangsung,
             Icons.present_to_all,
           ),

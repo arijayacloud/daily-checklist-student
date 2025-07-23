@@ -599,7 +599,7 @@ class _TeacherObservationScreenState extends State<TeacherObservationScreen> {
             Icons.language,
           ),
           _buildConclusionItem(
-            'Presentasi Langsung',
+            'Presentasi Lanjutan',
             observation.presentasiLangsung,
             Icons.present_to_all,
           ),
